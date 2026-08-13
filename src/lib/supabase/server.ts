@@ -23,13 +23,7 @@ export async function createClient() {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({name, value, options}) =>
-            cookieStore.set(name, value, {
-              ...options,
-              path: policy.path,
-              sameSite: policy.sameSite,
-              secure: policy.secure,
-              partitioned: policy.partitioned,
-            }),
+            cookieStore.set(name, value, options),
           );
         } catch {
           // Called from a Server Component. The proxy refreshes the session.

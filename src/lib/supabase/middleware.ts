@@ -8,12 +8,11 @@ import type {User} from "@supabase/supabase-js";
 export async function updateSession(
   request: NextRequest,
   response: NextResponse,
-): Promise<{response: NextResponse; user: User | null}> {
+): Promise<{response: NextResponse; user: User | null; getUserError: string | null}> {
   if (!isSupabaseConfigured()) {
-    return {response, user: null};
+    return {response, user: null, getUserError: "supabase_unconfigured"};
   }
 
-  let user: User | null = null;
   const policy = getAuthCookiePolicy(request);
 
   const supabase = createServerClient<Database>(
@@ -31,14 +30,16 @@ export async function updateSession(
         },
         setAll(cookiesToSet, headers) {
           cookiesToSet.forEach(({name, value}) => request.cookies.set(name, value));
-          applyAuthCookies(response, cookiesToSet, headers, policy);
+          applyAuthCookies(response, cookiesToSet, headers);
         },
       },
     },
   );
 
   const result = await supabase.auth.getUser();
-  user = result.data.user;
-
-  return {response, user};
+  return {
+    response,
+    user: result.data.user,
+    getUserError: result.error?.message ?? null,
+  };
 }

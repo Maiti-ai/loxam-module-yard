@@ -83,6 +83,23 @@ Place values in `.env.local` only. That file is gitignored.
 
 Do not commit `.env.local`. Do not put a secret or `service_role` key in any `NEXT_PUBLIC_` variable.
 
+## Vercel preview (first-party HTTPS)
+
+Cursor Cloud Preview is a proxied iframe and cannot be used to validate the login cookie. Deploy this GitHub repository to Vercel and test `/nl/login` on the Vercel HTTPS origin.
+
+Required Vercel environment variables (same names as `.env.example`):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET` (optional, default `module-photos`)
+
+After the first Vercel URL exists, add it in Supabase **Authentication → URL configuration**:
+
+- Site URL: `https://<project>.vercel.app`
+- Redirect URLs: `https://<project>.vercel.app/**` and `https://<project>.vercel.app/auth/callback`
+
+Do not deploy from this agent unless Vercel is already connected.
+
 ## Connect the Supabase project
 
 1. Open the project dashboard.

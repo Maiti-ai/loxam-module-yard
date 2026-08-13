@@ -1,6 +1,12 @@
 import {NextRequest} from "next/server";
 import {hasSupabaseAuthCookie, logAuth} from "@/lib/auth/debug";
-import {describeSetCookies, getAuthCookiePolicy, redirectToPath} from "@/lib/auth/origin";
+import {
+  describeSetCookieHeaders,
+  describeSetCookies,
+  getAuthCookiePolicy,
+  logAuthRedirect,
+  redirectToPath,
+} from "@/lib/auth/origin";
 import {
   createRouteHandlerClient,
   loginErrorRedirect,
@@ -20,7 +26,13 @@ function credentialsErrorCode(error: {code?: string; status?: number} | null) {
   return "session";
 }
 
-function redirectAndLog(request: NextRequest, locale: "nl" | "fr", code: string) {
+function redirectAndLog(
+  request: NextRequest,
+  locale: "nl" | "fr",
+  code: string,
+  reason: string,
+) {
+  logAuthRedirect(reason);
   const response = loginErrorRedirect(request, locale, code);
   console.info("REDIRECT_TARGET", response.headers.get("location"));
   return response;
@@ -55,7 +67,7 @@ export async function POST(request: NextRequest) {
       SIGNIN_SUCCESS: false,
       reason: "missing_fields",
     });
-    return redirectAndLog(request, locale, "invalid_credentials");
+    return redirectAndLog(request, locale, "invalid_credentials", "INVALID_CREDENTIALS");
   }
 
   const dashboard = redirectToPath(request, `/${locale}`);
@@ -75,7 +87,12 @@ export async function POST(request: NextRequest) {
         code: error.code ?? null,
         status: error.status ?? null,
       });
-      return redirectAndLog(request, locale, credentialsErrorCode(error));
+      return redirectAndLog(
+        request,
+        locale,
+        credentialsErrorCode(error),
+        error.code === "email_not_confirmed" ? "EMAIL_UNCONFIRMED" : "INVALID_CREDENTIALS",
+      );
     }
 
     const sessionReturned = Boolean(data.session && data.user);
@@ -94,7 +111,7 @@ export async function POST(request: NextRequest) {
         SESSION_RETURNED: false,
         hasUser: Boolean(data.user),
       });
-      return redirectAndLog(request, locale, "session");
+      return redirectAndLog(request, locale, "session", "SESSION_REFRESH_FAILED");
     }
 
     const {data: userCheck, error: userError} = await supabase.auth.getUser();
@@ -106,7 +123,7 @@ export async function POST(request: NextRequest) {
         GET_USER_SUCCESS: false,
         reason: "getUser_after_sign_in",
       });
-      return redirectAndLog(request, locale, "session");
+      return redirectAndLog(request, locale, "session", "GET_USER_FAILED");
     }
 
     const {data: profile, error: profileError} = await supabase
@@ -123,7 +140,12 @@ export async function POST(request: NextRequest) {
         code: profileError?.code ?? null,
         hasProfile: Boolean(profile),
       });
-      return redirectAndLog(request, locale, "profile");
+      return redirectAndLog(
+        request,
+        locale,
+        "profile",
+        profile ? "ROLE_NOT_ALLOWED" : "PROFILE_NOT_FOUND",
+      );
     }
 
     const cookieSummary = describeSetCookies(dashboard);
@@ -137,10 +159,12 @@ export async function POST(request: NextRequest) {
         ...cookieSummary,
         reason: "cookies_not_written",
       });
-      return redirectAndLog(request, locale, "session");
+      return redirectAndLog(request, locale, "session", "SESSION_REFRESH_FAILED");
     }
 
     const redirectTarget = dashboard.headers.get("location");
+    const setCookieMeta = describeSetCookieHeaders(dashboard);
+    console.info("SET_COOKIE_HEADERS", setCookieMeta);
     console.info("SIGNIN_SUCCESS");
     console.info("REDIRECT_TARGET", redirectTarget);
     logAuth("sign_in_ok", {
@@ -154,6 +178,7 @@ export async function POST(request: NextRequest) {
       REDIRECT_TARGET: redirectTarget,
       location: redirectTarget,
       cookiePolicy: policy,
+      setCookieMeta,
       ...cookieSummary,
     });
     return dashboard;
@@ -164,6 +189,6 @@ export async function POST(request: NextRequest) {
       reason: "unexpected",
       name: error instanceof Error ? error.name : "unknown",
     });
-    return redirectAndLog(request, locale, "redirect");
+    return redirectAndLog(request, locale, "redirect", "SESSION_REFRESH_FAILED");
   }
 }

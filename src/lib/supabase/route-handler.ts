@@ -19,7 +19,7 @@ export function createRouteHandlerClient(request: NextRequest, response: NextRes
         return request.cookies.getAll();
       },
       setAll(cookiesToSet, headers) {
-        applyAuthCookies(response, cookiesToSet, headers, policy);
+        applyAuthCookies(response, cookiesToSet, headers);
       },
     },
   });
