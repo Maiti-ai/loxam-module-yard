@@ -1,15 +1,18 @@
+import {connection} from "next/server";
 import {getLocale, getTranslations} from "next-intl/server";
 import {redirect} from "@/i18n/navigation";
 import {LoginForm} from "@/components/auth/login-form";
 import {getCurrentProfile} from "@/features/auth";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{error?: string}>;
 }) {
+  await connection();
   const t = await getTranslations();
   const locale = await getLocale();
   const {error} = await searchParams;
