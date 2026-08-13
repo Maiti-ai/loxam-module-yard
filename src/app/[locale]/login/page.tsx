@@ -1,7 +1,7 @@
 import {connection} from "next/server";
 import {redirect} from "next/navigation";
 import {getLocale, getTranslations} from "next-intl/server";
-import {LoginForm} from "@/components/auth/login-form";
+import {LoginFormClient} from "@/components/auth/login-form-client";
 import {getCurrentProfile} from "@/features/auth";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +33,7 @@ export default async function LoginPage({
       <p className="mt-4 max-w-xl text-base leading-7 text-loxam-muted">
         {t("login.body")}
       </p>
-      <LoginForm locale={locale} errorCode={error ?? null} />
+      <LoginFormClient locale={locale} errorCode={error ?? null} />
     </section>
   );
 }
