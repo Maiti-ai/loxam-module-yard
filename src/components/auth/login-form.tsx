@@ -7,7 +7,16 @@ export function LoginForm({locale}: {locale: string}) {
   const t = useTranslations("login");
   const formRef = useRef<HTMLFormElement>(null);
   const [stuck, setStuck] = useState(false);
-  const submittingLabel = t("submitting");
+  const submittingLabel = t.has("submitting")
+    ? t("submitting")
+    : locale === "fr"
+      ? "Connexion..."
+      : "Aanmelden...";
+  const submitFailedLabel = t.has("submitFailed")
+    ? t("submitFailed")
+    : locale === "fr"
+      ? "La connexion a échoué. Réessayez."
+      : "Aanmelden is niet gelukt. Probeer opnieuw.";
 
   useEffect(() => {
     const form = formRef.current;
@@ -48,7 +57,7 @@ export function LoginForm({locale}: {locale: string}) {
       <input type="hidden" name="locale" value={locale} />
       {stuck ? (
         <p className="border-l-4 border-loxam-red pl-3 text-sm font-bold" role="alert">
-          {t("submitFailed")}
+          {submitFailedLabel}
         </p>
       ) : null}
       <label className="block">
