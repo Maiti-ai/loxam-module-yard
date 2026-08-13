@@ -1,21 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  --loxam-yellow: #ffcc00;
-  --loxam-black: #111111;
+  --loxam-red: #c41e3a;
+  --loxam-red-dark: #9b1830;
+  --loxam-black: #161616;
   --loxam-ink: #1c1c1c;
   --loxam-muted: #5c5c5c;
-  --loxam-paper: #f4f4f1;
-  --loxam-line: #e4e4de;
+  --loxam-paper: #f4f2f0;
+  --loxam-white: #ffffff;
+  --loxam-line: #e4dfd9;
+  --loxam-free: #1f8a4c;
+  --loxam-free-soft: #e8f6ee;
+  --loxam-occupied: #c41e3a;
+  --loxam-occupied-soft: #fdecef;
+  --loxam-rented: #0b5cab;
+  --loxam-rented-soft: #e7f1fa;
 }
 
 @theme inline {
-  --color-loxam-yellow: var(--loxam-yellow);
+  --color-loxam-red: var(--loxam-red);
+  --color-loxam-red-dark: var(--loxam-red-dark);
   --color-loxam-black: var(--loxam-black);
   --color-loxam-ink: var(--loxam-ink);
   --color-loxam-muted: var(--loxam-muted);
   --color-loxam-paper: var(--loxam-paper);
+  --color-loxam-white: var(--loxam-white);
   --color-loxam-line: var(--loxam-line);
+  --color-loxam-free: var(--loxam-free);
+  --color-loxam-free-soft: var(--loxam-free-soft);
+  --color-loxam-occupied: var(--loxam-occupied);
+  --color-loxam-occupied-soft: var(--loxam-occupied-soft);
+  --color-loxam-rented: var(--loxam-rented);
+  --color-loxam-rented-soft: var(--loxam-rented-soft);
   --font-sans: var(--font-geist-sans);
 }
 
@@ -27,4 +43,12 @@ body {
 
 body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
 }

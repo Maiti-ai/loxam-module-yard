@@ -11,7 +11,7 @@ export async function SessionControls() {
     return (
       <Link
         href="/login"
-        className="hidden rounded-sm border border-white/20 px-3 py-1.5 text-xs font-bold tracking-wide uppercase hover:border-loxam-yellow hover:text-loxam-yellow sm:inline-flex"
+        className="inline-flex min-h-11 items-center border border-white/30 px-3 text-xs font-black uppercase"
       >
         {t("nav.login")}
       </Link>
@@ -19,15 +19,15 @@ export async function SessionControls() {
   }
 
   return (
-    <div className="hidden items-center gap-3 sm:flex">
-      <p className="max-w-40 truncate text-xs text-white/80">
+    <div className="flex items-center gap-3">
+      <p className="hidden max-w-44 truncate text-xs text-white/80 sm:block">
         {profile.email}
-        {profile.role ? ` · ${profile.role}` : ""}
+        {profile.role ? ` · ${t(`roles.${profile.role}`)}` : ""}
       </p>
       <form action={signOutAction}>
         <button
           type="submit"
-          className="rounded-sm border border-white/20 px-3 py-1.5 text-xs font-bold tracking-wide uppercase hover:border-loxam-yellow hover:text-loxam-yellow"
+          className="min-h-11 border border-white/30 px-3 text-xs font-black uppercase"
         >
           {t("nav.logout")}
         </button>

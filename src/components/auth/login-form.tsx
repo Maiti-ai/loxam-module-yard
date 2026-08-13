@@ -4,6 +4,7 @@ import {useState, type FormEvent} from "react";
 import {useTranslations} from "next-intl";
 import {useRouter} from "@/i18n/navigation";
 import {createClient} from "@/lib/supabase/client";
+import {TouchButton} from "@/components/ui/touch-button";
 
 export function LoginForm() {
   const t = useTranslations("login");
@@ -48,7 +49,7 @@ export function LoginForm() {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-2 w-full border border-loxam-line bg-white px-3 py-2 text-sm text-loxam-black outline-none focus:border-loxam-black"
+          className="mt-2 min-h-14 w-full border-2 border-loxam-black bg-white px-3 text-base text-loxam-black outline-none"
         />
       </label>
       <label className="block">
@@ -62,19 +63,15 @@ export function LoginForm() {
           required
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="mt-2 w-full border border-loxam-line bg-white px-3 py-2 text-sm text-loxam-black outline-none focus:border-loxam-black"
+          className="mt-2 min-h-14 w-full border-2 border-loxam-black bg-white px-3 text-base text-loxam-black outline-none"
         />
       </label>
       {error ? (
-        <p className="border-l-4 border-loxam-black pl-3 text-sm text-loxam-ink">{error}</p>
+        <p className="border-l-4 border-loxam-red pl-3 text-sm font-bold">{error}</p>
       ) : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="bg-loxam-yellow px-4 py-2 text-sm font-bold tracking-wide text-loxam-black uppercase disabled:opacity-60"
-      >
+      <TouchButton type="submit" disabled={pending}>
         {pending ? t("pending") : t("submit")}
-      </button>
+      </TouchButton>
     </form>
   );
 }

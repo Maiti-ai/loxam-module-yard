@@ -1,0 +1,65 @@
+import {getTranslations} from "next-intl/server";
+import {MoveWizard} from "@/components/move/move-wizard";
+import {ErrorState} from "@/components/ui/page-state";
+import {requireUser} from "@/features/auth/guard";
+import {getModuleByNumber} from "@/features/modules/queries";
+import {roleCan} from "@/features/roles";
+import {getYardSnapshot} from "@/features/yard-locations/queries";
+import {tryLoad} from "@/lib/try-load";
+
+export default async function MoveModulePage({
+  params,
+}: {
+  params: Promise<{moduleNumber: string}>;
+}) {
+  const profile = await requireUser();
+  const t = await getTranslations();
+  const {moduleNumber} = await params;
+
+  if (!roleCan(profile.role, "moveModules")) {
+    return (
+      <ErrorState
+        title={t("errors.FORBIDDEN")}
+        body={t("errors.FORBIDDEN")}
+        retryHref={`/modules/${moduleNumber}`}
+        retryLabel={t("common.back")}
+      />
+    );
+  }
+
+  const loaded = await tryLoad(async () => {
+    const [yardModule, snapshot] = await Promise.all([
+      getModuleByNumber(decodeURIComponent(moduleNumber)),
+      getYardSnapshot(),
+    ]);
+    return {yardModule, snapshot};
+  });
+
+  if (!loaded.ok) {
+    return (
+      <ErrorState
+        title={t("errors.title")}
+        body={t("errors.LOAD_FAILED")}
+        retryHref={`/modules/${moduleNumber}/move`}
+        retryLabel={t("common.retry")}
+      />
+    );
+  }
+
+  if (!loaded.data.yardModule) {
+    return (
+      <ErrorState
+        title={t("errors.NOT_FOUND")}
+        body={t("scan.notFound")}
+        retryHref="/scan"
+        retryLabel={t("nav.scan")}
+      />
+    );
+  }
+
+  return (
+    <section className="mx-auto max-w-3xl px-4 py-8">
+      <MoveWizard module={loaded.data.yardModule} snapshot={loaded.data.snapshot} />
+    </section>
+  );
+}

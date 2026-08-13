@@ -1,17 +1,18 @@
 # Loxam Module Yard
 
-Technical foundation for an internal Next.js application that will manage module inventory on a yard.
+Internal yard-management MVP for Loxam Module Schelle.
 
-This repository is **not** the visual yard MVP yet. It connects the app to Supabase and provides the database, authentication, RLS, storage, and seed data the next agent needs.
+The forklift workflow is NFC-first: scan a module, tap a block, tap a position, tap a free level, confirm. The visual yard map is schematic and driven by the database, ready to be replaced later by the real Schelle ground plan.
 
 Stack:
 
 - Next.js App Router
 - TypeScript
 - Tailwind CSS
-- Supabase (PostgreSQL, Auth, Storage)
+- Supabase (PostgreSQL, Auth, Storage, RLS)
 - next-intl for Dutch (`nl`) and French (`fr`)
-- ExcelJS for `.xlsx` export
+- ExcelJS for live inventory `.xlsx` export
+- Installable PWA (no offline sync yet)
 
 ## Project structure
 
@@ -47,7 +48,7 @@ supabase/
 .env.example             Variable names only — never real keys
 ```
 
-Placeholder operational routes still exist (`/modules`, `/yard`, `/movements`, `/inventory`). They are not the yard map.
+Operational routes: `/scan`, `/modules`, `/modules/[number]`, `/yard`, `/inventory`, `/movements`, `/airco`. Login is required.
 
 ## Run locally
 
@@ -241,6 +242,7 @@ Confirm email is enabled on this project (`mailer_autoconfirm` is false). For th
 
 The three hosted migrations have already been applied. Do not rerun them.
 
-1. Create an Auth user and promote that profile to `ADMIN`.
-2. Sign in and confirm RLS: a forklift user must not be able to change rental status.
-3. Then build the visual yard map and module workflow on this schema.
+1. Sign in as the ADMIN user.
+2. Demo module `2000` via Scan → enter `2000` (desktop NFC fallback).
+3. Move a module with the visual yard flow.
+4. Export live inventory from `/inventory`.

@@ -4,10 +4,6 @@ export const MODULE_STATUSES: ModuleStatus[] = ["AVAILABLE", "RENTED"];
 
 export const MODULE_TYPE_CODES: ModuleTypeCode[] = ["6x3", "3x3"];
 
-export type YardModule = {
-  id: string;
-  moduleNumber: string;
-  moduleTypeCode: ModuleTypeCode;
-  status: ModuleStatus;
-  rentedToProject: string | null;
-};
+export type {ModuleSummary} from "@/features/yard-locations/types";
+export {listModuleSummaries, getModuleByNumber} from "./queries";
+export {searchModules} from "./search";

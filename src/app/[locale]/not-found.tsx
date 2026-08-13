@@ -14,7 +14,7 @@ export default async function NotFound() {
       </p>
       <Link
         href="/"
-        className="mt-8 inline-flex bg-loxam-yellow px-4 py-2 text-sm font-bold tracking-wide text-loxam-black uppercase"
+        className="mt-8 inline-flex min-h-14 items-center bg-loxam-red px-5 text-sm font-black tracking-wide text-white uppercase"
       >
         {t("back")}
       </Link>

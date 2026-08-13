@@ -1,9 +1,3 @@
-export type AirConditioningRecord = {
-  id: string;
-  moduleId: string;
-  brand: string;
-  serialNumber: string;
-  internalNumber: string;
-  lastMaintenanceAt: string | null;
-  notes: string | null;
-};
+export type {AircoSummary as AirConditioningRecord} from "@/features/yard-locations/types";
+export {getMaintenanceState, getNextMaintenanceDate, type MaintenanceState} from "./status";
+export {saveAircoAction} from "./actions";
