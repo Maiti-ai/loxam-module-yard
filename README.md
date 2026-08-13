@@ -170,7 +170,9 @@ Files in `supabase/migrations/`, applied in timestamp order:
 2. `20260813140100_rls_and_storage.sql` — RLS, grants, private `module-photos` bucket
 3. `20260813140200_seed_fictitious_dev_data.sql` — types, yard, 10 modules, airco, history
 
-Apply them to the hosted project with one of these methods. Do **not** paste the database password into source code.
+These files are already applied on the hosted project (`fafsrzadgisnlnpdjthy`). Keep them in git as the source of truth. Do **not** paste the database password into source code.
+
+If you ever need to recreate a project from scratch, use one of these methods:
 
 ### Option A — Supabase CLI (preferred)
 
@@ -223,6 +225,7 @@ No real customer data is included.
 - Metadata: `public.module_photos`
 - Path helper: `src/lib/storage/module-photos.ts`
 - Upload/read: authenticated `ADMIN` and `OFFICE` can write; all authenticated roles can read
+- Anonymous `GET /storage/v1/bucket/module-photos` returns 404 for this private bucket; `npm run verify:supabase` probes object listing instead
 
 ## Authentication foundation
 
@@ -236,7 +239,8 @@ Confirm email is enabled on this project (`mailer_autoconfirm` is false). For th
 
 ## Recommended next step
 
-1. Apply the three migrations to the hosted project.
-2. Create an Auth user and promote that profile to `ADMIN`.
-3. Sign in and confirm RLS: a forklift user must not be able to change rental status.
-4. Then build the visual yard map and module workflow on this schema.
+The three hosted migrations have already been applied. Do not rerun them.
+
+1. Create an Auth user and promote that profile to `ADMIN`.
+2. Sign in and confirm RLS: a forklift user must not be able to change rental status.
+3. Then build the visual yard map and module workflow on this schema.

@@ -1,5 +1,11 @@
 import {createClient} from "@/lib/supabase/server";
+import type {UserProfile} from "@/features/users";
+import type {AppLocale} from "@/i18n/routing";
 import type {AppRole} from "@/types/database";
+
+function asAppLocale(value: string): AppLocale {
+  return value === "fr" ? "fr" : "nl";
+}
 
 export async function getCurrentUser() {
   const supabase = await createClient();
@@ -12,7 +18,7 @@ export async function getCurrentUser() {
   return data.user;
 }
 
-export async function getCurrentProfile() {
+export async function getCurrentProfile(): Promise<UserProfile | null> {
   const supabase = await createClient();
   const {data: userData, error: userError} = await supabase.auth.getUser();
 
@@ -32,7 +38,7 @@ export async function getCurrentProfile() {
       id: user.id,
       email: user.email ?? null,
       fullName: null,
-      role: null as AppRole | null,
+      role: null,
       locale: "nl",
     };
   }
@@ -42,7 +48,7 @@ export async function getCurrentProfile() {
     email: user.email ?? null,
     fullName: data.full_name,
     role: data.role,
-    locale: data.locale,
+    locale: asAppLocale(data.locale),
   };
 }
 

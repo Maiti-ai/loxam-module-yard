@@ -58,6 +58,11 @@ export default async function HomePage() {
                   ? t("home.rlsReady")
                   : t("home.rlsPending")}
               </li>
+              <li className={status.storageBucketReady ? "border-l-4 border-loxam-yellow pl-3" : "border-l-4 border-loxam-muted pl-3"}>
+                {status.storageBucketReady
+                  ? t("home.storageReady")
+                  : t("home.storageMissing")}
+              </li>
             </ul>
             {status.detail ? (
               <p className="mt-3 text-xs text-loxam-muted">{status.detail}</p>

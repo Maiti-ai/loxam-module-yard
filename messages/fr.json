@@ -31,6 +31,8 @@
     "schemaMissing": "Les migrations n'ont pas encore été appliquées à ce projet.",
     "rlsReady": "L'accès anonyme aux modules est bloqué (RLS).",
     "rlsPending": "Le RLS n'a pas encore pu être confirmé pour l'accès anonyme.",
+    "storageReady": "Le bucket Storage privé module-photos est présent.",
+    "storageMissing": "Le bucket Storage module-photos n'est pas encore joignable.",
     "languageHint": "Langue"
   },
   "features": {

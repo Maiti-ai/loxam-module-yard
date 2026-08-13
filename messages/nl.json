@@ -31,6 +31,8 @@
     "schemaMissing": "Database-migraties zijn nog niet toegepast op dit project.",
     "rlsReady": "Anonieme toegang tot modules is geblokkeerd (RLS).",
     "rlsPending": "RLS kon nog niet worden bevestigd voor anonieme toegang.",
+    "storageReady": "Privé Storage-bucket module-photos is aanwezig.",
+    "storageMissing": "Storage-bucket module-photos is nog niet bereikbaar.",
     "languageHint": "Taal"
   },
   "features": {
