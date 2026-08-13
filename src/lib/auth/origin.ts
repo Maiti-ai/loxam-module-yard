@@ -1,26 +1,50 @@
 import {NextResponse} from "next/server";
 
-export function getAppOrigin(request: Request): string {
-  const url = new URL(request.url);
-  const forwardedHost = request.headers.get("x-forwarded-host");
-  const forwardedProto = request.headers.get("x-forwarded-proto");
+function safeAppPath(path: string) {
+  const url = new URL(path, "http://n.invalid");
+  const pathname = url.pathname.startsWith("/") ? url.pathname : `/${url.pathname}`;
+  if (!pathname.startsWith("/") || pathname.startsWith("//")) {
+    return "/nl";
+  }
+  return `${pathname}${url.search}`;
+}
 
-  if (forwardedHost) {
-    const host = forwardedHost.split(",")[0]?.trim();
-    const proto =
-      forwardedProto?.split(",")[0]?.trim() ||
-      url.protocol.replace(":", "") ||
-      "https";
-    if (host) {
-      return `${proto}://${host}`;
-    }
+/**
+ * Redirect without changing host. NextResponse.redirect() requires an
+ * absolute URL, but Cursor Cloud preview cannot route Location values that
+ * point at localhost or a forwarded internal host. Overwrite Location to a
+ * same-origin relative path so the browser stays on the preview origin.
+ */
+export function redirectToPath(request: Request, path: string, status = 303) {
+  const relative = safeAppPath(path);
+  const response = NextResponse.redirect(new URL(relative, request.url), status);
+  response.headers.set("Location", relative);
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
+export function relativizeLocation(response: NextResponse) {
+  const location = response.headers.get("location");
+  if (!location || (location.startsWith("/") && !location.startsWith("//"))) {
+    return response;
   }
 
-  return url.origin;
+  try {
+    const url = new URL(location);
+    response.headers.set("Location", `${url.pathname}${url.search}`);
+  } catch {
+    // Leave unparseable values unchanged.
+  }
+
+  return response;
 }
 
 export function isHttpsRequest(request: Request) {
-  return getAppOrigin(request).startsWith("https://");
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  if (forwardedProto) {
+    return forwardedProto === "https";
+  }
+  return new URL(request.url).protocol === "https:";
 }
 
 export function localeFromPathname(pathname: string): "nl" | "fr" {

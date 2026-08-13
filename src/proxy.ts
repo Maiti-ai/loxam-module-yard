@@ -1,7 +1,13 @@
 import createIntlMiddleware from "next-intl/middleware";
 import {NextResponse, type NextRequest} from "next/server";
 import {logAuth} from "./lib/auth/debug";
-import {copyCookies, isLoginPath, localeFromPathname} from "./lib/auth/origin";
+import {
+  copyCookies,
+  isLoginPath,
+  localeFromPathname,
+  redirectToPath,
+  relativizeLocation,
+} from "./lib/auth/origin";
 import {updateSession} from "./lib/supabase/middleware";
 import {routing} from "./i18n/routing";
 
@@ -23,22 +29,21 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  const i18nResponse = handleI18nRouting(request);
+  const i18nResponse = relativizeLocation(handleI18nRouting(request));
   const {response, user} = await updateSession(request, i18nResponse);
   const locale = localeFromPathname(pathname);
 
   if (user && isLoginPath(pathname)) {
     logAuth("proxy_authenticated", {pathname, userId: user.id});
-    return copyCookies(response, NextResponse.redirect(new URL(`/${locale}`, request.url)));
+    return relativizeLocation(copyCookies(response, redirectToPath(request, `/${locale}`, 307)));
   }
 
   if (user || isPublicPath(pathname)) {
-    return response;
+    return relativizeLocation(response);
   }
 
   logAuth("proxy_unauthenticated", {pathname});
-  const redirect = NextResponse.redirect(new URL(`/${locale}/login`, request.url));
-  return copyCookies(response, redirect);
+  return relativizeLocation(copyCookies(response, redirectToPath(request, `/${locale}/login`, 307)));
 }
 
 export const config = {

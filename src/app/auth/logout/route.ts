@@ -1,21 +1,14 @@
-import {NextRequest, NextResponse} from "next/server";
+import {NextRequest} from "next/server";
 import {logAuth} from "@/lib/auth/debug";
-import {
-  createRouteHandlerClient,
-  getAppOrigin,
-  safeLocale,
-} from "@/lib/supabase/route-handler";
+import {redirectToPath} from "@/lib/auth/origin";
+import {createRouteHandlerClient, safeLocale} from "@/lib/supabase/route-handler";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const origin = getAppOrigin(request);
   const formData = await request.formData().catch(() => null);
   const locale = safeLocale(formData?.get("locale") ?? null);
-  const login = NextResponse.redirect(new URL(`/${locale}/login`, origin), {
-    status: 303,
-  });
-  login.headers.set("Cache-Control", "private, no-store");
+  const login = redirectToPath(request, `/${locale}/login`);
 
   try {
     const supabase = createRouteHandlerClient(request, login);

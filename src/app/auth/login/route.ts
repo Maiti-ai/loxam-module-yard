@@ -1,8 +1,8 @@
-import {NextRequest, NextResponse} from "next/server";
+import {NextRequest} from "next/server";
 import {hasSupabaseAuthCookie, logAuth} from "@/lib/auth/debug";
+import {redirectToPath} from "@/lib/auth/origin";
 import {
   createRouteHandlerClient,
-  getAppOrigin,
   loginErrorRedirect,
   safeLocale,
 } from "@/lib/supabase/route-handler";
@@ -22,13 +22,10 @@ function credentialsErrorCode(error: {code?: string; status?: number} | null) {
 
 export async function GET(request: NextRequest) {
   const locale = safeLocale(request.nextUrl.searchParams.get("locale"));
-  return NextResponse.redirect(new URL(`/${locale}/login`, getAppOrigin(request)), {
-    status: 303,
-  });
+  return redirectToPath(request, `/${locale}/login`);
 }
 
 export async function POST(request: NextRequest) {
-  const origin = getAppOrigin(request);
   const formData = await request.formData();
   const locale = safeLocale(formData.get("locale"));
   const email = String(formData.get("email") ?? "").trim();
@@ -36,13 +33,10 @@ export async function POST(request: NextRequest) {
 
   if (!email || !password) {
     logAuth("sign_in_failed", {reason: "missing_fields"});
-    return loginErrorRedirect(origin, locale, "invalid_credentials");
+    return loginErrorRedirect(request, locale, "invalid_credentials");
   }
 
-  const dashboard = NextResponse.redirect(new URL(`/${locale}`, origin), {
-    status: 303,
-  });
-  dashboard.headers.set("Cache-Control", "private, no-store");
+  const dashboard = redirectToPath(request, `/${locale}`);
 
   try {
     const supabase = createRouteHandlerClient(request, dashboard);
@@ -53,18 +47,18 @@ export async function POST(request: NextRequest) {
         code: error.code ?? null,
         status: error.status ?? null,
       });
-      return loginErrorRedirect(origin, locale, credentialsErrorCode(error));
+      return loginErrorRedirect(request, locale, credentialsErrorCode(error));
     }
 
     if (!data.session || !data.user) {
       logAuth("sign_in_no_session", {hasUser: Boolean(data.user)});
-      return loginErrorRedirect(origin, locale, "session");
+      return loginErrorRedirect(request, locale, "session");
     }
 
     const {data: userCheck, error: userError} = await supabase.auth.getUser();
     if (userError || !userCheck.user) {
       logAuth("sign_in_no_session", {reason: "getUser_after_sign_in"});
-      return loginErrorRedirect(origin, locale, "session");
+      return loginErrorRedirect(request, locale, "session");
     }
 
     const {data: profile, error: profileError} = await supabase
@@ -78,15 +72,19 @@ export async function POST(request: NextRequest) {
         code: profileError?.code ?? null,
         hasProfile: Boolean(profile),
       });
-      return loginErrorRedirect(origin, locale, "profile");
+      return loginErrorRedirect(request, locale, "profile");
     }
 
     if (!hasSupabaseAuthCookie(dashboard.cookies.getAll())) {
       logAuth("sign_in_no_session", {reason: "cookies_not_written"});
-      return loginErrorRedirect(origin, locale, "session");
+      return loginErrorRedirect(request, locale, "session");
     }
 
-    logAuth("sign_in_ok", {userId: data.user.id, role: profile.role});
+    logAuth("sign_in_ok", {
+      userId: data.user.id,
+      role: profile.role,
+      location: dashboard.headers.get("location"),
+    });
     logAuth("profile_loaded", {role: profile.role});
     return dashboard;
   } catch (error) {
@@ -94,6 +92,6 @@ export async function POST(request: NextRequest) {
       reason: "unexpected",
       name: error instanceof Error ? error.name : "unknown",
     });
-    return loginErrorRedirect(origin, locale, "redirect");
+    return loginErrorRedirect(request, locale, "redirect");
   }
 }

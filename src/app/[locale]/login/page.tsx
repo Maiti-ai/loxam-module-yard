@@ -1,6 +1,6 @@
 import {connection} from "next/server";
+import {redirect} from "next/navigation";
 import {getLocale, getTranslations} from "next-intl/server";
-import {redirect} from "@/i18n/navigation";
 import {LoginForm} from "@/components/auth/login-form";
 import {getCurrentProfile} from "@/features/auth";
 
@@ -19,7 +19,7 @@ export default async function LoginPage({
   const profile = await getCurrentProfile();
 
   if (profile) {
-    redirect({href: "/", locale});
+    redirect(`/${locale}`);
   }
 
   return (
