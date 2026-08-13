@@ -14,28 +14,15 @@ function safeAppPath(path: string) {
  * absolute URL, but Cursor Cloud preview cannot route Location values that
  * point at localhost or a forwarded internal host. Overwrite Location to a
  * same-origin relative path so the browser stays on the preview origin.
+ *
+ * Only use this from Route Handlers. Proxy/middleware must keep an absolute
+ * URL because Next.js parses Location there and rejects relative values.
  */
 export function redirectToPath(request: Request, path: string, status = 303) {
   const relative = safeAppPath(path);
   const response = NextResponse.redirect(new URL(relative, request.url), status);
   response.headers.set("Location", relative);
   response.headers.set("Cache-Control", "private, no-store");
-  return response;
-}
-
-export function relativizeLocation(response: NextResponse) {
-  const location = response.headers.get("location");
-  if (!location || (location.startsWith("/") && !location.startsWith("//"))) {
-    return response;
-  }
-
-  try {
-    const url = new URL(location);
-    response.headers.set("Location", `${url.pathname}${url.search}`);
-  } catch {
-    // Leave unparseable values unchanged.
-  }
-
   return response;
 }
 
