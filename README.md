@@ -188,6 +188,8 @@ For Cloud Agent or CI, store that password as an environment secret named `SUPAB
 
 Open **SQL Editor** in the project and run the three migration files in order.
 
+If a SQL Editor run of migration 1 fails partway, first run `supabase/scripts/cleanup_migration_1.sql`, confirm the verification query returns no rows, then rerun the three migrations in order. Do not paste a database password or `service_role` key into the repository.
+
 Local reset (Docker):
 
 ```bash

@@ -2,6 +2,9 @@
 -- Hierarchical yard: block → row → position → level (GROUND, LEVEL_1, LEVEL_2)
 -- Occupancy is unique per block + row + position + level.
 -- Movement history is append-only.
+--
+-- Requires a clean public schema for these objects. If a previous SQL Editor
+-- run failed partway, execute supabase/scripts/cleanup_migration_1.sql first.
 
 create extension if not exists pgcrypto;
 
