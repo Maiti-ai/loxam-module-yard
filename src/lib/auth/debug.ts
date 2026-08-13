@@ -6,7 +6,8 @@ type AuthDebugEvent =
   | "profile_failed"
   | "sign_out"
   | "proxy_unauthenticated"
-  | "proxy_authenticated";
+  | "proxy_authenticated"
+  | "auth_debug";
 
 export function logAuth(event: AuthDebugEvent, details: Record<string, unknown> = {}) {
   const payload = {

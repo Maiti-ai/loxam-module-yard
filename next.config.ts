@@ -3,6 +3,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["exceljs"],
+  allowedDevOrigins: ["127.0.0.1", "localhost", "*.agent.cvm.dev", "*.cvm.dev"],
   async headers() {
     return [
       {

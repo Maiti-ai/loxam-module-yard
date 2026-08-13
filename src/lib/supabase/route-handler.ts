@@ -1,25 +1,25 @@
 import {createServerClient} from "@supabase/ssr";
 import {NextResponse, type NextRequest} from "next/server";
-import {applyAuthCookies, isHttpsRequest, redirectToPath} from "@/lib/auth/origin";
+import {applyAuthCookies, getAuthCookiePolicy, redirectToPath} from "@/lib/auth/origin";
 import {getSupabasePublicEnv} from "@/lib/env";
 import type {Database} from "@/types/database";
 
 export function createRouteHandlerClient(request: NextRequest, response: NextResponse) {
   const {url, publishableKey} = getSupabasePublicEnv();
-  const secure = isHttpsRequest(request);
+  const policy = getAuthCookiePolicy(request);
 
   return createServerClient<Database>(url, publishableKey, {
     cookieOptions: {
-      path: "/",
-      sameSite: "lax",
-      secure,
+      path: policy.path,
+      sameSite: policy.sameSite,
+      secure: policy.secure,
     },
     cookies: {
       getAll() {
         return request.cookies.getAll();
       },
       setAll(cookiesToSet, headers) {
-        applyAuthCookies(response, cookiesToSet, headers, secure);
+        applyAuthCookies(response, cookiesToSet, headers, policy);
       },
     },
   });
