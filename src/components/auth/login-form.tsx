@@ -1,43 +1,10 @@
 "use client";
 
-import {Suspense, useState} from "react";
-import {useSearchParams} from "next/navigation";
+import {useState} from "react";
 import {useTranslations} from "next-intl";
 import {TouchButton} from "@/components/ui/touch-button";
 
-const LOGIN_ERRORS: Record<string, string> = {
-  invalid_credentials: "invalidCredentials",
-  unconfirmed: "unconfirmed",
-  session: "sessionFailed",
-  profile: "profileFailed",
-  redirect: "redirectFailed",
-  auth: "sessionFailed",
-};
-
-function LoginErrorBanner({errorCode}: {errorCode?: string | null}) {
-  const t = useTranslations("login");
-  const searchParams = useSearchParams();
-  const code = searchParams.get("error") ?? errorCode ?? null;
-  const messageKey = code ? LOGIN_ERRORS[code] : undefined;
-
-  if (!messageKey) {
-    return null;
-  }
-
-  return (
-    <p className="border-l-4 border-loxam-red pl-3 text-sm font-bold" role="alert">
-      {t(messageKey)}
-    </p>
-  );
-}
-
-export function LoginForm({
-  locale,
-  errorCode,
-}: {
-  locale: string;
-  errorCode?: string | null;
-}) {
+export function LoginForm({locale}: {locale: string}) {
   const t = useTranslations("login");
   const [pending, setPending] = useState(false);
 
@@ -49,9 +16,6 @@ export function LoginForm({
       onSubmit={() => setPending(true)}
     >
       <input type="hidden" name="locale" value={locale} />
-      <Suspense fallback={null}>
-        <LoginErrorBanner errorCode={errorCode} />
-      </Suspense>
       <label className="block">
         <span className="text-xs font-bold tracking-[0.18em] text-loxam-muted uppercase">
           {t("email")}

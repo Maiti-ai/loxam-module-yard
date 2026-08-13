@@ -1,7 +1,14 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import {useSyncExternalStore} from "react";
 import {useTranslations} from "next-intl";
+import {LoginForm} from "@/components/auth/login-form";
+
+const subscribe = () => () => {};
+
+function useIsClient() {
+  return useSyncExternalStore(subscribe, () => true, () => false);
+}
 
 function LoginFormSkeleton() {
   const t = useTranslations("login");
@@ -16,7 +23,12 @@ function LoginFormSkeleton() {
   );
 }
 
-export const LoginFormClient = dynamic(
-  () => import("@/components/auth/login-form").then((mod) => mod.LoginForm),
-  {ssr: false, loading: LoginFormSkeleton},
-);
+export function LoginFormClient({locale}: {locale: string}) {
+  const isClient = useIsClient();
+
+  if (!isClient) {
+    return <LoginFormSkeleton />;
+  }
+
+  return <LoginForm locale={locale} />;
+}
