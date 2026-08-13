@@ -1,5 +1,6 @@
 import {createServerClient} from "@supabase/ssr";
 import {type NextRequest, type NextResponse} from "next/server";
+import {applyAuthCookies, isHttpsRequest} from "@/lib/auth/origin";
 import {isSupabaseConfigured} from "@/lib/env";
 import type {Database} from "@/types/database";
 import type {User} from "@supabase/supabase-js";
@@ -13,25 +14,24 @@ export async function updateSession(
   }
 
   let user: User | null = null;
+  const secure = isHttpsRequest(request);
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
+      cookieOptions: {
+        path: "/",
+        sameSite: "lax",
+        secure,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet, headers) {
-          cookiesToSet.forEach(({name, value}) =>
-            request.cookies.set(name, value),
-          );
-          cookiesToSet.forEach(({name, value, options}) =>
-            response.cookies.set(name, value, options),
-          );
-          Object.entries(headers).forEach(([key, value]) =>
-            response.headers.set(key, value),
-          );
+          cookiesToSet.forEach(({name, value}) => request.cookies.set(name, value));
+          applyAuthCookies(response, cookiesToSet, headers, secure);
         },
       },
     },

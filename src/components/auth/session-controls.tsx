@@ -1,10 +1,10 @@
-import {getTranslations} from "next-intl/server";
+import {getLocale, getTranslations} from "next-intl/server";
 import {Link} from "@/i18n/navigation";
 import {getCurrentProfile} from "@/features/auth";
-import {signOutAction} from "@/features/auth/actions";
 
 export async function SessionControls() {
   const t = await getTranslations();
+  const locale = await getLocale();
   const profile = await getCurrentProfile();
 
   if (!profile) {
@@ -24,7 +24,8 @@ export async function SessionControls() {
         {profile.email}
         {profile.role ? ` · ${t(`roles.${profile.role}`)}` : ""}
       </p>
-      <form action={signOutAction}>
+      <form action="/auth/logout" method="post">
+        <input type="hidden" name="locale" value={locale} />
         <button
           type="submit"
           className="min-h-11 border border-white/30 px-3 text-xs font-black uppercase"

@@ -1,23 +1,18 @@
 import createIntlMiddleware from "next-intl/middleware";
 import {NextResponse, type NextRequest} from "next/server";
-import {routing} from "./i18n/routing";
+import {logAuth} from "./lib/auth/debug";
+import {copyCookies, isLoginPath, localeFromPathname} from "./lib/auth/origin";
 import {updateSession} from "./lib/supabase/middleware";
+import {routing} from "./i18n/routing";
 
 const handleI18nRouting = createIntlMiddleware(routing);
 
 function isPublicPath(pathname: string) {
   return (
     pathname.startsWith("/auth") ||
-    /\/(nl|fr)\/login\/?$/.test(pathname) ||
+    isLoginPath(pathname) ||
     pathname.startsWith("/manifest")
   );
-}
-
-function copyCookies(from: NextResponse, to: NextResponse) {
-  from.cookies.getAll().forEach((cookie) => {
-    to.cookies.set(cookie);
-  });
-  return to;
 }
 
 export async function proxy(request: NextRequest) {
@@ -30,17 +25,22 @@ export async function proxy(request: NextRequest) {
 
   const i18nResponse = handleI18nRouting(request);
   const {response, user} = await updateSession(request, i18nResponse);
+  const locale = localeFromPathname(pathname);
+
+  if (user && isLoginPath(pathname)) {
+    logAuth("proxy_authenticated", {pathname, userId: user.id});
+    return copyCookies(response, NextResponse.redirect(new URL(`/${locale}`, request.url)));
+  }
 
   if (user || isPublicPath(pathname)) {
     return response;
   }
 
-  const first = pathname.split("/").filter(Boolean)[0];
-  const locale = first === "fr" ? "fr" : "nl";
+  logAuth("proxy_unauthenticated", {pathname});
   const redirect = NextResponse.redirect(new URL(`/${locale}/login`, request.url));
   return copyCookies(response, redirect);
 }
 
 export const config = {
-  matcher: "/((?!_next|_vercel|.*\\..*).*)",
+  matcher: "/((?!_next|_vercel|auth/|.*\\..*).*)",
 };

@@ -60,6 +60,10 @@
     "submit": "Connexion",
     "pending": "En cours…",
     "invalidCredentials": "Connexion impossible. Vérifiez l’e-mail et le mot de passe.",
+    "unconfirmed": "Confirmez d’abord votre adresse e-mail avant de vous connecter.",
+    "sessionFailed": "La session n’a pas pu être créée. Réessayez.",
+    "profileFailed": "Votre profil n’a pas pu être chargé. Contactez un admin.",
+    "redirectFailed": "La connexion a réussi, mais la redirection a échoué. Réessayez.",
     "alreadySignedIn": "Vous êtes déjà connecté en tant que {email}."
   },
   "dashboard": {

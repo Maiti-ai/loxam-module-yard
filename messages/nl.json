@@ -60,6 +60,10 @@
     "submit": "Aanmelden",
     "pending": "Bezig…",
     "invalidCredentials": "Aanmelden mislukt. Controleer e-mail en wachtwoord.",
+    "unconfirmed": "Bevestig eerst uw e-mailadres voordat u zich aanmeldt.",
+    "sessionFailed": "De sessie kon niet worden aangemaakt. Probeer opnieuw.",
+    "profileFailed": "Uw profiel kon niet worden geladen. Neem contact op met een admin.",
+    "redirectFailed": "Aanmelden is gelukt, maar de doorverwijzing is mislukt. Probeer opnieuw.",
     "alreadySignedIn": "U bent al aangemeld als {email}."
   },
   "dashboard": {
