@@ -2,7 +2,7 @@
 
 Technical foundation for an internal Next.js application that will manage module inventory on a yard.
 
-This repository is **not** the MVP yet. It is a clean, runnable starting point so the next development agent can immediately build authentication, modules, yard locations, movement history, photos, air-conditioning data, and Excel export.
+This repository is **not** the visual yard MVP yet. It connects the app to Supabase and provides the database, authentication, RLS, storage, and seed data the next agent needs.
 
 Stack:
 
@@ -18,7 +18,8 @@ Stack:
 ```text
 src/
   app/[locale]/          App Router pages (nl/fr prefixed routes)
-  components/layout/     Shared header, language switcher, placeholders
+  app/auth/callback/     Supabase Auth code exchange (no locale prefix)
+  components/            Header, language switcher, login form
   features/              Domain folders for the future MVP
     auth/
     users/
@@ -29,139 +30,172 @@ src/
     module-photos/
     air-conditioning/
     inventory-export/
-  i18n/                  Locale routing, navigation helpers, request config
+  i18n/                  Locale routing and messages loader
   lib/
-    supabase/            Browser, server, admin, and proxy/session clients
+    supabase/            Browser, server, admin, session, and status helpers
     storage/             Module photo path helpers
     excel/               Inventory workbook helper
     env.ts               Environment variable readers
   proxy.ts               next-intl routing + Supabase session refresh
   types/                 Shared TypeScript types, including Database
 messages/                Dutch and French translation files
+scripts/verify-supabase.mjs
 supabase/
-  config.toml            Local Supabase CLI configuration
-  migrations/            PostgreSQL and Storage migrations
-  seed.sql               Local seed file (no real company data)
-.env.example             Required variable names only
+  config.toml
+  migrations/            PostgreSQL, RLS, Storage, and fictitious seed
+  seed.sql               Pointer to the seed migration for local resets
+.env.example             Variable names only — never real keys
 ```
 
-Placeholder routes exist so the architecture is visible, but they do not implement the real yard map or module workflow:
-
-- `/nl` and `/fr` — landing page
-- `/nl/login`, `/fr/login`
-- `/nl/modules`, `/fr/modules`
-- `/nl/yard`, `/fr/yard`
-- `/nl/movements`, `/fr/movements`
-- `/nl/inventory`, `/fr/inventory`
+Placeholder operational routes still exist (`/modules`, `/yard`, `/movements`, `/inventory`). They are not the yard map.
 
 ## Run locally
 
-1. Install dependencies:
+```bash
+npm install
+cp .env.example .env.local
+# Fill NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+npm run dev
+```
 
-   ```bash
-   npm install
-   ```
+Open [http://localhost:3000](http://localhost:3000). You should be redirected to `/nl` or `/fr`.
 
-2. Create a local env file:
-
-   ```bash
-   cp .env.example .env.local
-   ```
-
-3. Fill in the Supabase values described below. The app can start without them, but Auth, database, and Storage calls will not work until they are present.
-
-4. Start the app:
-
-   ```bash
-   npm run dev
-   ```
-
-5. Open [http://localhost:3000](http://localhost:3000). You should be redirected to `/nl` or `/fr`.
-
-Useful checks:
+Checks:
 
 ```bash
 npm run lint
 npm run typecheck
 npm run build
+npm run verify:supabase
 ```
 
 ## Environment variables
 
-Copy these names into `.env.local`. Do not commit secrets.
+Place values in `.env.local` only. That file is gitignored.
 
-| Variable | Required | Where it is used |
+| Variable | Required | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes for Supabase | Browser and server clients |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes for Supabase | Browser and server clients |
-| `SUPABASE_SERVICE_ROLE_KEY` | No for local UI | Server-only admin client |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Public client / publishable key |
 | `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET` | No | Defaults to `module-photos` |
+| `SUPABASE_SERVICE_ROLE_KEY` | No | Unused by this foundation. Never `NEXT_PUBLIC_`. |
 
-`.env.local` is gitignored. `.env.example` is committed and contains names only.
+Do not commit `.env.local`. Do not put a secret or `service_role` key in any `NEXT_PUBLIC_` variable.
 
 ## Connect the Supabase project
 
-Create or open a Supabase project, then copy values into `.env.local`:
-
 1. Open the project dashboard.
-2. Open **Project Settings**.
-3. Copy the **Project URL** into `NEXT_PUBLIC_SUPABASE_URL`.
-   - You can also find this in the **Connect** dialog.
-4. Open **API Keys**.
-5. Copy the **publishable** key into `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-   - Older dashboards show this as `anon` or `legacy anon`.
-   - This is a public client key. It is not a secret, but it is still project-specific.
-6. Optionally copy the **service_role** key into `SUPABASE_SERVICE_ROLE_KEY`.
-   - This key bypasses Row Level Security.
-   - Never put it in a `NEXT_PUBLIC_` variable.
-   - Never ship it to the browser.
-
-Do not invent placeholder credentials. Leave the values empty until you copy them from the dashboard.
-
-In **Authentication → URL configuration**, add:
-
-- Site URL: `http://localhost:3000`
-- Redirect URLs: `http://localhost:3000/**`
-
-The app uses the current recommended Next.js SSR packages:
-
-- `@supabase/supabase-js`
-- `@supabase/ssr`
+2. Copy **Project URL** into `NEXT_PUBLIC_SUPABASE_URL`.
+3. Copy the **publishable** key into `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+   Older dashboards show this as `anon` / `legacy anon`.
+4. In **Authentication → URL configuration**:
+   - Site URL: `http://localhost:3000`
+   - Redirect URLs: `http://localhost:3000/**` and `http://localhost:3000/auth/callback`
 
 Clients:
 
-- Browser: `src/lib/supabase/client.ts` (`createBrowserClient`)
-- Server Components / Server Actions / Route Handlers: `src/lib/supabase/server.ts` (`createServerClient`)
-- Service-role admin: `src/lib/supabase/admin.ts`
-- Session refresh: `src/proxy.ts` + `src/lib/supabase/middleware.ts`
+- Browser: `src/lib/supabase/client.ts`
+- Server: `src/lib/supabase/server.ts`
+- Session refresh: `src/proxy.ts`
+- Auth callback: `src/app/auth/callback/route.ts`
 
-## Database migrations
+## Database structure
 
-SQL migrations live in `supabase/migrations/`.
+Yard occupancy is hierarchical:
 
-Current files:
+`yard_blocks` → `yard_rows` → `yard_positions` → `yard_slots` (level)
 
-- `20260813120000_init_foundation.sql` — roles, profiles, modules, yard locations, movements, photos metadata, air-conditioning
-- `20260813120100_storage_module_photos.sql` — private `module-photos` bucket
+Levels are `GROUND`, `LEVEL_1`, and `LEVEL_2`. Inserting a position automatically creates those three slots.
 
-Apply them to a linked hosted project:
+A module occupies at most one slot through `module_locations`. Two uniqueness rules prevent two modules from sharing the same cell:
+
+- `yard_slots (block_id, row_id, position_id, level)` is unique
+- `module_locations.slot_id` is unique
+
+| Table | Purpose |
+| --- | --- |
+| `profiles` | One row per Auth user, including `app_role` |
+| `module_types` | `6x3` and `3x3` |
+| `yard_blocks` | Yard blocks |
+| `yard_rows` | Rows inside a block |
+| `yard_positions` | Positions inside a row |
+| `yard_slots` | Concrete cell: block + row + position + level |
+| `modules` | Inventory items (`AVAILABLE` or `RENTED`) |
+| `module_locations` | Current slot for a module |
+| `module_movements` | Append-only movement history |
+| `module_photos` | Photo metadata; files live in Storage |
+| `air_conditioning_units` | Brand, serial, internal number, maintenance date |
+| `module_location_view` | Convenience view for later UI work |
+
+`module_movements` cannot be updated or deleted. Changing `module_locations` appends a history row.
+
+## Application roles
+
+Stored on `profiles.role`. New users default to `PRODUCTION`.
+
+| Role | Intended access |
+| --- | --- |
+| `ADMIN` | Users, yard layout, modules, moves, photos, airco |
+| `OFFICE` | Rental status, photos, airco; cannot change module number/type or move modules |
+| `FORKLIFT_DRIVER` | Read inventory; insert/update current locations (moves) |
+| `PRODUCTION` | Read inventory; update airco maintenance fields only |
+
+Promote the first user in the SQL editor after signup:
+
+```sql
+update public.profiles
+set role = 'ADMIN'
+where id = '<auth user uuid>';
+```
+
+Create users in **Authentication → Users**. Public signup is not part of the UI.
+
+## RLS approach
+
+Every business table has RLS enabled. `anon` has no table privileges. `authenticated` has privileges, and policies restrict them by `public.current_app_role()`.
+
+Authorization is enforced in Postgres. Hiding buttons in the UI is not sufficient. Server helpers in `src/features/auth` and `src/features/roles` exist for later UI/server-action checks, but RLS remains the boundary.
+
+Triggers add extra column-level protection:
+
+- `OFFICE` cannot change `modules.module_number` or `module_type_id`
+- `PRODUCTION` can only change airco maintenance fields
+- Movement rows are immutable
+
+## Migrations
+
+Files in `supabase/migrations/`, applied in timestamp order:
+
+1. `20260813140000_yard_schema.sql` — types, tables, constraints, triggers, view
+2. `20260813140100_rls_and_storage.sql` — RLS, grants, private `module-photos` bucket
+3. `20260813140200_seed_fictitious_dev_data.sql` — types, yard, 10 modules, airco, history
+
+Apply them to the hosted project with one of these methods. Do **not** paste the database password into source code.
+
+### Option A — Supabase CLI (preferred)
 
 ```bash
 npx supabase login
-npx supabase link --project-ref <your-project-ref>
+npx supabase link --project-ref fafsrzadgisnlnpdjthy
 npx supabase db push
 ```
 
-For a local Supabase stack (Docker required):
+The CLI will ask for the database password from **Project Settings → Database**.
+
+For Cloud Agent or CI, store that password as an environment secret named `SUPABASE_DB_PASSWORD` (or a personal `SUPABASE_ACCESS_TOKEN` from [account tokens](https://supabase.com/dashboard/account/tokens)). Never commit it.
+
+### Option B — Dashboard SQL editor
+
+Open **SQL Editor** in the project and run the three migration files in order.
+
+Local reset (Docker):
 
 ```bash
 npx supabase start
 npx supabase db reset
 ```
 
-`db reset` applies all migrations, then runs `supabase/seed.sql`.
-
-After the schema is stable, generate TypeScript types and replace `src/types/database.ts`:
+After the schema is stable:
 
 ```bash
 npx supabase gen types typescript --linked > src/types/database.ts
@@ -169,47 +203,38 @@ npx supabase gen types typescript --linked > src/types/database.ts
 
 ## Seed data
 
-`supabase/seed.sql` is intentionally empty of real records.
+The seed is fictitious development data:
 
-Use it later for generic local fixtures only. Do not seed customer names, live serial numbers, or production yard data.
+- Module types `6x3` and `3x3`
+- Blocks A and B, with rows, positions, and three levels each
+- Modules `2000`–`2009`
+- Mix of ground / level 1 / level 2, both blocks, `AVAILABLE` and `RENTED` to fake projects (`Project Atlas`, `Project Beacon`, `Project Harbor`)
+- Airco brand, serial number, internal number, and maintenance date for each module
+- Extra movement-history rows plus automatic history from current locations
+
+No real customer data is included.
 
 ## Photo storage
 
-Module photo files are intended to live in the private Supabase Storage bucket `module-photos`.
-
-- Bucket creation: `supabase/migrations/20260813120100_storage_module_photos.sql`
-- Local CLI bucket config: `supabase/config.toml`
+- Bucket: `module-photos` (private)
+- Bytes: Supabase Storage
+- Metadata: `public.module_photos`
 - Path helper: `src/lib/storage/module-photos.ts`
-- Database metadata table: `public.module_photos`
+- Upload/read: authenticated `ADMIN` and `OFFICE` can write; all authenticated roles can read
 
-Upload/download policies are not implemented yet. Keep the bucket private until authenticated upload rules exist.
+## Authentication foundation
 
-## Internationalization
+- Email/password login at `/nl/login` and `/fr/login`
+- Session refresh in `src/proxy.ts`
+- Auth callback at `/auth/callback`
+- Header shows email, role, and sign-out when a session exists
+- Profiles are created by a trigger on `auth.users`
 
-Dutch is the default locale. French is the second locale. Routes are prefixed:
-
-- `/nl/...`
-- `/fr/...`
-
-Translation files:
-
-- `messages/nl.json`
-- `messages/fr.json`
-
-Routing config lives in `src/i18n/`.
-
-## Excel export
-
-ExcelJS is installed and wrapped in `src/lib/excel/create-inventory-workbook.ts`.
-
-No inventory export endpoint exists yet. The helper is ready for a later server-side `.xlsx` download.
+Confirm email is enabled on this project (`mailer_autoconfirm` is false). For the first internal users, either confirm the email or temporarily disable **Confirm email** in Authentication settings for development.
 
 ## Recommended next step
 
-Build authentication first:
-
-1. Put real Supabase values in `.env.local`.
-2. Push the migrations.
-3. Add login with Supabase Auth.
-4. Add RLS policies for profiles, modules, locations, movements, photos, and air-conditioning.
-5. Then implement the module/yard MVP on top of this foundation.
+1. Apply the three migrations to the hosted project.
+2. Create an Auth user and promote that profile to `ADMIN`.
+3. Sign in and confirm RLS: a forklift user must not be able to change rental status.
+4. Then build the visual yard map and module workflow on this schema.

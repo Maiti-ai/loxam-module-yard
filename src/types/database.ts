@@ -6,14 +6,13 @@ export type Json =
   | {[key: string]: Json | undefined}
   | Json[];
 
-export type AppRole = "admin" | "manager" | "operator" | "viewer";
+export type AppRole = "ADMIN" | "FORKLIFT_DRIVER" | "OFFICE" | "PRODUCTION";
 
-export type ModuleStatus =
-  | "available"
-  | "reserved"
-  | "on_site"
-  | "maintenance"
-  | "retired";
+export type StackLevel = "GROUND" | "LEVEL_1" | "LEVEL_2";
+
+export type ModuleStatus = "AVAILABLE" | "RENTED";
+
+export type ModuleTypeCode = "6x3" | "3x3";
 
 export type Database = {
   public: {
@@ -45,77 +44,231 @@ export type Database = {
         };
         Relationships: [];
       };
-      yard_locations: {
+      module_types: {
+        Row: {
+          id: string;
+          code: ModuleTypeCode;
+          length_m: number;
+          width_m: number;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: ModuleTypeCode;
+          length_m: number;
+          width_m: number;
+          name: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: ModuleTypeCode;
+          length_m?: number;
+          width_m?: number;
+          name?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      yard_blocks: {
         Row: {
           id: string;
           code: string;
           name: string;
-          description: string | null;
+          sort_order: number;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           code: string;
           name: string;
-          description?: string | null;
+          sort_order?: number;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           code?: string;
           name?: string;
-          description?: string | null;
+          sort_order?: number;
           created_at?: string;
-          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      yard_rows: {
+        Row: {
+          id: string;
+          block_id: string;
+          code: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          block_id: string;
+          code: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          block_id?: string;
+          code?: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "yard_rows_block_id_fkey";
+            columns: ["block_id"];
+            isOneToOne: false;
+            referencedRelation: "yard_blocks";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      yard_positions: {
+        Row: {
+          id: string;
+          row_id: string;
+          code: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          row_id: string;
+          code: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          row_id?: string;
+          code?: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "yard_positions_row_id_fkey";
+            columns: ["row_id"];
+            isOneToOne: false;
+            referencedRelation: "yard_rows";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      yard_slots: {
+        Row: {
+          id: string;
+          block_id: string;
+          row_id: string;
+          position_id: string;
+          level: StackLevel;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          block_id: string;
+          row_id: string;
+          position_id: string;
+          level: StackLevel;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          block_id?: string;
+          row_id?: string;
+          position_id?: string;
+          level?: StackLevel;
+          created_at?: string;
         };
         Relationships: [];
       };
       modules: {
         Row: {
           id: string;
-          serial_number: string;
-          name: string | null;
+          module_number: string;
+          module_type_id: string;
           status: ModuleStatus;
-          yard_location_id: string | null;
+          rented_to_project: string | null;
+          notes: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id?: string;
-          serial_number: string;
-          name?: string | null;
+          module_number: string;
+          module_type_id: string;
           status?: ModuleStatus;
-          yard_location_id?: string | null;
+          rented_to_project?: string | null;
+          notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          serial_number?: string;
-          name?: string | null;
+          module_number?: string;
+          module_type_id?: string;
           status?: ModuleStatus;
-          yard_location_id?: string | null;
+          rented_to_project?: string | null;
+          notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "modules_yard_location_id_fkey";
-            columns: ["yard_location_id"];
+            foreignKeyName: "modules_module_type_id_fkey";
+            columns: ["module_type_id"];
             isOneToOne: false;
-            referencedRelation: "yard_locations";
+            referencedRelation: "module_types";
             referencedColumns: ["id"];
           },
         ];
       };
-      movements: {
+      module_locations: {
+        Row: {
+          module_id: string;
+          slot_id: string;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          module_id: string;
+          slot_id: string;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          module_id?: string;
+          slot_id?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "module_locations_module_id_fkey";
+            columns: ["module_id"];
+            isOneToOne: true;
+            referencedRelation: "modules";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "module_locations_slot_id_fkey";
+            columns: ["slot_id"];
+            isOneToOne: true;
+            referencedRelation: "yard_slots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      module_movements: {
         Row: {
           id: string;
           module_id: string;
-          from_location_id: string | null;
-          to_location_id: string | null;
+          from_slot_id: string | null;
+          to_slot_id: string | null;
           moved_by: string | null;
           moved_at: string;
           notes: string | null;
@@ -123,8 +276,8 @@ export type Database = {
         Insert: {
           id?: string;
           module_id: string;
-          from_location_id?: string | null;
-          to_location_id?: string | null;
+          from_slot_id?: string | null;
+          to_slot_id?: string | null;
           moved_by?: string | null;
           moved_at?: string;
           notes?: string | null;
@@ -132,27 +285,22 @@ export type Database = {
         Update: {
           id?: string;
           module_id?: string;
-          from_location_id?: string | null;
-          to_location_id?: string | null;
+          from_slot_id?: string | null;
+          to_slot_id?: string | null;
           moved_by?: string | null;
           moved_at?: string;
           notes?: string | null;
         };
-        Relationships: [
-          {
-            foreignKeyName: "movements_module_id_fkey";
-            columns: ["module_id"];
-            isOneToOne: false;
-            referencedRelation: "modules";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       module_photos: {
         Row: {
           id: string;
           module_id: string;
           storage_path: string;
+          file_name: string;
+          mime_type: string | null;
+          byte_size: number | null;
           caption: string | null;
           uploaded_by: string | null;
           created_at: string;
@@ -161,6 +309,9 @@ export type Database = {
           id?: string;
           module_id: string;
           storage_path: string;
+          file_name: string;
+          mime_type?: string | null;
+          byte_size?: number | null;
           caption?: string | null;
           uploaded_by?: string | null;
           created_at?: string;
@@ -169,28 +320,23 @@ export type Database = {
           id?: string;
           module_id?: string;
           storage_path?: string;
+          file_name?: string;
+          mime_type?: string | null;
+          byte_size?: number | null;
           caption?: string | null;
           uploaded_by?: string | null;
           created_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "module_photos_module_id_fkey";
-            columns: ["module_id"];
-            isOneToOne: false;
-            referencedRelation: "modules";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
-      air_conditioning: {
+      air_conditioning_units: {
         Row: {
           id: string;
           module_id: string;
-          brand: string | null;
-          model: string | null;
-          refrigerant: string | null;
-          last_service_at: string | null;
+          brand: string;
+          serial_number: string;
+          internal_number: string;
+          last_maintenance_at: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
@@ -198,10 +344,10 @@ export type Database = {
         Insert: {
           id?: string;
           module_id: string;
-          brand?: string | null;
-          model?: string | null;
-          refrigerant?: string | null;
-          last_service_at?: string | null;
+          brand: string;
+          serial_number: string;
+          internal_number: string;
+          last_maintenance_at?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -209,33 +355,54 @@ export type Database = {
         Update: {
           id?: string;
           module_id?: string;
-          brand?: string | null;
-          model?: string | null;
-          refrigerant?: string | null;
-          last_service_at?: string | null;
+          brand?: string;
+          serial_number?: string;
+          internal_number?: string;
+          last_maintenance_at?: string | null;
           notes?: string | null;
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [
-          {
-            foreignKeyName: "air_conditioning_module_id_fkey";
-            columns: ["module_id"];
-            isOneToOne: false;
-            referencedRelation: "modules";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
     };
     Views: {
-      [_ in never]: never;
+      module_location_view: {
+        Row: {
+          module_id: string | null;
+          module_number: string | null;
+          status: ModuleStatus | null;
+          rented_to_project: string | null;
+          module_type_code: string | null;
+          length_m: number | null;
+          width_m: number | null;
+          block_code: string | null;
+          row_code: string | null;
+          position_code: string | null;
+          level: StackLevel | null;
+          slot_id: string | null;
+          located_at: string | null;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
-      [_ in never]: never;
+      current_app_role: {
+        Args: Record<PropertyKey, never>;
+        Returns: AppRole;
+      };
+      has_role: {
+        Args: {roles: AppRole[]};
+        Returns: boolean;
+      };
+      is_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
     };
     Enums: {
       app_role: AppRole;
+      stack_level: StackLevel;
       module_status: ModuleStatus;
     };
     CompositeTypes: {

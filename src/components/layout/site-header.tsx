@@ -1,6 +1,7 @@
 import {getTranslations} from "next-intl/server";
 import {Link} from "@/i18n/navigation";
 import {LanguageSwitcher} from "@/components/layout/language-switcher";
+import {SessionControls} from "@/components/auth/session-controls";
 
 const navItems = [
   {href: "/", key: "home"},
@@ -33,12 +34,7 @@ export async function SiteHeader() {
         </nav>
         <div className="flex items-center gap-4">
           <LanguageSwitcher />
-          <Link
-            href="/login"
-            className="hidden rounded-sm border border-white/20 px-3 py-1.5 text-xs font-bold tracking-wide uppercase hover:border-loxam-yellow hover:text-loxam-yellow sm:inline-flex"
-          >
-            {t("nav.login")}
-          </Link>
+          <SessionControls />
         </div>
       </div>
     </header>

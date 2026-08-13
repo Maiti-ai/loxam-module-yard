@@ -1,5 +1,5 @@
 import {getTranslations} from "next-intl/server";
-import {isSupabaseConfigured} from "@/lib/env";
+import {getFoundationStatus} from "@/lib/supabase/foundation-status";
 
 const featureKeys = [
   "auth",
@@ -14,7 +14,7 @@ const featureKeys = [
 
 export default async function HomePage() {
   const t = await getTranslations();
-  const supabaseConfigured = isSupabaseConfigured();
+  const status = await getFoundationStatus();
 
   return (
     <div>
@@ -41,17 +41,27 @@ export default async function HomePage() {
             <p className="mt-3 text-sm leading-6 text-loxam-ink">
               {t("home.statusBody")}
             </p>
-            <p
-              className={
-                supabaseConfigured
-                  ? "mt-4 border-l-4 border-loxam-yellow pl-3 text-sm font-medium"
-                  : "mt-4 border-l-4 border-loxam-muted pl-3 text-sm font-medium"
-              }
-            >
-              {supabaseConfigured
-                ? t("home.supabaseReady")
-                : t("home.supabaseMissing")}
-            </p>
+            <ul className="mt-4 space-y-2 text-sm">
+              <li className={status.configured ? "border-l-4 border-loxam-yellow pl-3" : "border-l-4 border-loxam-muted pl-3"}>
+                {status.configured
+                  ? t("home.supabaseReady")
+                  : t("home.supabaseMissing")}
+              </li>
+              <li className={status.authReachable ? "border-l-4 border-loxam-yellow pl-3" : "border-l-4 border-loxam-muted pl-3"}>
+                {status.authReachable ? t("home.authReady") : t("home.authMissing")}
+              </li>
+              <li className={status.schemaApplied ? "border-l-4 border-loxam-yellow pl-3" : "border-l-4 border-loxam-muted pl-3"}>
+                {status.schemaApplied ? t("home.schemaReady") : t("home.schemaMissing")}
+              </li>
+              <li className={status.anonymousAccessBlocked ? "border-l-4 border-loxam-yellow pl-3" : "border-l-4 border-loxam-muted pl-3"}>
+                {status.anonymousAccessBlocked
+                  ? t("home.rlsReady")
+                  : t("home.rlsPending")}
+              </li>
+            </ul>
+            {status.detail ? (
+              <p className="mt-3 text-xs text-loxam-muted">{status.detail}</p>
+            ) : null}
           </aside>
         </div>
       </section>

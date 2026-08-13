@@ -13,7 +13,8 @@
     "yard": "Yard",
     "movements": "Verplaatsingen",
     "inventory": "Inventaris",
-    "login": "Aanmelden"
+    "login": "Aanmelden",
+    "logout": "Afmelden"
   },
   "home": {
     "eyebrow": "Technische basis",
@@ -22,8 +23,14 @@
     "cta": "Omgeving controleren",
     "statusTitle": "Projectstatus",
     "statusBody": "Deze pagina bevestigt dat de applicatie draait. De echte yardkaart en moduleworkflow zijn nog niet gebouwd.",
-    "supabaseReady": "Supabase-omgevingsvariabelen zijn aanwezig.",
+    "supabaseReady": "Supabase-project is gekoppeld via de publishable key.",
     "supabaseMissing": "Supabase-omgevingsvariabelen ontbreken nog. Kopieer .env.example naar .env.local.",
+    "authReady": "Supabase Auth is bereikbaar.",
+    "authMissing": "Supabase Auth is nog niet bereikbaar.",
+    "schemaReady": "Database-schema is aanwezig.",
+    "schemaMissing": "Database-migraties zijn nog niet toegepast op dit project.",
+    "rlsReady": "Anonieme toegang tot modules is geblokkeerd (RLS).",
+    "rlsPending": "RLS kon nog niet worden bevestigd voor anonieme toegang.",
     "languageHint": "Taal"
   },
   "features": {
@@ -60,6 +67,16 @@
       "title": "Excel-export",
       "body": "ExcelJS is geïnstalleerd voor .xlsx inventarisexport."
     }
+  },
+  "login": {
+    "title": "Aanmelden",
+    "body": "Gebruik een intern Supabase Auth-account. Rollen worden in PostgreSQL afgedwongen, niet alleen in de interface.",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "submit": "Aanmelden",
+    "pending": "Bezig...",
+    "invalidCredentials": "Aanmelden mislukt. Controleer e-mail en wachtwoord.",
+    "alreadySignedIn": "U bent al aangemeld als {email}."
   },
   "placeholder": {
     "title": "Nog niet gebouwd",

@@ -3,12 +3,13 @@ import "server-only";
 import ExcelJS from "exceljs";
 
 export type InventoryExportRow = {
-  serialNumber: string;
-  name: string;
+  moduleNumber: string;
+  moduleType: string;
   status: string;
   yardLocation: string;
+  rentedToProject: string;
   acBrand: string;
-  acModel: string;
+  acSerialNumber: string;
   lastMovedAt: string;
 };
 
@@ -24,12 +25,13 @@ export async function createInventoryWorkbook(
   });
 
   sheet.columns = [
-    {header: "Serial number", key: "serialNumber", width: 22},
-    {header: "Name", key: "name", width: 28},
-    {header: "Status", key: "status", width: 16},
-    {header: "Yard location", key: "yardLocation", width: 20},
-    {header: "AC brand", key: "acBrand", width: 18},
-    {header: "AC model", key: "acModel", width: 18},
+    {header: "Module number", key: "moduleNumber", width: 16},
+    {header: "Type", key: "moduleType", width: 10},
+    {header: "Status", key: "status", width: 12},
+    {header: "Yard location", key: "yardLocation", width: 22},
+    {header: "Rented to", key: "rentedToProject", width: 22},
+    {header: "AC brand", key: "acBrand", width: 16},
+    {header: "AC serial", key: "acSerialNumber", width: 18},
     {header: "Last moved at", key: "lastMovedAt", width: 22},
   ];
 

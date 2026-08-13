@@ -1,17 +1,13 @@
-import type {ModuleStatus} from "@/types/database";
+import type {ModuleStatus, ModuleTypeCode} from "@/types/database";
 
-export const MODULE_STATUSES: ModuleStatus[] = [
-  "available",
-  "reserved",
-  "on_site",
-  "maintenance",
-  "retired",
-];
+export const MODULE_STATUSES: ModuleStatus[] = ["AVAILABLE", "RENTED"];
+
+export const MODULE_TYPE_CODES: ModuleTypeCode[] = ["6x3", "3x3"];
 
 export type YardModule = {
   id: string;
-  serialNumber: string;
-  name: string | null;
+  moduleNumber: string;
+  moduleTypeCode: ModuleTypeCode;
   status: ModuleStatus;
-  yardLocationId: string | null;
+  rentedToProject: string | null;
 };

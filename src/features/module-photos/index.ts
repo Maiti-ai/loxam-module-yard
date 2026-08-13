@@ -8,5 +8,6 @@ export type ModulePhoto = {
   id: string;
   moduleId: string;
   storagePath: string;
+  fileName: string;
   caption: string | null;
 };

@@ -13,7 +13,8 @@
     "yard": "Yard",
     "movements": "Mouvements",
     "inventory": "Inventaire",
-    "login": "Connexion"
+    "login": "Connexion",
+    "logout": "Déconnexion"
   },
   "home": {
     "eyebrow": "Fondations techniques",
@@ -22,8 +23,14 @@
     "cta": "Vérifier l'environnement",
     "statusTitle": "État du projet",
     "statusBody": "Cette page confirme que l'application démarre. La carte du yard et le workflow modules ne sont pas encore construits.",
-    "supabaseReady": "Les variables d'environnement Supabase sont présentes.",
+    "supabaseReady": "Le projet Supabase est connecté via la clé publishable.",
     "supabaseMissing": "Les variables d'environnement Supabase manquent. Copiez .env.example vers .env.local.",
+    "authReady": "Supabase Auth est joignable.",
+    "authMissing": "Supabase Auth n'est pas encore joignable.",
+    "schemaReady": "Le schéma de base de données est présent.",
+    "schemaMissing": "Les migrations n'ont pas encore été appliquées à ce projet.",
+    "rlsReady": "L'accès anonyme aux modules est bloqué (RLS).",
+    "rlsPending": "Le RLS n'a pas encore pu être confirmé pour l'accès anonyme.",
     "languageHint": "Langue"
   },
   "features": {
@@ -60,6 +67,16 @@
       "title": "Export Excel",
       "body": "ExcelJS est installé pour l'export d'inventaire .xlsx."
     }
+  },
+  "login": {
+    "title": "Connexion",
+    "body": "Utilisez un compte interne Supabase Auth. Les rôles sont appliqués dans PostgreSQL, pas seulement dans l'interface.",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "submit": "Connexion",
+    "pending": "En cours...",
+    "invalidCredentials": "Connexion impossible. Vérifiez l'e-mail et le mot de passe.",
+    "alreadySignedIn": "Vous êtes déjà connecté en tant que {email}."
   },
   "placeholder": {
     "title": "Pas encore construit",

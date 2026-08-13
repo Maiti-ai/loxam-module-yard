@@ -1,6 +1,4 @@
--- Local seed file used by `supabase db reset`.
--- Do not insert real company, customer, or production inventory data.
+-- Local `supabase db reset` uses the same fictitious fixtures as the hosted
+-- development seed migration. Do not add real customer data here.
 
--- Optional later: add generic placeholder locations such as:
--- insert into public.yard_locations (code, name)
--- values ('A-01', 'Zone A');
+-- See supabase/migrations/20260813140200_seed_fictitious_dev_data.sql
