@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+:root {
+  --loxam-yellow: #ffcc00;
+  --loxam-black: #111111;
+  --loxam-ink: #1c1c1c;
+  --loxam-muted: #5c5c5c;
+  --loxam-paper: #f4f4f1;
+  --loxam-line: #e4e4de;
+}
+
+@theme inline {
+  --color-loxam-yellow: var(--loxam-yellow);
+  --color-loxam-black: var(--loxam-black);
+  --color-loxam-ink: var(--loxam-ink);
+  --color-loxam-muted: var(--loxam-muted);
+  --color-loxam-paper: var(--loxam-paper);
+  --color-loxam-line: var(--loxam-line);
+  --font-sans: var(--font-geist-sans);
+}
+
+html,
+body {
+  background: var(--loxam-paper);
+  color: var(--loxam-ink);
+}
+
+body {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}

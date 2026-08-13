@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "title": "Loxam Module Yard",
+    "description": "Fondations techniques pour la gestion des modules sur le yard."
+  },
+  "brand": {
+    "name": "LOXAM",
+    "product": "Module Yard"
+  },
+  "nav": {
+    "home": "Accueil",
+    "modules": "Modules",
+    "yard": "Yard",
+    "movements": "Mouvements",
+    "inventory": "Inventaire",
+    "login": "Connexion"
+  },
+  "home": {
+    "eyebrow": "Fondations techniques",
+    "title": "Module Yard",
+    "subtitle": "Une application interne pour l'inventaire des modules, les emplacements, les mouvements, les photos et les données de climatisation.",
+    "cta": "Vérifier l'environnement",
+    "statusTitle": "État du projet",
+    "statusBody": "Cette page confirme que l'application démarre. La carte du yard et le workflow modules ne sont pas encore construits.",
+    "supabaseReady": "Les variables d'environnement Supabase sont présentes.",
+    "supabaseMissing": "Les variables d'environnement Supabase manquent. Copiez .env.example vers .env.local.",
+    "languageHint": "Langue"
+  },
+  "features": {
+    "title": "Domaines préparés",
+    "auth": {
+      "title": "Authentification",
+      "body": "Supabase Auth avec clients navigateur et serveur séparés."
+    },
+    "users": {
+      "title": "Utilisateurs et rôles",
+      "body": "Profils et rôles prêts pour le contrôle d'accès ultérieur."
+    },
+    "modules": {
+      "title": "Modules",
+      "body": "Modèle de données pour les modules, sans le workflow réel."
+    },
+    "yard": {
+      "title": "Emplacements du yard",
+      "body": "Structure pour zones et emplacements, sans carte du yard."
+    },
+    "movements": {
+      "title": "Historique des mouvements",
+      "body": "Tables pour les déplacements de modules entre emplacements."
+    },
+    "photos": {
+      "title": "Photos de modules",
+      "body": "Bucket Storage privé pour les fichiers photo."
+    },
+    "ac": {
+      "title": "Données climatisation",
+      "body": "Enregistrements de climatisation liés à chaque module."
+    },
+    "excel": {
+      "title": "Export Excel",
+      "body": "ExcelJS est installé pour l'export d'inventaire .xlsx."
+    }
+  },
+  "placeholder": {
+    "title": "Pas encore construit",
+    "body": "Cet écran est un placeholder. L'étape suivante construira la fonctionnalité réelle.",
+    "back": "Retour à l'accueil"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Ce chemin n'existe pas dans l'application de fondation actuelle.",
+    "back": "Retour à l'accueil"
+  },
+  "footer": {
+    "note": "Fondation interne. Aucune donnée client ou entreprise."
+  }
+}

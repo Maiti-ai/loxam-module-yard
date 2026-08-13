@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "title": "Loxam Module Yard",
+    "description": "Technische basis voor het beheer van modules op de yard."
+  },
+  "brand": {
+    "name": "LOXAM",
+    "product": "Module Yard"
+  },
+  "nav": {
+    "home": "Home",
+    "modules": "Modules",
+    "yard": "Yard",
+    "movements": "Verplaatsingen",
+    "inventory": "Inventaris",
+    "login": "Aanmelden"
+  },
+  "home": {
+    "eyebrow": "Technische basis",
+    "title": "Module Yard",
+    "subtitle": "Een intern systeem voor module-inventaris, yardlocaties, verplaatsingen, foto's en airco-gegevens.",
+    "cta": "Omgeving controleren",
+    "statusTitle": "Projectstatus",
+    "statusBody": "Deze pagina bevestigt dat de applicatie draait. De echte yardkaart en moduleworkflow zijn nog niet gebouwd.",
+    "supabaseReady": "Supabase-omgevingsvariabelen zijn aanwezig.",
+    "supabaseMissing": "Supabase-omgevingsvariabelen ontbreken nog. Kopieer .env.example naar .env.local.",
+    "languageHint": "Taal"
+  },
+  "features": {
+    "title": "Voorbereide domeinen",
+    "auth": {
+      "title": "Authenticatie",
+      "body": "Supabase Auth met aparte browser- en serverclients."
+    },
+    "users": {
+      "title": "Gebruikers en rollen",
+      "body": "Profielen en rollen klaar voor later toegangsbeheer."
+    },
+    "modules": {
+      "title": "Modules",
+      "body": "Datamodel voor modules, zonder de echte workflow."
+    },
+    "yard": {
+      "title": "Yardlocaties",
+      "body": "Structuur voor zones en standplaatsen, zonder yardkaart."
+    },
+    "movements": {
+      "title": "Verplaatsingshistorie",
+      "body": "Tabellen voor modulebewegingen tussen locaties."
+    },
+    "photos": {
+      "title": "Modulfoto's",
+      "body": "Privé Storage-bucket voor fotobestanden."
+    },
+    "ac": {
+      "title": "Airco-gegevens",
+      "body": "Gekoppelde airconditioningrecords per module."
+    },
+    "excel": {
+      "title": "Excel-export",
+      "body": "ExcelJS is geïnstalleerd voor .xlsx inventarisexport."
+    }
+  },
+  "placeholder": {
+    "title": "Nog niet gebouwd",
+    "body": "Dit scherm is een placeholder. De volgende ontwikkelstap bouwt de echte functionaliteit.",
+    "back": "Terug naar home"
+  },
+  "notFound": {
+    "title": "Pagina niet gevonden",
+    "body": "Dit pad bestaat niet in de huidige basisapplicatie.",
+    "back": "Terug naar home"
+  },
+  "footer": {
+    "note": "Interne foundation. Geen klant- of bedrijfsgegevens."
+  }
+}
