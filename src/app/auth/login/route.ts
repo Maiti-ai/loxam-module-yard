@@ -20,6 +20,12 @@ function credentialsErrorCode(error: {code?: string; status?: number} | null) {
   return "session";
 }
 
+function redirectAndLog(request: NextRequest, locale: "nl" | "fr", code: string) {
+  const response = loginErrorRedirect(request, locale, code);
+  console.info("REDIRECT_TARGET", response.headers.get("location"));
+  return response;
+}
+
 export async function GET(request: NextRequest) {
   const locale = safeLocale(request.nextUrl.searchParams.get("locale"));
   return redirectToPath(request, `/${locale}/login`);
@@ -28,26 +34,40 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const locale = safeLocale(formData.get("locale"));
+  const emailPresent = String(formData.get("email") ?? "").trim().length > 0;
+  const passwordPresent = String(formData.get("password") ?? "").length > 0;
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const policy = getAuthCookiePolicy(request);
 
+  console.info("LOGIN_POST_RECEIVED");
+  console.info("EMAIL_FIELD_PRESENT", emailPresent);
+  console.info("PASSWORD_FIELD_PRESENT", passwordPresent);
+
   if (!email || !password) {
+    console.info("SIGNIN_ATTEMPTED", false);
+    console.info("SIGNIN_SUCCESS", false);
     logAuth("sign_in_failed", {
-      LOGIN_SUCCESS: false,
-      SESSION_RETURNED: false,
+      LOGIN_POST_RECEIVED: true,
+      EMAIL_FIELD_PRESENT: emailPresent,
+      PASSWORD_FIELD_PRESENT: passwordPresent,
+      SIGNIN_ATTEMPTED: false,
+      SIGNIN_SUCCESS: false,
       reason: "missing_fields",
     });
-    return loginErrorRedirect(request, locale, "invalid_credentials");
+    return redirectAndLog(request, locale, "invalid_credentials");
   }
 
   const dashboard = redirectToPath(request, `/${locale}`);
 
   try {
     const supabase = createRouteHandlerClient(request, dashboard);
+    console.info("SIGNIN_ATTEMPTED");
+    logAuth("auth_debug", {SIGNIN_ATTEMPTED: true});
     const {data, error} = await supabase.auth.signInWithPassword({email, password});
 
     if (error) {
+      console.info("SIGNIN_SUCCESS", false);
       logAuth("sign_in_failed", {
         LOGIN_SUCCESS: false,
         SESSION_RETURNED: false,
@@ -55,7 +75,7 @@ export async function POST(request: NextRequest) {
         code: error.code ?? null,
         status: error.status ?? null,
       });
-      return loginErrorRedirect(request, locale, credentialsErrorCode(error));
+      return redirectAndLog(request, locale, credentialsErrorCode(error));
     }
 
     const sessionReturned = Boolean(data.session && data.user);
@@ -68,23 +88,25 @@ export async function POST(request: NextRequest) {
     });
 
     if (!data.session || !data.user) {
+      console.info("SIGNIN_SUCCESS", false);
       logAuth("sign_in_no_session", {
         LOGIN_SUCCESS: true,
         SESSION_RETURNED: false,
         hasUser: Boolean(data.user),
       });
-      return loginErrorRedirect(request, locale, "session");
+      return redirectAndLog(request, locale, "session");
     }
 
     const {data: userCheck, error: userError} = await supabase.auth.getUser();
     if (userError || !userCheck.user) {
+      console.info("SIGNIN_SUCCESS", false);
       logAuth("sign_in_no_session", {
         LOGIN_SUCCESS: true,
         SESSION_RETURNED: true,
         GET_USER_SUCCESS: false,
         reason: "getUser_after_sign_in",
       });
-      return loginErrorRedirect(request, locale, "session");
+      return redirectAndLog(request, locale, "session");
     }
 
     const {data: profile, error: profileError} = await supabase
@@ -94,17 +116,19 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (profileError || !profile?.role) {
+      console.info("SIGNIN_SUCCESS", false);
       logAuth("profile_failed", {
         GET_USER_SUCCESS: true,
         PROFILE_ROLE: profile?.role ?? null,
         code: profileError?.code ?? null,
         hasProfile: Boolean(profile),
       });
-      return loginErrorRedirect(request, locale, "profile");
+      return redirectAndLog(request, locale, "profile");
     }
 
     const cookieSummary = describeSetCookies(dashboard);
     if (!hasSupabaseAuthCookie(dashboard.cookies.getAll())) {
+      console.info("SIGNIN_SUCCESS", false);
       logAuth("sign_in_no_session", {
         LOGIN_SUCCESS: true,
         SESSION_RETURNED: true,
@@ -113,25 +137,33 @@ export async function POST(request: NextRequest) {
         ...cookieSummary,
         reason: "cookies_not_written",
       });
-      return loginErrorRedirect(request, locale, "session");
+      return redirectAndLog(request, locale, "session");
     }
 
+    const redirectTarget = dashboard.headers.get("location");
+    console.info("SIGNIN_SUCCESS");
+    console.info("REDIRECT_TARGET", redirectTarget);
     logAuth("sign_in_ok", {
+      LOGIN_POST_RECEIVED: true,
+      SIGNIN_ATTEMPTED: true,
+      SIGNIN_SUCCESS: true,
       LOGIN_SUCCESS: true,
       SESSION_RETURNED: true,
       GET_USER_SUCCESS: true,
       PROFILE_ROLE: profile.role,
-      location: dashboard.headers.get("location"),
+      REDIRECT_TARGET: redirectTarget,
+      location: redirectTarget,
       cookiePolicy: policy,
       ...cookieSummary,
     });
     return dashboard;
   } catch (error) {
+    console.info("SIGNIN_SUCCESS", false);
     logAuth("sign_in_failed", {
       LOGIN_SUCCESS: false,
       reason: "unexpected",
       name: error instanceof Error ? error.name : "unknown",
     });
-    return loginErrorRedirect(request, locale, "redirect");
+    return redirectAndLog(request, locale, "redirect");
   }
 }
