@@ -1,0 +1,247 @@
+{
+  "metadata": {
+    "title": "Loxam Module Yard",
+    "description": "Intern yardbeheer voor Loxam Module Schelle."
+  },
+  "brand": {
+    "name": "LOXAM",
+    "product": "Module Yard"
+  },
+  "nav": {
+    "home": "Home",
+    "scan": "Scan",
+    "modules": "Zoeken",
+    "yard": "Yard",
+    "movements": "Verplaatsingen",
+    "inventory": "Inventaris",
+    "airco": "Airco",
+    "login": "Aanmelden",
+    "logout": "Afmelden",
+    "more": "Meer"
+  },
+  "roles": {
+    "ADMIN": "Admin",
+    "FORKLIFT_DRIVER": "Heftruck",
+    "OFFICE": "Kantoor",
+    "PRODUCTION": "Productie"
+  },
+  "common": {
+    "cancel": "Annuleren",
+    "back": "Terug",
+    "confirm": "Bevestigen",
+    "save": "Opslaan",
+    "close": "Sluiten",
+    "retry": "Opnieuw",
+    "loading": "Laden…",
+    "dash": "—",
+    "free": "Vrij",
+    "occupied": "Bezet",
+    "language": "Taal",
+    "open": "Openen"
+  },
+  "status": {
+    "AVAILABLE": "Beschikbaar",
+    "RENTED": "Verhuurd"
+  },
+  "levels": {
+    "GROUND": "GV",
+    "LEVEL_1": "1",
+    "LEVEL_2": "2",
+    "GROUND_FULL": "Gelijkvloers",
+    "LEVEL_1_FULL": "Niveau 1",
+    "LEVEL_2_FULL": "Niveau 2"
+  },
+  "login": {
+    "eyebrow": "Interne toegang",
+    "title": "Aanmelden",
+    "body": "Meld u aan met uw intern account. Rechten worden in de database afgedwongen.",
+    "email": "E-mail",
+    "password": "Wachtwoord",
+    "submit": "Aanmelden",
+    "submitting": "Aanmelden...",
+    "pending": "Bezig…",
+    "submitFailed": "Aanmelden is niet gelukt. Probeer opnieuw.",
+    "invalidCredentials": "Aanmelden mislukt. Controleer e-mail en wachtwoord.",
+    "unconfirmed": "Bevestig eerst uw e-mailadres voordat u zich aanmeldt.",
+    "sessionFailed": "De sessie kon niet worden aangemaakt. Probeer opnieuw.",
+    "profileFailed": "Uw profiel kon niet worden geladen. Neem contact op met een admin.",
+    "redirectFailed": "Aanmelden is gelukt, maar de doorverwijzing is mislukt. Probeer opnieuw.",
+    "alreadySignedIn": "U bent al aangemeld als {email}."
+  },
+  "dashboard": {
+    "hello": "Aan de slag",
+    "scanTitle": "Module scannen",
+    "scanBody": "Scan een NFC-tag of kies een module om te verplaatsen.",
+    "yard": "Yardkaart",
+    "search": "Module zoeken",
+    "inventory": "Inventaris",
+    "movements": "Recente verplaatsingen",
+    "statsTitle": "Yardstand",
+    "inYard": "Modules",
+    "available": "Beschikbaar",
+    "rented": "Verhuurd",
+    "occupied": "Bezette plaatsen",
+    "free": "Vrije plaatsen",
+    "unlocated": "Zonder locatie",
+    "aircoUnknown": "Airco-interval volgt later"
+  },
+  "scan": {
+    "title": "Module scannen",
+    "subtitle": "Houd de tablet tegen de NFC-tag op de module.",
+    "nfcReady": "NFC klaar",
+    "nfcScanning": "Wachten op tag…",
+    "nfcUnsupported": "Web NFC is op dit toestel niet beschikbaar. Gebruik de demo-invoer hieronder.",
+    "nfcError": "NFC-scan mislukt. Probeer opnieuw of voer het modulenummer in.",
+    "startNfc": "Start NFC-scan",
+    "stopNfc": "Stop scan",
+    "fallbackTitle": "Demo: voer modulenummer in",
+    "fallbackBody": "Voor desktop of toestellen zonder Web NFC. Productie blijft NFC-first.",
+    "placeholder": "2000",
+    "open": "Open module",
+    "demoHint": "Snel kiezen",
+    "notFound": "Geen module gevonden voor dit nummer."
+  },
+  "module": {
+    "label": "Module",
+    "type": "Type",
+    "dimensions": "Afmetingen",
+    "location": "Locatie",
+    "noLocation": "Nog geen yardlocatie",
+    "project": "Project",
+    "move": "Module verplaatsen",
+    "viewPhotos": "Alle foto’s",
+    "viewHistory": "Historiek bekijken",
+    "photos": "Foto’s",
+    "history": "Historiek",
+    "equipment": "Technische uitrusting",
+    "equipmentNote": "Placeholder. Exacte iconen en standaarduitrusting per type volgen later.",
+    "drawing": "Technische tekening",
+    "drawingNote": "Placeholder tot de echte plannen worden aangeleverd (beeld of PDF).",
+    "drawingOpen": "Tekeningsplaats",
+    "notes": "Notities"
+  },
+  "move": {
+    "title": "Verplaatsen",
+    "chooseBlock": "Tik een blok",
+    "choosePosition": "Tik een positie",
+    "chooseLevel": "Tik een vrij niveau",
+    "confirmTitle": "Bevestig verplaatsing",
+    "from": "Van",
+    "to": "Naar",
+    "confirm": "Bevestig verplaatsing",
+    "success": "verplaatst",
+    "successBody": "De nieuwe locatie is opgeslagen.",
+    "occupiedTitle": "Plaats bezet",
+    "occupiedBody": "Deze plaats is intussen bezet{occupant}. Kies een andere positie.",
+    "occupiedBy": " door module {number}",
+    "backOfYard": "Achterkant · rij 1",
+    "frontOfYard": "Voorkant",
+    "productionZone": "Productiezone",
+    "row": "Rij",
+    "position": "Positie",
+    "block": "Blok",
+    "busy": "Bezig met verplaatsen…"
+  },
+  "yard": {
+    "title": "Yardkaart",
+    "subtitle": "Schematische demo-indeling. De echte grondplan van Schelle volgt later.",
+    "legend": "Legende",
+    "tapHint": "Tik een blok, daarna een positie of een module.",
+    "empty": "Nog geen yardblokken in de database."
+  },
+  "search": {
+    "title": "Modules zoeken",
+    "placeholder": "Nummer, type, project, locatie, airco…",
+    "empty": "Geen modules gevonden.",
+    "count": "{count} modules"
+  },
+  "photos": {
+    "title": "Foto’s",
+    "add": "Foto toevoegen",
+    "empty": "Nog geen foto’s.",
+    "caption": "Bijschrift (optioneel)",
+    "uploading": "Uploaden…",
+    "capture": "Camera of galerij"
+  },
+  "history": {
+    "title": "Historiek",
+    "empty": "Nog geen verplaatsingen.",
+    "user": "Door",
+    "unknownUser": "Onbekend"
+  },
+  "airco": {
+    "title": "Airco",
+    "overview": "Airco-overzicht",
+    "brand": "Merk",
+    "serial": "Serienummer",
+    "internal": "Intern nummer",
+    "last": "Laatste onderhoud",
+    "next": "Volgend onderhoud",
+    "nextUnknown": "Interval nog niet ingesteld",
+    "edit": "Airco bewerken",
+    "add": "Airco toevoegen",
+    "empty": "Geen airco gekoppeld.",
+    "stateOk": "OK",
+    "stateDueSoon": "Binnenkort",
+    "stateOverdue": "Achterstallig",
+    "stateUnknown": "Onbekend",
+    "legendNote": "OK / binnenkort / achterstallig worden actief zodra het onderhoudsinterval is ingesteld."
+  },
+  "equipment": {
+    "outlets": "Stopcontacten",
+    "lighting": "Verlichting",
+    "motion": "Bewegingsmelder",
+    "kitchenette": "Kitchenette",
+    "wc": "WC",
+    "basin": "Wastafel",
+    "airco": "Airco",
+    "power": "Aansluiting"
+  },
+  "inventory": {
+    "title": "Inventaris",
+    "subtitle": "Live uit de database. Geen aparte inventaristabel.",
+    "export": "Exporteer Excel",
+    "filterBlock": "Blok",
+    "filterType": "Type",
+    "filterStatus": "Status",
+    "filterLocation": "Locatie",
+    "all": "Alle",
+    "located": "Met locatie",
+    "unlocated": "Zonder locatie",
+    "empty": "Geen rijen voor deze filters.",
+    "colNumber": "Nummer",
+    "colType": "Type",
+    "colSize": "Afmetingen",
+    "colStatus": "Status",
+    "colProject": "Project",
+    "colBlock": "Blok",
+    "colRow": "Rij",
+    "colPos": "Positie",
+    "colLevel": "Niveau"
+  },
+  "movements": {
+    "title": "Recente verplaatsingen",
+    "empty": "Nog geen verplaatsingen."
+  },
+  "errors": {
+    "title": "Er ging iets mis",
+    "body": "Probeer opnieuw. Als het blijft duren, meld het aan een admin.",
+    "UNAUTHENTICATED": "Meld u opnieuw aan.",
+    "FORBIDDEN": "Deze actie is niet toegelaten voor uw rol.",
+    "NOT_FOUND": "Niet gevonden.",
+    "SLOT_OCCUPIED": "Deze plaats is al bezet.",
+    "SLOT_MISSING": "Deze plaats bestaat niet.",
+    "MOVE_FAILED": "Verplaatsen is niet gelukt.",
+    "UPLOAD_FAILED": "Uploaden is niet gelukt.",
+    "SAVE_FAILED": "Opslaan is niet gelukt.",
+    "LOAD_FAILED": "Gegevens laden is niet gelukt."
+  },
+  "empty": {
+    "title": "Niets te tonen"
+  },
+  "notFound": {
+    "title": "Pagina niet gevonden",
+    "body": "Dit pad bestaat niet.",
+    "back": "Terug naar home"
+  }
+}

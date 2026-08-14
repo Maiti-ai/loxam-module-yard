@@ -1,0 +1,247 @@
+{
+  "metadata": {
+    "title": "Loxam Module Yard",
+    "description": "Gestion interne du yard pour Loxam Module Schelle."
+  },
+  "brand": {
+    "name": "LOXAM",
+    "product": "Module Yard"
+  },
+  "nav": {
+    "home": "Accueil",
+    "scan": "Scan",
+    "modules": "Recherche",
+    "yard": "Yard",
+    "movements": "Mouvements",
+    "inventory": "Inventaire",
+    "airco": "Clim",
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "more": "Plus"
+  },
+  "roles": {
+    "ADMIN": "Admin",
+    "FORKLIFT_DRIVER": "Chariot",
+    "OFFICE": "Bureau",
+    "PRODUCTION": "Production"
+  },
+  "common": {
+    "cancel": "Annuler",
+    "back": "Retour",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "close": "Fermer",
+    "retry": "Réessayer",
+    "loading": "Chargement…",
+    "dash": "—",
+    "free": "Libre",
+    "occupied": "Occupé",
+    "language": "Langue",
+    "open": "Ouvrir"
+  },
+  "status": {
+    "AVAILABLE": "Disponible",
+    "RENTED": "Loué"
+  },
+  "levels": {
+    "GROUND": "RDC",
+    "LEVEL_1": "1",
+    "LEVEL_2": "2",
+    "GROUND_FULL": "Rez-de-chaussée",
+    "LEVEL_1_FULL": "Niveau 1",
+    "LEVEL_2_FULL": "Niveau 2"
+  },
+  "login": {
+    "eyebrow": "Accès interne",
+    "title": "Connexion",
+    "body": "Connectez-vous avec votre compte interne. Les droits sont appliqués dans la base de données.",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "submit": "Connexion",
+    "submitting": "Connexion...",
+    "pending": "En cours…",
+    "submitFailed": "La connexion a échoué. Réessayez.",
+    "invalidCredentials": "Connexion impossible. Vérifiez l’e-mail et le mot de passe.",
+    "unconfirmed": "Confirmez d’abord votre adresse e-mail avant de vous connecter.",
+    "sessionFailed": "La session n’a pas pu être créée. Réessayez.",
+    "profileFailed": "Votre profil n’a pas pu être chargé. Contactez un admin.",
+    "redirectFailed": "La connexion a réussi, mais la redirection a échoué. Réessayez.",
+    "alreadySignedIn": "Vous êtes déjà connecté en tant que {email}."
+  },
+  "dashboard": {
+    "hello": "Démarrer",
+    "scanTitle": "Scanner un module",
+    "scanBody": "Scannez une puce NFC ou choisissez un module à déplacer.",
+    "yard": "Carte du yard",
+    "search": "Rechercher un module",
+    "inventory": "Inventaire",
+    "movements": "Mouvements récents",
+    "statsTitle": "État du yard",
+    "inYard": "Modules",
+    "available": "Disponibles",
+    "rented": "Loués",
+    "occupied": "Emplacements occupés",
+    "free": "Emplacements libres",
+    "unlocated": "Sans emplacement",
+    "aircoUnknown": "Intervalle clim à définir plus tard"
+  },
+  "scan": {
+    "title": "Scanner un module",
+    "subtitle": "Approchez la tablette de la puce NFC du module.",
+    "nfcReady": "NFC prêt",
+    "nfcScanning": "En attente de puce…",
+    "nfcUnsupported": "Web NFC n’est pas disponible sur cet appareil. Utilisez la saisie démo ci-dessous.",
+    "nfcError": "Échec du scan NFC. Réessayez ou saisissez le numéro de module.",
+    "startNfc": "Démarrer le scan NFC",
+    "stopNfc": "Arrêter le scan",
+    "fallbackTitle": "Démo : saisir le numéro",
+    "fallbackBody": "Pour l’ordinateur ou les appareils sans Web NFC. L’usage réel reste centré sur le NFC.",
+    "placeholder": "2000",
+    "open": "Ouvrir le module",
+    "demoHint": "Choix rapide",
+    "notFound": "Aucun module trouvé pour ce numéro."
+  },
+  "module": {
+    "label": "Module",
+    "type": "Type",
+    "dimensions": "Dimensions",
+    "location": "Emplacement",
+    "noLocation": "Pas encore d’emplacement",
+    "project": "Projet",
+    "move": "Déplacer le module",
+    "viewPhotos": "Toutes les photos",
+    "viewHistory": "Voir l’historique",
+    "photos": "Photos",
+    "history": "Historique",
+    "equipment": "Équipement technique",
+    "equipmentNote": "Placeholder. Les icônes et l’équipement standard par type arriveront plus tard.",
+    "drawing": "Plan technique",
+    "drawingNote": "Placeholder jusqu’à réception des vrais plans (image ou PDF).",
+    "drawingOpen": "Espace plan",
+    "notes": "Notes"
+  },
+  "move": {
+    "title": "Déplacer",
+    "chooseBlock": "Touchez un bloc",
+    "choosePosition": "Touchez une position",
+    "chooseLevel": "Touchez un niveau libre",
+    "confirmTitle": "Confirmer le déplacement",
+    "from": "De",
+    "to": "Vers",
+    "confirm": "Confirmer le déplacement",
+    "success": "déplacé",
+    "successBody": "Le nouvel emplacement est enregistré.",
+    "occupiedTitle": "Emplacement occupé",
+    "occupiedBody": "Cet emplacement est désormais occupé{occupant}. Choisissez une autre position.",
+    "occupiedBy": " par le module {number}",
+    "backOfYard": "Arrière · rangée 1",
+    "frontOfYard": "Avant",
+    "productionZone": "Zone production",
+    "row": "Rangée",
+    "position": "Position",
+    "block": "Bloc",
+    "busy": "Déplacement en cours…"
+  },
+  "yard": {
+    "title": "Carte du yard",
+    "subtitle": "Schéma de démonstration. Le plan réel de Schelle arrivera plus tard.",
+    "legend": "Légende",
+    "tapHint": "Touchez un bloc, puis une position ou un module.",
+    "empty": "Aucun bloc de yard dans la base."
+  },
+  "search": {
+    "title": "Recherche de modules",
+    "placeholder": "Numéro, type, projet, emplacement, clim…",
+    "empty": "Aucun module trouvé.",
+    "count": "{count} modules"
+  },
+  "photos": {
+    "title": "Photos",
+    "add": "Ajouter une photo",
+    "empty": "Pas encore de photos.",
+    "caption": "Légende (optionnel)",
+    "uploading": "Téléversement…",
+    "capture": "Caméra ou galerie"
+  },
+  "history": {
+    "title": "Historique",
+    "empty": "Pas encore de mouvements.",
+    "user": "Par",
+    "unknownUser": "Inconnu"
+  },
+  "airco": {
+    "title": "Climatisation",
+    "overview": "Vue climatisation",
+    "brand": "Marque",
+    "serial": "N° de série",
+    "internal": "N° interne",
+    "last": "Dernier entretien",
+    "next": "Prochain entretien",
+    "nextUnknown": "Intervalle non défini",
+    "edit": "Modifier la clim",
+    "add": "Ajouter une clim",
+    "empty": "Aucune clim liée.",
+    "stateOk": "OK",
+    "stateDueSoon": "Bientôt",
+    "stateOverdue": "En retard",
+    "stateUnknown": "Inconnu",
+    "legendNote": "OK / bientôt / en retard s’activeront dès que l’intervalle d’entretien sera défini."
+  },
+  "equipment": {
+    "outlets": "Prises",
+    "lighting": "Éclairage",
+    "motion": "Détecteur de mouvement",
+    "kitchenette": "Kitchenette",
+    "wc": "WC",
+    "basin": "Lave-mains",
+    "airco": "Clim",
+    "power": "Raccordement"
+  },
+  "inventory": {
+    "title": "Inventaire",
+    "subtitle": "Généré en direct depuis la base. Pas de table d’inventaire séparée.",
+    "export": "Exporter Excel",
+    "filterBlock": "Bloc",
+    "filterType": "Type",
+    "filterStatus": "Statut",
+    "filterLocation": "Emplacement",
+    "all": "Tous",
+    "located": "Avec emplacement",
+    "unlocated": "Sans emplacement",
+    "empty": "Aucune ligne pour ces filtres.",
+    "colNumber": "Numéro",
+    "colType": "Type",
+    "colSize": "Dimensions",
+    "colStatus": "Statut",
+    "colProject": "Projet",
+    "colBlock": "Bloc",
+    "colRow": "Rangée",
+    "colPos": "Position",
+    "colLevel": "Niveau"
+  },
+  "movements": {
+    "title": "Mouvements récents",
+    "empty": "Pas encore de mouvements."
+  },
+  "errors": {
+    "title": "Une erreur s’est produite",
+    "body": "Réessayez. Si le problème continue, prévenez un admin.",
+    "UNAUTHENTICATED": "Reconnectez-vous.",
+    "FORBIDDEN": "Cette action n’est pas autorisée pour votre rôle.",
+    "NOT_FOUND": "Introuvable.",
+    "SLOT_OCCUPIED": "Cet emplacement est déjà occupé.",
+    "SLOT_MISSING": "Cet emplacement n’existe pas.",
+    "MOVE_FAILED": "Le déplacement a échoué.",
+    "UPLOAD_FAILED": "Le téléversement a échoué.",
+    "SAVE_FAILED": "L’enregistrement a échoué.",
+    "LOAD_FAILED": "Le chargement a échoué."
+  },
+  "empty": {
+    "title": "Rien à afficher"
+  },
+  "notFound": {
+    "title": "Page introuvable",
+    "body": "Ce chemin n’existe pas.",
+    "back": "Retour à l’accueil"
+  }
+}
