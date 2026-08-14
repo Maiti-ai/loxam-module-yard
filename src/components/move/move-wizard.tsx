@@ -8,7 +8,7 @@ import {SchelleYardMap} from "@/components/yard/schelle-yard-map";
 import {YardPosition} from "@/components/yard/yard-position";
 import {LevelStack} from "@/components/yard/level-stack";
 import {moveModuleAction} from "@/features/movements/actions";
-import {formatCompactLocation, formatCodeNumber} from "@/lib/format";
+import {formatCompactLocation, formatRowCode} from "@/lib/format";
 import type {
   ModuleSummary,
   YardLevelCell,
@@ -137,9 +137,7 @@ export function MoveWizard({
           <p className="text-sm font-bold text-loxam-muted">{t("move.backOfYard")}</p>
           {block.rows.map((row, index) => (
             <div key={row.id}>
-              <p className="mb-3 text-xl font-black">
-                {t("move.row")} {formatCodeNumber(row.code)}
-              </p>
+              <p className="mb-3 text-xl font-black">{formatRowCode(row.code)}</p>
               <div className="flex flex-wrap gap-3">
                 {row.positions.map((item) => (
                   <YardPosition

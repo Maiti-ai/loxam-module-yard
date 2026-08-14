@@ -5,6 +5,7 @@ import {requireUser} from "@/features/auth/guard";
 import {getDashboardStats, listModuleSummaries} from "@/features/modules/queries";
 import {listMovements} from "@/features/movements/queries";
 import {isDriverRole, roleCan} from "@/features/roles";
+import {formatRowCode} from "@/lib/format";
 import {tryLoad} from "@/lib/try-load";
 
 export default async function HomePage() {
@@ -122,7 +123,9 @@ export default async function HomePage() {
               <li key={movement.id} className="flex justify-between gap-3 text-sm font-bold">
                 <Link href={`/modules/${movement.moduleNumber}`}>{movement.moduleNumber}</Link>
                 <span className="text-loxam-muted">
-                  {movement.to?.blockCode ?? "—"} / R{movement.to?.rowCode ?? "—"}
+                  {movement.to
+                    ? `${movement.to.blockCode} / ${formatRowCode(movement.to.rowCode)}`
+                    : "—"}
                 </span>
               </li>
             ))}

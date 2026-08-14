@@ -9,7 +9,7 @@ import {YardPosition} from "@/components/yard/yard-position";
 import {LevelStack} from "@/components/yard/level-stack";
 import {EmptyState} from "@/components/ui/page-state";
 import {TouchButton} from "@/components/ui/touch-button";
-import {formatCodeNumber} from "@/lib/format";
+import {formatPositionCode, formatRowCode} from "@/lib/format";
 import type {YardPositionNode, YardSnapshot} from "@/features/yard-locations/types";
 
 export function YardMap({snapshot}: {snapshot: YardSnapshot}) {
@@ -48,9 +48,7 @@ export function YardMap({snapshot}: {snapshot: YardSnapshot}) {
             <p className="text-sm font-bold text-loxam-muted">{t("move.backOfYard")}</p>
             {block.rows.map((row, index) => (
               <div key={row.id}>
-                <p className="mb-3 text-xl font-black">
-                  {t("move.row")} {formatCodeNumber(row.code)}
-                </p>
+                <p className="mb-3 text-xl font-black">{formatRowCode(row.code)}</p>
                 <div className="flex flex-wrap gap-3">
                   {row.positions.map((item) => (
                     <YardPosition
@@ -78,11 +76,11 @@ export function YardMap({snapshot}: {snapshot: YardSnapshot}) {
       {block && position ? (
         <div className="space-y-4">
           <h2 className="text-3xl font-black">
-            {block.code} · {t("move.row")} {formatCodeNumber(
+            {block.code} · {formatRowCode(
               block.rows.find((row) => row.positions.some((item) => item.id === position.id))
                 ?.code ?? "",
             )}{" "}
-            · {t("move.position")} {formatCodeNumber(position.code)}
+            · {t("move.position")} {formatPositionCode(position.code)}
           </h2>
           <LevelStack
             levels={position.levels}

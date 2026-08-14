@@ -144,13 +144,14 @@
     "frontOfYard": "Voorkant",
     "productionZone": "Productiezone",
     "row": "Rij",
+    "pLabel": "P",
     "position": "Positie",
     "block": "Blok",
     "busy": "Bezig met verplaatsen…"
   },
   "yard": {
     "title": "Yardkaart",
-    "subtitle": "Loxam Module Schelle · Brandekensweg. Rij 1 achteraan, productiezone F. Tik een blok.",
+    "subtitle": "Loxam Module Schelle. P1 achteraan. Tik een blok, daarna een P-rij, daarna een positie.",
     "legend": "Legende",
     "tapHint": "Tik een blok, daarna een positie of een module.",
     "empty": "Nog geen yardblokken in de database.",

@@ -2,7 +2,9 @@
 
 import {useTranslations} from "next-intl";
 import {SCHELLE_YARD, geometryForBlock} from "@/config/yard-geometry";
+import type {BlockGeometry} from "@/config/yard-geometry";
 import {primaryOccupant} from "@/features/yard-locations/queries-client";
+import {formatRowCode} from "@/lib/format";
 import type {YardBlockNode, YardSnapshot} from "@/features/yard-locations/types";
 
 function occupancy(block: YardBlockNode) {
@@ -159,12 +161,12 @@ export function SchelleYardMap({
           );
         })}
 
-        <text x={width / 2} y={48} textAnchor="middle" fill="#5c5c5c" fontSize="16" fontWeight="700">
+        <text x={width / 2} y={44} textAnchor="middle" fill="#5c5c5c" fontSize="16" fontWeight="700">
           {t("move.backOfYard")}
         </text>
         <text
           x={width / 2}
-          y={686}
+          y={736}
           textAnchor="middle"
           fill="#5c5c5c"
           fontSize="16"
@@ -194,17 +196,36 @@ export function SchelleYardMap({
                 className="cursor-pointer"
                 onClick={() => onSelectBlock(block.id)}
               />
-              <BlockMiniGrid block={block} x={geom.x} y={geom.y} width={geom.width} height={geom.height} />
+              <BlockMiniGrid
+                block={block}
+                geom={geom}
+                x={geom.x}
+                y={geom.y}
+                width={geom.width}
+                height={geom.height}
+              />
               <text
-                x={geom.x + 16}
-                y={geom.y + 38}
+                x={geom.x + 14}
+                y={geom.y + 32}
                 fill={selected ? "#ffffff" : "#161616"}
-                fontSize="36"
+                fontSize="34"
                 fontWeight="900"
                 className="pointer-events-none"
               >
                 {block.code}
               </text>
+              {geom.zoneLabel && geom.zoneLabel !== "storage" && geom.zoneLabel !== "production" ? (
+                <text
+                  x={geom.x + 56}
+                  y={geom.y + 30}
+                  fill={selected ? "#ffffff" : "#5c5c5c"}
+                  fontSize="13"
+                  fontWeight="800"
+                  className="pointer-events-none"
+                >
+                  {geom.zoneLabel}
+                </text>
+              ) : null}
               {block.productionZone ? (
                 <text
                   x={geom.x + 16}
@@ -252,12 +273,14 @@ export function SchelleYardMap({
 
 function BlockMiniGrid({
   block,
+  geom,
   x,
   y,
   width,
   height,
 }: {
   block: YardBlockNode;
+  geom: BlockGeometry;
   x: number;
   y: number;
   width: number;
@@ -267,10 +290,10 @@ function BlockMiniGrid({
   if (rows.length === 0) {
     return null;
   }
-  const padX = 14;
-  const padTop = 48;
-  const padBottom = block.productionZone ? 28 : 14;
-  const innerW = width - padX * 2;
+  const padX = 36;
+  const padTop = 40;
+  const padBottom = block.productionZone ? 26 : 12;
+  const innerW = width - padX - 10;
   const innerH = height - padTop - padBottom;
   const rowH = innerH / rows.length;
 
@@ -279,27 +302,41 @@ function BlockMiniGrid({
       {rows.map((row, rowIndex) => {
         const maxPositions = Math.max(row.positions.length, 1);
         const cellW = innerW / maxPositions;
-        return row.positions.map((position, posIndex) => {
-          const occupant = primaryOccupant(position);
-          const is3x3 = occupant?.moduleTypeCode === "3x3";
-          const cellX = x + padX + posIndex * cellW;
-          const cellY = y + padTop + rowIndex * rowH;
-          const moduleW = is3x3 ? cellW * 0.48 : cellW * 0.86;
-          const moduleH = rowH * 0.62;
-          const occupied = position.levels.some((level) => level.occupant);
-          const rented = position.levels.some((level) => level.occupant?.status === "RENTED");
-          return (
-            <rect
-              key={position.id}
-              x={cellX + (cellW - moduleW) / 2}
-              y={cellY + (rowH - moduleH) / 2}
-              width={Math.max(moduleW, 4)}
-              height={Math.max(moduleH, 4)}
-              fill={occupied ? (rented ? "#0b5cab" : "#c41e3a") : "#1f8a4c"}
-              opacity={occupied ? 0.9 : 0.35}
-            />
-          );
-        });
+        const rowY = y + padTop + rowIndex * rowH;
+        return (
+          <g key={row.id}>
+            <text
+              x={x + 8}
+              y={rowY + rowH / 2 + 4}
+              fill="#161616"
+              fontSize={Math.min(13, Math.max(9, rowH - 4))}
+              fontWeight="800"
+            >
+              {formatRowCode(row.code)}
+            </text>
+            {row.positions.map((position, posIndex) => {
+              const occupant = primaryOccupant(position);
+              const is3x3 = occupant?.moduleTypeCode === "3x3";
+              const drawIndex = geom.positionsLeftToRight ? posIndex : maxPositions - 1 - posIndex;
+              const cellX = x + padX + drawIndex * cellW;
+              const moduleW = is3x3 ? cellW * 0.48 : cellW * 0.86;
+              const moduleH = rowH * 0.62;
+              const occupied = position.levels.some((level) => level.occupant);
+              const rented = position.levels.some((level) => level.occupant?.status === "RENTED");
+              return (
+                <rect
+                  key={position.id}
+                  x={cellX + (cellW - moduleW) / 2}
+                  y={rowY + (rowH - moduleH) / 2}
+                  width={Math.max(moduleW, 3)}
+                  height={Math.max(moduleH, 3)}
+                  fill={occupied ? (rented ? "#0b5cab" : "#c41e3a") : "#1f8a4c"}
+                  opacity={occupied ? 0.9 : 0.35}
+                />
+              );
+            })}
+          </g>
+        );
       })}
     </g>
   );

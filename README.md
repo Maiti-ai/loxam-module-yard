@@ -2,7 +2,7 @@
 
 Internal yard-management MVP for Loxam Module Schelle.
 
-The visual yard map is an interactive SVG of the Loxam Module Schelle site (Brandekensweg). Geometry lives in `src/config/yard-geometry.ts`. Row 1 is at the back of the yard; Block F is the production zone.
+The visual yard map is an interactive SVG of the Loxam Module Schelle site. Permanent organisation is **block → P-row (P1 at the back) → position → level**, taken from the marked inplantingsplan. Geometry lives in `src/config/yard-geometry.ts`. Block F is the production zone.
 
 Stack:
 

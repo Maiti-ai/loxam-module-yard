@@ -144,13 +144,14 @@
     "frontOfYard": "Avant",
     "productionZone": "Zone production",
     "row": "Rangée",
+    "pLabel": "P",
     "position": "Position",
     "block": "Bloc",
     "busy": "Déplacement en cours…"
   },
   "yard": {
     "title": "Carte du yard",
-    "subtitle": "Loxam Module Schelle · Brandekensweg. Rangée 1 à l’arrière, zone production F. Touchez un bloc.",
+    "subtitle": "Loxam Module Schelle. P1 à l’arrière. Touchez un bloc, puis une rangée P, puis une position.",
     "legend": "Légende",
     "tapHint": "Touchez un bloc, puis une position ou un module.",
     "empty": "Aucun bloc de yard dans la base.",
