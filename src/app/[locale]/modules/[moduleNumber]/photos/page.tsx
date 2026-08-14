@@ -1,6 +1,6 @@
 import {getTranslations} from "next-intl/server";
 import {Link} from "@/i18n/navigation";
-import {ModulePhotoGrid} from "@/components/photos/module-photo-grid";
+import {PhotoHistoryList} from "@/components/photos/module-photo-grid";
 import {PhotoUploader} from "@/components/photos/photo-uploader";
 import {ErrorState} from "@/components/ui/page-state";
 import {requireUser} from "@/features/auth/guard";
@@ -59,15 +59,9 @@ export default async function ModulePhotosPage({
       <h1 className="text-3xl font-black">
         {t("module.label")} {yardModule.moduleNumber}
       </h1>
-      <h2 className="text-xl font-black">{t("photos.title")}</h2>
-      {photos.length > 0 ? (
-        <ModulePhotoGrid photos={photos} slots={Math.max(4, photos.length)} />
-      ) : (
-        <p className="border border-dashed border-loxam-line bg-white p-6 font-bold text-loxam-muted">
-          {t("photos.empty")}
-        </p>
-      )}
+      <h2 className="text-xl font-black">{t("photos.history")}</h2>
       {canPhotos ? <PhotoUploader moduleId={yardModule.id} /> : null}
+      <PhotoHistoryList photos={photos} />
     </section>
   );
 }

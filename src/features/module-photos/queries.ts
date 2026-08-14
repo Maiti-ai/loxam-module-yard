@@ -1,5 +1,6 @@
 import {createClient} from "@/lib/supabase/server";
 import {MODULE_PHOTOS_BUCKET} from "@/lib/storage/module-photos";
+import type {PhotoCategory} from "@/types/database";
 
 export type ModulePhotoRecord = {
   id: string;
@@ -7,8 +8,10 @@ export type ModulePhotoRecord = {
   storagePath: string;
   fileName: string;
   caption: string | null;
+  category: PhotoCategory | null;
   createdAt: string;
   uploadedBy: string | null;
+  uploaderName: string | null;
   signedUrl: string | null;
 };
 
@@ -37,6 +40,20 @@ export async function listModulePhotos(
     return [];
   }
 
+  const uploaderIds = Array.from(
+    new Set(rows.map((row) => row.uploaded_by).filter((id): id is string => Boolean(id))),
+  );
+  const names = new Map<string, string | null>();
+  if (uploaderIds.length > 0) {
+    const {data: profiles} = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", uploaderIds);
+    for (const profile of profiles ?? []) {
+      names.set(profile.id, profile.full_name);
+    }
+  }
+
   const {data: signed, error: signedError} = await supabase.storage
     .from(MODULE_PHOTOS_BUCKET)
     .createSignedUrls(
@@ -44,21 +61,8 @@ export async function listModulePhotos(
       60 * 60,
     );
 
-  if (signedError) {
-    return rows.map((row) => ({
-      id: row.id,
-      moduleId: row.module_id,
-      storagePath: row.storage_path,
-      fileName: row.file_name,
-      caption: row.caption,
-      createdAt: row.created_at,
-      uploadedBy: row.uploaded_by,
-      signedUrl: null,
-    }));
-  }
-
   const urlByPath = new Map(
-    (signed ?? []).map((item) => [item.path, item.signedUrl ?? null]),
+    (signedError ? [] : (signed ?? [])).map((item) => [item.path, item.signedUrl ?? null]),
   );
 
   return rows.map((row) => ({
@@ -67,8 +71,10 @@ export async function listModulePhotos(
     storagePath: row.storage_path,
     fileName: row.file_name,
     caption: row.caption,
+    category: null,
     createdAt: row.created_at,
     uploadedBy: row.uploaded_by,
+    uploaderName: row.uploaded_by ? (names.get(row.uploaded_by) ?? null) : null,
     signedUrl: urlByPath.get(row.storage_path) ?? null,
   }));
 }

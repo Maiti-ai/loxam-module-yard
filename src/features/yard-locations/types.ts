@@ -1,4 +1,9 @@
-import type {ModuleStatus, ModuleTypeCode, StackLevel} from "@/types/database";
+import type {
+  ModuleStatus,
+  ModuleTypeCode,
+  PhotoCategory,
+  StackLevel,
+} from "@/types/database";
 
 export type YardLocation = {
   slotId: string;
@@ -23,7 +28,9 @@ export type AircoSummary = {
 export type ModuleSummary = {
   id: string;
   moduleNumber: string;
+  moduleTypeId: string;
   moduleTypeCode: ModuleTypeCode;
+  moduleTypeNumber: string | null;
   lengthM: number;
   widthM: number;
   status: ModuleStatus;
@@ -31,12 +38,16 @@ export type ModuleSummary = {
   notes: string | null;
   location: YardLocation | null;
   airco: AircoSummary | null;
+  lastMovedAt: string | null;
 };
 
 export type Occupant = {
   moduleId: string;
   moduleNumber: string;
   status: ModuleStatus;
+  moduleTypeCode: ModuleTypeCode;
+  lengthM: number;
+  widthM: number;
 };
 
 export type YardLevelCell = {
@@ -64,6 +75,7 @@ export type YardBlockNode = {
   code: string;
   name: string;
   sortOrder: number;
+  isActive: boolean;
   productionZone: boolean;
   rows: YardRowNode[];
 };
@@ -73,3 +85,5 @@ export type YardSnapshot = {
   slotCount: number;
   occupiedSlotCount: number;
 };
+
+export type {PhotoCategory};

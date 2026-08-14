@@ -72,12 +72,25 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           className="mt-2 min-h-14 w-full border-2 border-loxam-line px-3 text-base"
         />
       </label>
-      <label className="flex min-h-16 cursor-pointer items-center justify-center bg-loxam-red text-lg font-black uppercase text-white">
-        {pending ? t("photos.uploading") : t("photos.add")}
+      <label className="flex min-h-20 cursor-pointer items-center justify-center bg-loxam-red text-xl font-black uppercase text-white">
+        {pending ? t("photos.uploading") : t("photos.capture")}
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
           capture="environment"
+          disabled={pending}
+          className="sr-only"
+          onChange={(event) => {
+            void onFile(event.target.files?.[0]);
+            event.target.value = "";
+          }}
+        />
+      </label>
+      <label className="flex min-h-16 cursor-pointer items-center justify-center border-2 border-loxam-black bg-white text-sm font-black uppercase">
+        {t("photos.gallery")}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
           disabled={pending}
           className="sr-only"
           onChange={(event) => {

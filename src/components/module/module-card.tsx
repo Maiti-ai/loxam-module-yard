@@ -43,7 +43,9 @@ export function ModuleCard({
           <dt className="text-xs font-bold tracking-wide text-loxam-muted uppercase">
             {t("type")}
           </dt>
-          <dd className="mt-1 font-bold">{module.moduleTypeCode}</dd>
+          <dd className="mt-1 font-bold">
+            {module.moduleTypeNumber || module.moduleTypeCode}
+          </dd>
         </div>
         <div>
           <dt className="text-xs font-bold tracking-wide text-loxam-muted uppercase">

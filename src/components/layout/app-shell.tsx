@@ -4,8 +4,9 @@ import {Link} from "@/i18n/navigation";
 import {LanguageSwitcher} from "@/components/layout/language-switcher";
 import {SessionControls} from "@/components/auth/session-controls";
 import {BottomNav} from "@/components/layout/bottom-nav";
+import type {AppRole} from "@/types/database";
 
-const navItems = [
+const managementNav = [
   {href: "/", key: "home"},
   {href: "/scan", key: "scan"},
   {href: "/yard", key: "yard"},
@@ -15,14 +16,24 @@ const navItems = [
   {href: "/airco", key: "airco"},
 ] as const;
 
+const driverNav = [
+  {href: "/", key: "home"},
+  {href: "/scan", key: "scan"},
+  {href: "/yard", key: "yard"},
+  {href: "/modules", key: "modules"},
+] as const;
+
 export async function AppShell({
   children,
   showNav,
+  role,
 }: {
   children: ReactNode;
   showNav: boolean;
+  role?: AppRole | null;
 }) {
   const t = await getTranslations();
+  const navItems = role === "FORKLIFT_DRIVER" || role === "PRODUCTION" ? driverNav : managementNav;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -53,7 +64,7 @@ export async function AppShell({
         </div>
       </header>
       <main className={`flex-1 ${showNav ? "pb-24 lg:pb-8" : ""}`}>{children}</main>
-      {showNav ? <BottomNav /> : null}
+      {showNav ? <BottomNav role={role} /> : null}
     </div>
   );
 }

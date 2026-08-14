@@ -84,3 +84,23 @@ export async function saveAircoAction(input: SaveAircoInput): Promise<ActionResu
   revalidatePath("/", "layout");
   return {ok: true};
 }
+
+export async function saveAircoIntervalAction(months: number | null): Promise<ActionResult> {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    return {ok: false, code: "UNAUTHENTICATED"};
+  }
+  if (!roleCan(profile.role, "manageSettings")) {
+    return {ok: false, code: "FORBIDDEN"};
+  }
+
+  try {
+    const {setAircoIntervalMonths} = await import("./settings");
+    await setAircoIntervalMonths(months, profile.id);
+  } catch {
+    return {ok: false, code: "SAVE_FAILED"};
+  }
+
+  revalidatePath("/", "layout");
+  return {ok: true};
+}

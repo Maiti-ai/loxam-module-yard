@@ -66,7 +66,7 @@ export default async function LocaleLayout({
     <html lang={currentLocale} className={`${geistSans.variable} h-full antialiased`}>
       <body className="min-h-full bg-loxam-paper font-sans text-loxam-ink">
         <NextIntlClientProvider>
-          <AppShell showNav={Boolean(profile)}>{children}</AppShell>
+          <AppShell showNav={Boolean(profile)} role={profile?.role}>{children}</AppShell>
         </NextIntlClientProvider>
       </body>
     </html>

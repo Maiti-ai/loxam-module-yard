@@ -1,0 +1,306 @@
+"use client";
+
+import {useTranslations} from "next-intl";
+import {SCHELLE_YARD, geometryForBlock} from "@/config/yard-geometry";
+import {primaryOccupant} from "@/features/yard-locations/queries-client";
+import type {YardBlockNode, YardSnapshot} from "@/features/yard-locations/types";
+
+function occupancy(block: YardBlockNode) {
+  let occupied = 0;
+  let total = 0;
+  for (const row of block.rows) {
+    for (const position of row.positions) {
+      total += position.levels.length;
+      occupied += position.levels.filter((level) => level.occupant).length;
+    }
+  }
+  return {occupied, total};
+}
+
+function fillForBlock(block: YardBlockNode, selected: boolean) {
+  if (selected) {
+    return "#c41e3a";
+  }
+  if (block.productionZone) {
+    return "#0b5cab";
+  }
+  const {occupied, total} = occupancy(block);
+  if (total > 0 && occupied === 0) {
+    return "#1f8a4c";
+  }
+  if (occupied > 0) {
+    return "#161616";
+  }
+  return "#5c5c5c";
+}
+
+export function SchelleYardMap({
+  snapshot,
+  selectedBlockId,
+  onSelectBlock,
+}: {
+  snapshot: YardSnapshot;
+  selectedBlockId?: string | null;
+  onSelectBlock: (blockId: string) => void;
+}) {
+  const t = useTranslations();
+  const {width, height} = SCHELLE_YARD.viewBox;
+  const visibleBlocks = snapshot.blocks.filter((block) => block.isActive);
+
+  return (
+    <div className="overflow-x-auto border-4 border-loxam-black bg-[#ece7e0]">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-auto w-full min-h-72"
+        role="img"
+        aria-label={t("yard.title")}
+      >
+        <rect width={width} height={height} fill="#d9d3cb" />
+        <rect
+          x={SCHELLE_YARD.site.x}
+          y={SCHELLE_YARD.site.y}
+          width={SCHELLE_YARD.site.width}
+          height={SCHELLE_YARD.site.height}
+          fill="none"
+          stroke="#161616"
+          strokeWidth="6"
+        />
+
+        {SCHELLE_YARD.landmarks.map((landmark) => {
+          if (landmark.kind === "pavement") {
+            return (
+              <rect
+                key={landmark.id}
+                x={landmark.x}
+                y={landmark.y}
+                width={landmark.width}
+                height={landmark.height}
+                fill="#cfc8be"
+              />
+            );
+          }
+          if (landmark.kind === "road") {
+            return (
+              <rect
+                key={landmark.id}
+                x={landmark.x}
+                y={landmark.y}
+                width={landmark.width}
+                height={landmark.height}
+                fill="#8f8a84"
+              />
+            );
+          }
+          if (landmark.kind === "building") {
+            return (
+              <g key={landmark.id}>
+                <rect
+                  x={landmark.x}
+                  y={landmark.y}
+                  width={landmark.width}
+                  height={landmark.height}
+                  fill="#f4f2f0"
+                  stroke="#161616"
+                  strokeWidth="4"
+                />
+                <text
+                  x={landmark.x + landmark.width / 2}
+                  y={landmark.y + landmark.height / 2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#161616"
+                  fontSize="22"
+                  fontWeight="800"
+                  style={{textTransform: "uppercase"}}
+                >
+                  {t("yard.building")}
+                </text>
+              </g>
+            );
+          }
+          if (landmark.kind === "gate") {
+            return (
+              <g key={landmark.id}>
+                <rect
+                  x={landmark.x}
+                  y={landmark.y}
+                  width={landmark.width}
+                  height={landmark.height}
+                  fill="#c41e3a"
+                />
+                <text
+                  x={landmark.x + landmark.width / 2}
+                  y={landmark.y + landmark.height / 2}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill="#ffffff"
+                  fontSize="14"
+                  fontWeight="800"
+                >
+                  {t("yard.gate")}
+                </text>
+              </g>
+            );
+          }
+          return (
+            <text
+              key={landmark.id}
+              x={landmark.x + landmark.width / 2}
+              y={landmark.y + landmark.height / 2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#161616"
+              fontSize="20"
+              fontWeight="800"
+              style={{textTransform: "uppercase", letterSpacing: "0.18em"}}
+            >
+              {landmark.label}
+            </text>
+          );
+        })}
+
+        <text x={width / 2} y={48} textAnchor="middle" fill="#5c5c5c" fontSize="16" fontWeight="700">
+          {t("move.backOfYard")}
+        </text>
+        <text
+          x={width / 2}
+          y={686}
+          textAnchor="middle"
+          fill="#5c5c5c"
+          fontSize="16"
+          fontWeight="700"
+        >
+          {t("move.frontOfYard")}
+        </text>
+
+        {visibleBlocks.map((block) => {
+          const geom = geometryForBlock(block.code);
+          if (!geom) {
+            return null;
+          }
+          const selected = block.id === selectedBlockId;
+          const {occupied, total} = occupancy(block);
+          const fill = fillForBlock(block, selected);
+          return (
+            <g key={block.id}>
+              <rect
+                x={geom.x}
+                y={geom.y}
+                width={geom.width}
+                height={geom.height}
+                fill={selected ? "#c41e3a" : "#ffffff"}
+                stroke={fill}
+                strokeWidth={selected ? 8 : 5}
+                className="cursor-pointer"
+                onClick={() => onSelectBlock(block.id)}
+              />
+              <BlockMiniGrid block={block} x={geom.x} y={geom.y} width={geom.width} height={geom.height} />
+              <text
+                x={geom.x + 16}
+                y={geom.y + 38}
+                fill={selected ? "#ffffff" : "#161616"}
+                fontSize="36"
+                fontWeight="900"
+                className="pointer-events-none"
+              >
+                {block.code}
+              </text>
+              {block.productionZone ? (
+                <text
+                  x={geom.x + 16}
+                  y={geom.y + geom.height - 16}
+                  fill={selected ? "#ffffff" : "#0b5cab"}
+                  fontSize="14"
+                  fontWeight="800"
+                  className="pointer-events-none"
+                >
+                  {t("move.productionZone")}
+                </text>
+              ) : (
+                <text
+                  x={geom.x + geom.width - 16}
+                  y={geom.y + 28}
+                  textAnchor="end"
+                  fill={selected ? "#ffffff" : "#5c5c5c"}
+                  fontSize="14"
+                  fontWeight="700"
+                  className="pointer-events-none"
+                >
+                  {occupied}/{total}
+                </text>
+              )}
+              <rect
+                x={geom.x}
+                y={geom.y}
+                width={geom.width}
+                height={geom.height}
+                fill="transparent"
+                className="cursor-pointer"
+                onClick={() => onSelectBlock(block.id)}
+              >
+                <title>
+                  {t("move.block")} {block.code}
+                </title>
+              </rect>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function BlockMiniGrid({
+  block,
+  x,
+  y,
+  width,
+  height,
+}: {
+  block: YardBlockNode;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}) {
+  const rows = block.rows;
+  if (rows.length === 0) {
+    return null;
+  }
+  const padX = 14;
+  const padTop = 48;
+  const padBottom = block.productionZone ? 28 : 14;
+  const innerW = width - padX * 2;
+  const innerH = height - padTop - padBottom;
+  const rowH = innerH / rows.length;
+
+  return (
+    <g className="pointer-events-none">
+      {rows.map((row, rowIndex) => {
+        const maxPositions = Math.max(row.positions.length, 1);
+        const cellW = innerW / maxPositions;
+        return row.positions.map((position, posIndex) => {
+          const occupant = primaryOccupant(position);
+          const is3x3 = occupant?.moduleTypeCode === "3x3";
+          const cellX = x + padX + posIndex * cellW;
+          const cellY = y + padTop + rowIndex * rowH;
+          const moduleW = is3x3 ? cellW * 0.48 : cellW * 0.86;
+          const moduleH = rowH * 0.62;
+          const occupied = position.levels.some((level) => level.occupant);
+          const rented = position.levels.some((level) => level.occupant?.status === "RENTED");
+          return (
+            <rect
+              key={position.id}
+              x={cellX + (cellW - moduleW) / 2}
+              y={cellY + (rowH - moduleH) / 2}
+              width={Math.max(moduleW, 4)}
+              height={Math.max(moduleH, 4)}
+              fill={occupied ? (rented ? "#0b5cab" : "#c41e3a") : "#1f8a4c"}
+              opacity={occupied ? 0.9 : 0.35}
+            />
+          );
+        });
+      })}
+    </g>
+  );
+}

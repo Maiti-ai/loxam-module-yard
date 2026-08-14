@@ -52,3 +52,9 @@ select,
 textarea {
   touch-action: manipulation;
 }
+
+@media (min-width: 768px) and (max-width: 1366px) {
+  :root {
+    --loxam-touch: 4.5rem;
+  }
+}

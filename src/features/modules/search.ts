@@ -16,6 +16,7 @@ export function searchModules(modules: ModuleSummary[], query: string) {
 
       const haystack = [
         module.moduleTypeCode,
+        module.moduleTypeNumber ?? "",
         module.rentedToProject ?? "",
         module.location?.blockCode ?? "",
         module.location?.rowCode ?? "",

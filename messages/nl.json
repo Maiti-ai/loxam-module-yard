@@ -90,7 +90,10 @@
     "subtitle": "Houd de tablet tegen de NFC-tag op de module.",
     "nfcReady": "NFC klaar",
     "nfcScanning": "Wachten op tag…",
-    "nfcUnsupported": "Web NFC is op dit toestel niet beschikbaar. Gebruik de demo-invoer hieronder.",
+    "nfcBody": "Tik Start en houd de tablet tegen de tag. Payload = modulenummer, bv. 2000.",
+    "nfcUnsupportedTitle": "Web NFC niet beschikbaar",
+    "nfcUnsupported": "Web NFC werkt hier niet. Gebruik Chrome op Android, of de demo-invoer hieronder. Er is geen gesimuleerde scan.",
+    "nfcPermission": "NFC-toegang geweigerd. Sta NFC toe en probeer opnieuw.",
     "nfcError": "NFC-scan mislukt. Probeer opnieuw of voer het modulenummer in.",
     "startNfc": "Start NFC-scan",
     "stopNfc": "Stop scan",
@@ -113,8 +116,11 @@
     "viewHistory": "Historiek bekijken",
     "photos": "Foto’s",
     "history": "Historiek",
+    "status": "Status",
+    "level": "Niveau",
     "equipment": "Technische uitrusting",
     "equipmentNote": "Placeholder. Exacte iconen en standaarduitrusting per type volgen later.",
+    "equipmentAssigned": "Standaarduitrusting van dit type.",
     "drawing": "Technische tekening",
     "drawingNote": "Placeholder tot de echte plannen worden aangeleverd (beeld of PDF).",
     "drawingOpen": "Tekeningsplaats",
@@ -144,10 +150,12 @@
   },
   "yard": {
     "title": "Yardkaart",
-    "subtitle": "Schematische demo-indeling. De echte grondplan van Schelle volgt later.",
+    "subtitle": "Loxam Module Schelle · Brandekensweg. Rij 1 achteraan, productiezone F. Tik een blok.",
     "legend": "Legende",
     "tapHint": "Tik een blok, daarna een positie of een module.",
-    "empty": "Nog geen yardblokken in de database."
+    "empty": "Nog geen yardblokken in de database.",
+    "building": "Gebouw",
+    "gate": "Poort"
   },
   "search": {
     "title": "Modules zoeken",
@@ -161,7 +169,10 @@
     "empty": "Nog geen foto’s.",
     "caption": "Bijschrift (optioneel)",
     "uploading": "Uploaden…",
-    "capture": "Camera of galerij"
+    "capture": "Foto nemen",
+    "gallery": "Uit galerij",
+    "history": "Alle foto’s",
+    "by": "Door"
   },
   "history": {
     "title": "Historiek",
@@ -185,7 +196,11 @@
     "stateDueSoon": "Binnenkort",
     "stateOverdue": "Achterstallig",
     "stateUnknown": "Onbekend",
-    "legendNote": "OK / binnenkort / achterstallig worden actief zodra het onderhoudsinterval is ingesteld."
+    "legendNote": "OK / binnenkort / achterstallig worden actief zodra het onderhoudsinterval is ingesteld.",
+    "interval": "Interval (maanden)",
+    "intervalPlaceholder": "leeg = uit",
+    "intervalSave": "Interval opslaan",
+    "intervalSet": "Interval: {months} maanden"
   },
   "equipment": {
     "outlets": "Stopcontacten",
@@ -217,11 +232,24 @@
     "colBlock": "Blok",
     "colRow": "Rij",
     "colPos": "Positie",
-    "colLevel": "Niveau"
+    "colLevel": "Niveau",
+    "colMoved": "Laatste verplaatsing"
   },
   "movements": {
     "title": "Recente verplaatsingen",
     "empty": "Nog geen verplaatsingen."
+  },
+  "admin": {
+    "yardTitle": "Yardconfiguratie",
+    "yardHelp": "Bloknaam, rijen en posities. Geometrie van de Schelle-kaart blijft in de configuratie. Alleen toevoegen, niets verwijderen.",
+    "blockName": "Naam",
+    "active": "Actief",
+    "addRow": "Rij toevoegen",
+    "addPosition": "Positie toevoegen"
+  },
+  "types": {
+    "title": "Moduletypes",
+    "subtitle": "Typecode, afmetingen en type-tekening. Bestanden volgen later."
   },
   "errors": {
     "title": "Er ging iets mis",

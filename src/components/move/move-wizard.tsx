@@ -4,11 +4,11 @@ import {useState} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {Link, useRouter} from "@/i18n/navigation";
 import {TouchButton} from "@/components/ui/touch-button";
-import {YardBlockCard} from "@/components/yard/yard-block";
+import {SchelleYardMap} from "@/components/yard/schelle-yard-map";
 import {YardPosition} from "@/components/yard/yard-position";
 import {LevelStack} from "@/components/yard/level-stack";
 import {moveModuleAction} from "@/features/movements/actions";
-import {formatYardLocation} from "@/lib/format";
+import {formatCompactLocation, formatCodeNumber} from "@/lib/format";
 import type {
   ModuleSummary,
   YardLevelCell,
@@ -38,6 +38,8 @@ export function MoveWizard({
   const [toLocation, setToLocation] = useState(module.location);
 
   const block = snapshot.blocks.find((item) => item.id === blockId) ?? null;
+  const rowCode =
+    block?.rows.find((row) => row.positions.some((item) => item.id === position?.id))?.code ?? "";
 
   async function confirm() {
     if (!level) {
@@ -70,8 +72,8 @@ export function MoveWizard({
         <h1 className="text-4xl font-black uppercase">
           {t("module.label")} {module.moduleNumber} {t("move.success")}
         </h1>
-        <p className="text-xl font-bold">
-          {formatYardLocation({...toLocation, locale})}
+        <p className="text-2xl font-black">
+          {formatCompactLocation({...toLocation, locale})}
         </p>
         <p className="text-loxam-muted">{t("move.successBody")}</p>
         <TouchButton onClick={() => router.push(`/modules/${module.moduleNumber}`)}>
@@ -118,20 +120,16 @@ export function MoveWizard({
       ) : null}
 
       {step === "block" ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {snapshot.blocks.map((item) => (
-            <YardBlockCard
-              key={item.id}
-              block={item}
-              onSelect={() => {
-                setBlockId(item.id);
-                setPosition(null);
-                setLevel(null);
-                setStep("position");
-              }}
-            />
-          ))}
-        </div>
+        <SchelleYardMap
+          snapshot={snapshot}
+          selectedBlockId={blockId}
+          onSelectBlock={(id) => {
+            setBlockId(id);
+            setPosition(null);
+            setLevel(null);
+            setStep("position");
+          }}
+        />
       ) : null}
 
       {step === "position" && block ? (
@@ -139,8 +137,8 @@ export function MoveWizard({
           <p className="text-sm font-bold text-loxam-muted">{t("move.backOfYard")}</p>
           {block.rows.map((row, index) => (
             <div key={row.id}>
-              <p className="mb-3 text-lg font-black">
-                {t("move.row")} {row.code}
+              <p className="mb-3 text-xl font-black">
+                {t("move.row")} {formatCodeNumber(row.code)}
               </p>
               <div className="flex flex-wrap gap-3">
                 {row.positions.map((item) => (
@@ -190,19 +188,16 @@ export function MoveWizard({
             <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.from")}</p>
             <p className="text-xl font-black">
               {module.location
-                ? formatYardLocation({...module.location, locale})
+                ? formatCompactLocation({...module.location, locale})
                 : t("module.noLocation")}
             </p>
           </div>
           <div>
             <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.to")}</p>
             <p className="text-xl font-black">
-              {formatYardLocation({
+              {formatCompactLocation({
                 blockCode: block.code,
-                rowCode:
-                  block.rows.find((row) =>
-                    row.positions.some((item) => item.id === position.id),
-                  )?.code ?? "",
+                rowCode,
                 positionCode: position.code,
                 level: level.level,
                 locale,
