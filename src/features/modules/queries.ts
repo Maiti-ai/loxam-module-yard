@@ -10,19 +10,23 @@ function asTypeCode(value: string | null): ModuleTypeCode {
 export async function listModuleSummaries(): Promise<ModuleSummary[]> {
   const supabase = await createClient();
 
-  const [viewRes, aircoRes, notesRes] = await Promise.all([
+  const [viewRes, aircoRes, notesRes, lastMoveRes] = await Promise.all([
     supabase.from("module_location_view").select("*"),
     supabase
       .from("air_conditioning_units")
       .select("id, module_id, brand, serial_number, internal_number, last_maintenance_at, notes"),
-    supabase.from("modules").select("id, notes"),
+    supabase.from("modules").select("id, notes, module_type_id"),
+    supabase.from("module_last_movement_view").select("module_id, moved_at"),
   ]);
 
   if (viewRes.error || aircoRes.error || notesRes.error) {
     throw new Error("LOAD_FAILED");
   }
 
-  const notesById = new Map((notesRes.data ?? []).map((row) => [row.id, row.notes]));
+  const notesById = new Map((notesRes.data ?? []).map((row) => [row.id, row]));
+  const lastMoveById = new Map(
+    (lastMoveRes.error ? [] : (lastMoveRes.data ?? [])).map((row) => [row.module_id, row.moved_at]),
+  );
 
   const aircoByModule = new Map<string, AircoSummary>();
   for (const unit of aircoRes.data ?? []) {
@@ -38,18 +42,24 @@ export async function listModuleSummaries(): Promise<ModuleSummary[]> {
 
   return (viewRes.data ?? [])
     .filter((row) => row.module_id && row.module_number)
-    .map((row) => ({
-      id: row.module_id as string,
-      moduleNumber: row.module_number as string,
-      moduleTypeCode: asTypeCode(row.module_type_code),
-      lengthM: Number(row.length_m ?? 0),
-      widthM: Number(row.width_m ?? 0),
-      status: (row.status === "RENTED" ? "RENTED" : "AVAILABLE") as ModuleStatus,
-      rentedToProject: row.rented_to_project,
-      notes: notesById.get(row.module_id as string) ?? null,
-      location: locationFromView(row),
-      airco: aircoByModule.get(row.module_id as string) ?? null,
-    }))
+    .map((row) => {
+      const extra = notesById.get(row.module_id as string);
+      return {
+        id: row.module_id as string,
+        moduleNumber: row.module_number as string,
+        moduleTypeId: extra?.module_type_id ?? "",
+        moduleTypeCode: asTypeCode(row.module_type_code),
+        moduleTypeNumber: (row.module_type_number as string | null | undefined) ?? null,
+        lengthM: Number(row.length_m ?? 0),
+        widthM: Number(row.width_m ?? 0),
+        status: (row.status === "RENTED" ? "RENTED" : "AVAILABLE") as ModuleStatus,
+        rentedToProject: row.rented_to_project,
+        notes: extra?.notes ?? null,
+        location: locationFromView(row),
+        airco: aircoByModule.get(row.module_id as string) ?? null,
+        lastMovedAt: lastMoveById.get(row.module_id as string) ?? row.located_at ?? null,
+      };
+    })
     .sort((a, b) => a.moduleNumber.localeCompare(b.moduleNumber, undefined, {numeric: true}));
 }
 

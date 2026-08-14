@@ -90,7 +90,10 @@
     "subtitle": "Approchez la tablette de la puce NFC du module.",
     "nfcReady": "NFC prêt",
     "nfcScanning": "En attente de puce…",
-    "nfcUnsupported": "Web NFC n’est pas disponible sur cet appareil. Utilisez la saisie démo ci-dessous.",
+    "nfcBody": "Touchez Démarrer et approchez la tablette de la puce. Contenu = numéro de module, ex. 2000.",
+    "nfcUnsupportedTitle": "Web NFC indisponible",
+    "nfcUnsupported": "Web NFC ne fonctionne pas ici. Utilisez Chrome sur Android, ou la saisie démo ci-dessous. Aucun scan simulé.",
+    "nfcPermission": "Accès NFC refusé. Autorisez le NFC et réessayez.",
     "nfcError": "Échec du scan NFC. Réessayez ou saisissez le numéro de module.",
     "startNfc": "Démarrer le scan NFC",
     "stopNfc": "Arrêter le scan",
@@ -113,8 +116,11 @@
     "viewHistory": "Voir l’historique",
     "photos": "Photos",
     "history": "Historique",
+    "status": "Statut",
+    "level": "Niveau",
     "equipment": "Équipement technique",
     "equipmentNote": "Placeholder. Les icônes et l’équipement standard par type arriveront plus tard.",
+    "equipmentAssigned": "Équipement standard de ce type.",
     "drawing": "Plan technique",
     "drawingNote": "Placeholder jusqu’à réception des vrais plans (image ou PDF).",
     "drawingOpen": "Espace plan",
@@ -144,10 +150,12 @@
   },
   "yard": {
     "title": "Carte du yard",
-    "subtitle": "Schéma de démonstration. Le plan réel de Schelle arrivera plus tard.",
+    "subtitle": "Loxam Module Schelle · Brandekensweg. Rangée 1 à l’arrière, zone production F. Touchez un bloc.",
     "legend": "Légende",
     "tapHint": "Touchez un bloc, puis une position ou un module.",
-    "empty": "Aucun bloc de yard dans la base."
+    "empty": "Aucun bloc de yard dans la base.",
+    "building": "Bâtiment",
+    "gate": "Portail"
   },
   "search": {
     "title": "Recherche de modules",
@@ -161,7 +169,10 @@
     "empty": "Pas encore de photos.",
     "caption": "Légende (optionnel)",
     "uploading": "Téléversement…",
-    "capture": "Caméra ou galerie"
+    "capture": "Prendre une photo",
+    "gallery": "Depuis la galerie",
+    "history": "Toutes les photos",
+    "by": "Par"
   },
   "history": {
     "title": "Historique",
@@ -185,7 +196,11 @@
     "stateDueSoon": "Bientôt",
     "stateOverdue": "En retard",
     "stateUnknown": "Inconnu",
-    "legendNote": "OK / bientôt / en retard s’activeront dès que l’intervalle d’entretien sera défini."
+    "legendNote": "OK / bientôt / en retard s’activeront dès que l’intervalle d’entretien sera défini.",
+    "interval": "Intervalle (mois)",
+    "intervalPlaceholder": "vide = off",
+    "intervalSave": "Enregistrer l’intervalle",
+    "intervalSet": "Intervalle : {months} mois"
   },
   "equipment": {
     "outlets": "Prises",
@@ -217,11 +232,24 @@
     "colBlock": "Bloc",
     "colRow": "Rangée",
     "colPos": "Position",
-    "colLevel": "Niveau"
+    "colLevel": "Niveau",
+    "colMoved": "Dernier mouvement"
   },
   "movements": {
     "title": "Mouvements récents",
     "empty": "Pas encore de mouvements."
+  },
+  "admin": {
+    "yardTitle": "Configuration du yard",
+    "yardHelp": "Nom de bloc, rangées et positions. La géométrie visuelle de Schelle reste dans la configuration. Ajout uniquement, pas de suppression.",
+    "blockName": "Nom",
+    "active": "Actif",
+    "addRow": "Ajouter une rangée",
+    "addPosition": "Ajouter une position"
+  },
+  "types": {
+    "title": "Types de modules",
+    "subtitle": "Code type, dimensions et plan technique. Les fichiers arriveront plus tard."
   },
   "errors": {
     "title": "Une erreur s’est produite",

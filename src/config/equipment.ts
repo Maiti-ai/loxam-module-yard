@@ -5,8 +5,8 @@ export const EQUIPMENT_PLACEHOLDER_KEYS = [
   "kitchenette",
   "wc",
   "basin",
-  "airco",
   "power",
+  "airco",
 ] as const;
 
 export type EquipmentPlaceholderKey = (typeof EQUIPMENT_PLACEHOLDER_KEYS)[number];

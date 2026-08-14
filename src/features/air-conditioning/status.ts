@@ -1,9 +1,28 @@
-import {AIRCO_MAINTENANCE} from "@/config/airco";
+import {AIRCO_MAINTENANCE, AIRCO_SETTING_KEY} from "@/config/airco";
 
 export type MaintenanceState = "OK" | "DUE_SOON" | "OVERDUE" | "UNKNOWN";
 
-export function getMaintenanceState(lastMaintenanceAt: string | null): MaintenanceState {
-  if (AIRCO_MAINTENANCE.intervalDays == null || !lastMaintenanceAt) {
+export function parseIntervalMonths(value: unknown): number | null {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+  return null;
+}
+
+export function getMaintenanceState(
+  lastMaintenanceAt: string | null,
+  intervalMonths: number | null = AIRCO_MAINTENANCE.intervalMonths,
+): MaintenanceState {
+  if (intervalMonths == null || !lastMaintenanceAt) {
     return "UNKNOWN";
   }
 
@@ -13,7 +32,7 @@ export function getMaintenanceState(lastMaintenanceAt: string | null): Maintenan
   }
 
   const due = new Date(last);
-  due.setDate(due.getDate() + AIRCO_MAINTENANCE.intervalDays);
+  due.setMonth(due.getMonth() + intervalMonths);
   const now = new Date();
   if (now.getTime() > due.getTime()) {
     return "OVERDUE";
@@ -28,8 +47,11 @@ export function getMaintenanceState(lastMaintenanceAt: string | null): Maintenan
   return "OK";
 }
 
-export function getNextMaintenanceDate(lastMaintenanceAt: string | null) {
-  if (AIRCO_MAINTENANCE.intervalDays == null || !lastMaintenanceAt) {
+export function getNextMaintenanceDate(
+  lastMaintenanceAt: string | null,
+  intervalMonths: number | null = AIRCO_MAINTENANCE.intervalMonths,
+) {
+  if (intervalMonths == null || !lastMaintenanceAt) {
     return null;
   }
 
@@ -38,6 +60,28 @@ export function getNextMaintenanceDate(lastMaintenanceAt: string | null) {
     return null;
   }
 
-  last.setDate(last.getDate() + AIRCO_MAINTENANCE.intervalDays);
+  last.setMonth(last.getMonth() + intervalMonths);
   return last.toISOString().slice(0, 10);
 }
+
+export function remainingMaintenanceLabel(
+  lastMaintenanceAt: string | null,
+  intervalMonths: number | null,
+  locale: string,
+) {
+  const next = getNextMaintenanceDate(lastMaintenanceAt, intervalMonths);
+  if (!next) {
+    return null;
+  }
+  const due = new Date(next);
+  const now = new Date();
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) {
+    const overdue = Math.abs(diffDays);
+    return locale === "fr" ? `${overdue} j de retard` : `${overdue} d te laat`;
+  }
+  return locale === "fr" ? `${diffDays} j restants` : `${diffDays} d resterend`;
+}
+
+export {AIRCO_SETTING_KEY};

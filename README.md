@@ -2,7 +2,7 @@
 
 Internal yard-management MVP for Loxam Module Schelle.
 
-The forklift workflow is NFC-first: scan a module, tap a block, tap a position, tap a free level, confirm. The visual yard map is schematic and driven by the database, ready to be replaced later by the real Schelle ground plan.
+The visual yard map is an interactive SVG of the Loxam Module Schelle site (Brandekensweg). Geometry lives in `src/config/yard-geometry.ts`. Row 1 is at the back of the yard; Block F is the production zone.
 
 Stack:
 

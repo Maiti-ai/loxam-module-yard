@@ -2,7 +2,7 @@
 
 import {useLocale, useTranslations} from "next-intl";
 import {Link} from "@/i18n/navigation";
-import {formatDateTime, formatYardLocation} from "@/lib/format";
+import {formatCompactLocation, formatDateTime} from "@/lib/format";
 import type {MovementRecord} from "@/features/movements/queries";
 
 export function MovementHistory({
@@ -24,32 +24,36 @@ export function MovementHistory({
   }
 
   return (
-    <ul className="space-y-3">
+    <ol className="space-y-4">
       {movements.map((movement) => (
-        <li key={movement.id} className="border border-loxam-line bg-white p-4">
-          <p className="text-xs font-bold uppercase text-loxam-muted">
+        <li key={movement.id} className="border-l-4 border-loxam-red bg-white p-4">
+          <p className="text-sm font-black uppercase tracking-wide text-loxam-muted">
             {formatDateTime(movement.movedAt, locale)}
           </p>
           {showModule ? (
             <Link
               href={`/modules/${movement.moduleNumber}`}
-              className="mt-1 block text-2xl font-black"
+              className="mt-1 block text-3xl font-black"
             >
               {movement.moduleNumber}
             </Link>
           ) : null}
-          <p className="mt-2 text-sm font-bold">
-            {movement.from
-              ? formatYardLocation({...movement.from, locale})
-              : t("common.dash")}
-            {" → "}
-            {movement.to ? formatYardLocation({...movement.to, locale}) : t("common.dash")}
-          </p>
-          <p className="mt-1 text-xs text-loxam-muted">
+          <div className="mt-3 grid gap-2 text-lg font-black sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+            <p>
+              {movement.from
+                ? formatCompactLocation({...movement.from, locale})
+                : t("common.dash")}
+            </p>
+            <p className="text-loxam-red">→</p>
+            <p>
+              {movement.to ? formatCompactLocation({...movement.to, locale}) : t("common.dash")}
+            </p>
+          </div>
+          <p className="mt-3 text-sm font-bold text-loxam-muted">
             {t("history.user")}: {movement.moverName || t("history.unknownUser")}
           </p>
         </li>
       ))}
-    </ul>
+    </ol>
   );
 }

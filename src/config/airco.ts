@@ -1,5 +1,11 @@
-/** Maintenance interval is not stored in the database yet. Keep null until Loxam provides it. */
+/**
+ * Maintenance interval is read from app_settings.AIRCO_MAINTENANCE_INTERVAL_MONTHS.
+ * Keep null until Loxam provides a real interval — never invent a due date.
+ */
+export const AIRCO_SETTING_KEY = "AIRCO_MAINTENANCE_INTERVAL_MONTHS";
+
 export const AIRCO_MAINTENANCE = {
-  intervalDays: null as number | null,
+  /** @deprecated use getAircoIntervalMonths() from app settings */
+  intervalMonths: null as number | null,
   dueSoonDays: 30,
 };

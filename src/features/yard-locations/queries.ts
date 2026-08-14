@@ -1,6 +1,6 @@
 import {isProductionBlock} from "@/config/yard";
 import {createClient} from "@/lib/supabase/server";
-import type {ModuleStatus, StackLevel} from "@/types/database";
+import type {ModuleStatus, ModuleTypeCode, StackLevel} from "@/types/database";
 import type {
   Occupant,
   YardBlockNode,
@@ -18,12 +18,25 @@ function asLevel(value: string): StackLevel {
   return "GROUND";
 }
 
+function asTypeCode(value: string | null | undefined): ModuleTypeCode {
+  return value === "3x3" ? "3x3" : "6x3";
+}
+
 export async function getYardSnapshot(): Promise<YardSnapshot> {
   const supabase = await createClient();
 
   const [blocksRes, rowsRes, positionsRes, slotsRes, locationsRes, modulesRes] =
     await Promise.all([
-      supabase.from("yard_blocks").select("id, code, name, sort_order").order("sort_order"),
+      supabase
+        .from("yard_blocks")
+        .select("id, code, name, sort_order, is_active")
+        .order("sort_order")
+        .then(async (result) => {
+          if (!result.error) {
+            return result;
+          }
+          return supabase.from("yard_blocks").select("id, code, name, sort_order").order("sort_order");
+        }),
       supabase.from("yard_rows").select("id, block_id, code, sort_order").order("sort_order"),
       supabase
         .from("yard_positions")
@@ -31,7 +44,9 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
         .order("sort_order"),
       supabase.from("yard_slots").select("id, block_id, row_id, position_id, level"),
       supabase.from("module_locations").select("module_id, slot_id"),
-      supabase.from("modules").select("id, module_number, status"),
+      supabase
+        .from("modules")
+        .select("id, module_number, status, module_type_id, module_types(code, length_m, width_m)"),
     ]);
 
   const firstError =
@@ -47,14 +62,24 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
   }
 
   const modulesById = new Map(
-    (modulesRes.data ?? []).map((module) => [
-      module.id,
-      {
-        moduleId: module.id,
-        moduleNumber: module.module_number,
-        status: module.status,
-      } satisfies Occupant,
-    ]),
+    (modulesRes.data ?? []).map((module) => {
+      const typeRow = module.module_types as
+        | {code: string; length_m: number; width_m: number}
+        | {code: string; length_m: number; width_m: number}[]
+        | null;
+      const type = Array.isArray(typeRow) ? typeRow[0] : typeRow;
+      return [
+        module.id,
+        {
+          moduleId: module.id,
+          moduleNumber: module.module_number,
+          status: module.status,
+          moduleTypeCode: asTypeCode(type?.code),
+          lengthM: Number(type?.length_m ?? 6),
+          widthM: Number(type?.width_m ?? 3),
+        } satisfies Occupant,
+      ];
+    }),
   );
 
   const occupantBySlot = new Map<string, Occupant>();
@@ -77,7 +102,10 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
     slotsByPosition.set(slot.position_id, current);
   }
 
-  const positionsByRow = new Map<string, YardSnapshot["blocks"][number]["rows"][number]["positions"]>();
+  const positionsByRow = new Map<
+    string,
+    YardSnapshot["blocks"][number]["rows"][number]["positions"]
+  >();
   for (const position of positionsRes.data ?? []) {
     const levels = (slotsByPosition.get(position.id) ?? []).sort(
       (a, b) => LEVEL_ORDER.indexOf(a.level) - LEVEL_ORDER.indexOf(b.level),
@@ -117,6 +145,7 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
       code: block.code,
       name: block.name,
       sortOrder: block.sort_order,
+      isActive: (block as {is_active?: boolean | null}).is_active !== false,
       productionZone: isProductionBlock(block.code),
       rows: (rowsByBlock.get(block.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
     }));
@@ -188,6 +217,11 @@ export function locationFromView(row: {
     positionCode: row.position_code,
     level: row.level,
   };
+}
+
+export function primaryOccupant(position: {levels: YardLevelCell[]}): Occupant | null {
+  const ground = position.levels.find((level) => level.level === "GROUND");
+  return ground?.occupant ?? position.levels.find((level) => level.occupant)?.occupant ?? null;
 }
 
 export type {ModuleStatus};

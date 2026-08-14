@@ -21,6 +21,12 @@ function readNdefText(event: NDEFReadingEvent) {
   return event.serialNumber.trim();
 }
 
+function normalizeModuleNumber(raw: string) {
+  const trimmed = raw.trim();
+  const lastSegment = trimmed.split(/[/?#]/).filter(Boolean).at(-1) ?? trimmed;
+  return lastSegment.replace(/\s+/g, "");
+}
+
 function nfcSubscribe() {
   return () => undefined;
 }
@@ -47,7 +53,7 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
   }, []);
 
   function openModule(raw: string) {
-    const value = raw.trim();
+    const value = normalizeModuleNumber(raw);
     if (!value) {
       return;
     }
@@ -57,6 +63,7 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
   async function startNfc() {
     if (!window.NDEFReader) {
       setError(t("nfcUnsupported"));
+      setScanning(false);
       return;
     }
 
@@ -80,8 +87,16 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
         setError(t("nfcError"));
       });
       await reader.scan({signal: abort.signal});
-    } catch {
+    } catch (caught) {
       setScanning(false);
+      const name = caught instanceof DOMException ? caught.name : "";
+      if (name === "NotAllowedError") {
+        setError(t("nfcPermission"));
+        return;
+      }
+      if (name === "AbortError") {
+        return;
+      }
       setError(t("nfcError"));
     }
   }
@@ -94,20 +109,28 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
   return (
     <div className="space-y-8">
       <div className="border-4 border-loxam-black bg-white p-6">
-        <p className="text-sm font-black uppercase text-loxam-red">
-          {nfcSupported ? (scanning ? t("nfcScanning") : t("nfcReady")) : t("nfcUnsupported")}
-        </p>
         {nfcSupported ? (
-          <div className="mt-6">
-            {scanning ? (
-              <TouchButton variant="secondary" onClick={stopNfc}>
-                {t("stopNfc")}
-              </TouchButton>
-            ) : (
-              <TouchButton onClick={startNfc}>{t("startNfc")}</TouchButton>
-            )}
+          <>
+            <p className="text-sm font-black uppercase text-loxam-red">
+              {scanning ? t("nfcScanning") : t("nfcReady")}
+            </p>
+            <p className="mt-3 text-base font-bold text-loxam-muted">{t("nfcBody")}</p>
+            <div className="mt-6">
+              {scanning ? (
+                <TouchButton variant="secondary" onClick={stopNfc}>
+                  {t("stopNfc")}
+                </TouchButton>
+              ) : (
+                <TouchButton onClick={startNfc}>{t("startNfc")}</TouchButton>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="border-4 border-loxam-occupied bg-loxam-occupied-soft p-4">
+            <p className="text-xl font-black">{t("nfcUnsupportedTitle")}</p>
+            <p className="mt-2 text-base font-bold">{t("nfcUnsupported")}</p>
           </div>
-        ) : null}
+        )}
       </div>
 
       <form
@@ -130,7 +153,7 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
             onChange={(event) => setManual(event.target.value)}
             inputMode="numeric"
             placeholder={t("placeholder")}
-            className="min-h-16 w-full border-4 border-loxam-black bg-loxam-paper px-4 text-3xl font-black tracking-wide"
+            className="min-h-20 w-full border-4 border-loxam-black bg-loxam-paper px-4 text-4xl font-black tracking-wide"
           />
         </label>
         <div className="mt-4">
@@ -148,7 +171,7 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
                 key={number}
                 type="button"
                 onClick={() => openModule(number)}
-                className="min-h-14 min-w-20 border-2 border-loxam-black bg-white px-4 text-xl font-black"
+                className="min-h-16 min-w-24 border-2 border-loxam-black bg-white px-4 text-2xl font-black"
               >
                 {number}
               </button>

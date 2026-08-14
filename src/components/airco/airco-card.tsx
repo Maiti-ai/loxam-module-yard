@@ -13,11 +13,13 @@ export function AircoCard({
   airco,
   canManage,
   canMaintenance,
+  intervalMonths = null,
 }: {
   moduleId: string;
   airco: AircoSummary | null;
   canManage: boolean;
   canMaintenance: boolean;
+  intervalMonths?: number | null;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -30,8 +32,8 @@ export function AircoCard({
   const [lastMaintenanceAt, setLastMaintenanceAt] = useState(airco?.lastMaintenanceAt ?? "");
   const [notes, setNotes] = useState(airco?.notes ?? "");
 
-  const state = getMaintenanceState(airco?.lastMaintenanceAt ?? null);
-  const next = getNextMaintenanceDate(airco?.lastMaintenanceAt ?? null);
+  const state = getMaintenanceState(airco?.lastMaintenanceAt ?? null, intervalMonths);
+  const next = getNextMaintenanceDate(airco?.lastMaintenanceAt ?? null, intervalMonths);
   const stateLabel =
     state === "OK"
       ? t("airco.stateOk")

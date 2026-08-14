@@ -14,6 +14,15 @@ export type ModuleStatus = "AVAILABLE" | "RENTED";
 
 export type ModuleTypeCode = "6x3" | "3x3";
 
+export type PhotoCategory =
+  | "GENERAL"
+  | "TECHNICAL"
+  | "DAMAGE"
+  | "BEFORE_DEPARTURE"
+  | "RETURN";
+
+export type DamageReportStatus = "DRAFT" | "SUBMITTED";
+
 export type Database = {
   public: {
     Tables: {
@@ -48,25 +57,37 @@ export type Database = {
         Row: {
           id: string;
           code: ModuleTypeCode;
+          type_number: string | null;
           length_m: number;
           width_m: number;
           name: string;
+          notes: string | null;
+          drawing_storage_path: string | null;
+          drawing_mime_type: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           code: ModuleTypeCode;
+          type_number?: string | null;
           length_m: number;
           width_m: number;
           name: string;
+          notes?: string | null;
+          drawing_storage_path?: string | null;
+          drawing_mime_type?: string | null;
           created_at?: string;
         };
         Update: {
           id?: string;
           code?: ModuleTypeCode;
+          type_number?: string | null;
           length_m?: number;
           width_m?: number;
           name?: string;
+          notes?: string | null;
+          drawing_storage_path?: string | null;
+          drawing_mime_type?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -77,6 +98,7 @@ export type Database = {
           code: string;
           name: string;
           sort_order: number;
+          is_active: boolean;
           created_at: string;
         };
         Insert: {
@@ -84,6 +106,7 @@ export type Database = {
           code: string;
           name: string;
           sort_order?: number;
+          is_active?: boolean;
           created_at?: string;
         };
         Update: {
@@ -91,6 +114,7 @@ export type Database = {
           code?: string;
           name?: string;
           sort_order?: number;
+          is_active?: boolean;
           created_at?: string;
         };
         Relationships: [];
@@ -302,6 +326,7 @@ export type Database = {
           mime_type: string | null;
           byte_size: number | null;
           caption: string | null;
+          category: PhotoCategory;
           uploaded_by: string | null;
           created_at: string;
         };
@@ -313,6 +338,7 @@ export type Database = {
           mime_type?: string | null;
           byte_size?: number | null;
           caption?: string | null;
+          category?: PhotoCategory;
           uploaded_by?: string | null;
           created_at?: string;
         };
@@ -324,8 +350,120 @@ export type Database = {
           mime_type?: string | null;
           byte_size?: number | null;
           caption?: string | null;
+          category?: PhotoCategory;
           uploaded_by?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      app_settings: {
+        Row: {
+          key: string;
+          value_json: Json | null;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value_json?: Json | null;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          key?: string;
+          value_json?: Json | null;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      equipment_kinds: {
+        Row: {
+          id: string;
+          code: string;
+          sort_order: number;
+          icon_storage_path: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          code: string;
+          sort_order?: number;
+          icon_storage_path?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          sort_order?: number;
+          icon_storage_path?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      module_type_equipment: {
+        Row: {
+          module_type_id: string;
+          equipment_kind_id: string;
+          quantity: number | null;
+          notes: string | null;
+        };
+        Insert: {
+          module_type_id: string;
+          equipment_kind_id: string;
+          quantity?: number | null;
+          notes?: string | null;
+        };
+        Update: {
+          module_type_id?: string;
+          equipment_kind_id?: string;
+          quantity?: number | null;
+          notes?: string | null;
+        };
+        Relationships: [];
+      };
+      damage_reports: {
+        Row: {
+          id: string;
+          module_id: string;
+          reported_by: string | null;
+          reported_at: string;
+          status: DamageReportStatus;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          module_id: string;
+          reported_by?: string | null;
+          reported_at?: string;
+          status?: DamageReportStatus;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          module_id?: string;
+          reported_by?: string | null;
+          reported_at?: string;
+          status?: DamageReportStatus;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      damage_report_photos: {
+        Row: {
+          report_id: string;
+          photo_id: string;
+        };
+        Insert: {
+          report_id: string;
+          photo_id: string;
+        };
+        Update: {
+          report_id?: string;
+          photo_id?: string;
         };
         Relationships: [];
       };
@@ -374,6 +512,7 @@ export type Database = {
           status: ModuleStatus | null;
           rented_to_project: string | null;
           module_type_code: string | null;
+          module_type_number: string | null;
           length_m: number | null;
           width_m: number | null;
           block_code: string | null;
@@ -382,6 +521,14 @@ export type Database = {
           level: StackLevel | null;
           slot_id: string | null;
           located_at: string | null;
+        };
+        Relationships: [];
+      };
+      module_last_movement_view: {
+        Row: {
+          module_id: string | null;
+          moved_at: string | null;
+          moved_by: string | null;
         };
         Relationships: [];
       };

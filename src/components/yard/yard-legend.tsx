@@ -20,8 +20,16 @@ export function YardLegend() {
         {t("status.RENTED")}
       </span>
       <span className="flex items-center gap-2">
-        <span className="inline-block h-4 w-4 bg-loxam-free" />
-        {t("status.AVAILABLE")}
+        <span className="inline-block h-4 w-6 bg-loxam-occupied" />
+        6×3
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="inline-block h-4 w-3 bg-loxam-occupied" />
+        3×3
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="inline-block h-4 w-4 bg-loxam-rented" />
+        {t("move.productionZone")}
       </span>
     </div>
   );

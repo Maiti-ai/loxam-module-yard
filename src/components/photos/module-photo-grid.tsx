@@ -1,6 +1,7 @@
 "use client";
 
-import {useTranslations} from "next-intl";
+import {useLocale, useTranslations} from "next-intl";
+import {formatDateTime} from "@/lib/format";
 import type {ModulePhotoRecord} from "@/features/module-photos";
 
 export function ModulePhotoGrid({
@@ -49,5 +50,43 @@ export function ModulePhotoGrid({
         ),
       )}
     </div>
+  );
+}
+
+export function PhotoHistoryList({photos}: {photos: ModulePhotoRecord[]}) {
+  const t = useTranslations();
+  const locale = useLocale();
+
+  if (photos.length === 0) {
+    return (
+      <p className="border border-dashed border-loxam-line bg-white p-6 font-bold text-loxam-muted">
+        {t("photos.empty")}
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-4">
+      {photos.map((photo) => (
+        <li key={photo.id} className="border border-loxam-line bg-white">
+          {photo.signedUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photo.signedUrl}
+              alt={photo.caption || photo.fileName}
+              className="aspect-video w-full object-cover"
+            />
+          ) : null}
+          <div className="space-y-1 p-4 text-sm">
+            <p className="font-black">{formatDateTime(photo.createdAt, locale)}</p>
+            <p className="text-loxam-muted">
+              {t("photos.by")}: {photo.uploaderName || t("history.unknownUser")}
+            </p>
+            <p className="break-all text-xs text-loxam-muted">{photo.storagePath}</p>
+            {photo.caption ? <p className="font-bold">{photo.caption}</p> : null}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

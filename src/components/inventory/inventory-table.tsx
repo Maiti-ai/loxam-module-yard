@@ -4,7 +4,7 @@ import {useMemo, useState} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {Link} from "@/i18n/navigation";
 import {ModuleStatusBadge} from "@/components/module/module-status";
-import {formatDimensions, formatLevelCode} from "@/lib/format";
+import {formatDateTime, formatDimensions, formatLevelCode} from "@/lib/format";
 import type {ModuleSummary} from "@/features/yard-locations/types";
 
 type FilterOption = {value: string; label: string};
@@ -95,6 +95,7 @@ export function InventoryTable({modules}: {modules: ModuleSummary[]}) {
                 <th className="px-3 py-3">{t("inventory.colRow")}</th>
                 <th className="px-3 py-3">{t("inventory.colPos")}</th>
                 <th className="px-3 py-3">{t("inventory.colLevel")}</th>
+                <th className="px-3 py-3">{t("inventory.colMoved")}</th>
               </tr>
             </thead>
             <tbody>
@@ -103,7 +104,7 @@ export function InventoryTable({modules}: {modules: ModuleSummary[]}) {
                   <td className="px-3 py-3 font-black">
                     <Link href={`/modules/${module.moduleNumber}`}>{module.moduleNumber}</Link>
                   </td>
-                  <td className="px-3 py-3">{module.moduleTypeCode}</td>
+                  <td className="px-3 py-3">{module.moduleTypeNumber || module.moduleTypeCode}</td>
                   <td className="px-3 py-3">{formatDimensions(module.lengthM, module.widthM)}</td>
                   <td className="px-3 py-3">
                     <ModuleStatusBadge status={module.status} />
@@ -115,6 +116,7 @@ export function InventoryTable({modules}: {modules: ModuleSummary[]}) {
                   <td className="px-3 py-3">
                     {module.location ? formatLevelCode(module.location.level, locale) : "—"}
                   </td>
+                  <td className="px-3 py-3">{formatDateTime(module.lastMovedAt, locale)}</td>
                 </tr>
               ))}
             </tbody>

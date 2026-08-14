@@ -1,4 +1,4 @@
-/** Block F is the production zone on the real Schelle yard. Seeded demo data uses A/B only. */
+/** Block F is the production zone on the real Schelle yard. */
 export const PRODUCTION_BLOCK_CODE = "F";
 
 export function isProductionBlock(code: string) {
