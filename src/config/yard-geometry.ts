@@ -51,7 +51,7 @@ export type PRowAxis = "x" | "y";
 export type VisualBand = {
   label: string;
   rowCodes: readonly string[];
-  /** Slot fill inside each cell. Maritime rows may be more elongated. */
+  /** Slot fill inside each cell. For D, h is height/width so the long side is L→R. */
   slotRatio?: {w: number; h: number};
 };
 
@@ -339,11 +339,11 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
       positionsLeftToRight: true,
       title: "D — RETOURS / ARRIVÉES",
       visualBands: [
-        {label: "CONTENEURS MARITIMES", rowCodes: ["P1"], slotRatio: {w: 0.92, h: 0.52}},
-        {label: "CONTENEURS MARITIMES", rowCodes: ["P2"], slotRatio: {w: 0.92, h: 0.52}},
-        {label: "RETOURS / ARRIVÉES", rowCodes: ["P3"], slotRatio: {w: 0.8, h: 0.7}},
-        {label: "RETOURS / ARRIVÉES", rowCodes: ["P4"], slotRatio: {w: 0.8, h: 0.7}},
-        {label: "ZONE DE LAVAGE", rowCodes: ["P5"], slotRatio: {w: 0.8, h: 0.7}},
+        {label: "CONTENEURS MARITIMES", rowCodes: ["P1"], slotRatio: {w: 0.94, h: 0.3}},
+        {label: "CONTENEURS MARITIMES", rowCodes: ["P2"], slotRatio: {w: 0.94, h: 0.3}},
+        {label: "RETOURS / ARRIVÉES", rowCodes: ["P3"], slotRatio: {w: 0.9, h: 0.4}},
+        {label: "RETOURS / ARRIVÉES", rowCodes: ["P4"], slotRatio: {w: 0.9, h: 0.4}},
+        {label: "ZONE DE LAVAGE", rowCodes: ["P5"], slotRatio: {w: 0.9, h: 0.4}},
       ],
     },
     B: {

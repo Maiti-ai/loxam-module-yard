@@ -838,7 +838,14 @@ function BandedSlotGrid({
             {slots.map(({row: slotRow, position}, slotIndex) => {
               const occupant = primaryOccupant(position);
               const cellX = innerX + slotIndex * cellW;
-              const slot = cellSlot(cellX, slotsY, cellW, slotsH, ratioW, ratioH);
+              const slotW = cellW * ratioW;
+              const slotH = Math.min(slotsH * 0.9, slotW * ratioH);
+              const slot = {
+                x: cellX + (cellW - slotW) / 2,
+                y: slotsY + (slotsH - slotH) / 2,
+                width: slotW,
+                height: slotH,
+              };
               const selected = position.id === selectedPositionId;
               return (
                 <SlotRect
