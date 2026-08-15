@@ -699,7 +699,14 @@ function HorizontalRowSlotGrid({
               const occupant = primaryOccupant(position);
               const drawRow = geom.positionsFromBottom ? visualRows - 1 - posIndex : posIndex;
               const cellY = innerY + drawRow * rowH;
-              const slot = cellSlot(colX, cellY, colW, rowH, ratioW, ratioH);
+              const slotH = rowH * ratioH;
+              const slotW = Math.min(colW * ratioW, slotH * 0.55);
+              const slot = {
+                x: colX + (colW - slotW) / 2,
+                y: cellY + (rowH - slotH) / 2,
+                width: slotW,
+                height: slotH,
+              };
               const selected = position.id === selectedPositionId;
               return (
                 <SlotRect

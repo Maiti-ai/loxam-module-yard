@@ -370,7 +370,7 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
       positionsFromBottom: true,
       slotsAsHorizontalRows: true,
       title: "F — ZONE DE PRODUCTION",
-      slotRatio: {w: 0.86, h: 0.7},
+      slotRatio: {w: 0.28, h: 0.84},
     },
     A: {
       code: "A",
