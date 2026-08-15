@@ -8,8 +8,9 @@
  * Grey driving lanes follow the gaps BETWEEN the blocks.
  *
  * C  rear storage, full width. P1–P4 as east–west bands (P1 at the rear).
- * D  west, five visual bands (maritime / retours / lavage). Data still P1–P8.
- * F  west, below D, same outer size as D. 3 columns × 4 rows (P1–P3 × 4).
+ * D  west, five horizontal rows L→R: 10+10 maritime, 10+10 retours, 6 wash.
+ *    Visual P-codes P1–P5 match those five rows. Extra slots are overlay-only.
+ * F  west, below D, same outer size as D. P1–P3 × 4 drawn as 4×3 horizontal rows.
  * B  east of D, top edge aligned with D. P1–P9 bands, 6 positions R→L.
  * A  under B; bottom aligned with F. P1–P7 bands, 5 positions R→L.
  */
@@ -50,6 +51,8 @@ export type PRowAxis = "x" | "y";
 export type VisualBand = {
   label: string;
   rowCodes: readonly string[];
+  /** Slot fill inside each cell. Maritime rows may be more elongated. */
+  slotRatio?: {w: number; h: number};
 };
 
 export type BlockGeometry = {
@@ -67,12 +70,19 @@ export type BlockGeometry = {
   positionsFromBottom?: boolean;
   title: string;
   visualBands?: readonly VisualBand[];
+  /**
+   * Draw P-rows as columns transposed into horizontal visual rows
+   * (4 rows × 3 modules for production zone F).
+   */
+  slotsAsHorizontalRows?: boolean;
   slotRatio?: {w: number; h: number};
 };
 
 export type BlockLayoutSpec = {
   pRows: readonly string[];
   positionsPerRow: number;
+  /** Override slot count for a P-row (D wash row has 6 instead of 10). */
+  positionsByRow?: Readonly<Record<string, number>>;
 };
 
 export const SCHELLE_BLOCK_SPEC: Record<string, BlockLayoutSpec> = {
@@ -89,8 +99,9 @@ export const SCHELLE_BLOCK_SPEC: Record<string, BlockLayoutSpec> = {
     positionsPerRow: 5,
   },
   D: {
-    pRows: ["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
-    positionsPerRow: 2,
+    pRows: ["P1", "P2", "P3", "P4", "P5"],
+    positionsPerRow: 10,
+    positionsByRow: {P5: 6},
   },
   F: {
     pRows: ["P1", "P2", "P3"],
@@ -131,18 +142,18 @@ export function polygonPoints(points: readonly Point[]) {
  *   F (left)     A (right)   — bottoms aligned
  */
 const LANE = 108;
-const SPINE = 300;
+const SPINE = 340;
 const BA_LANE = 80;
+const RIGHT_W = 1060;
 
-const C_BOX = {x: 180, y: 260, width: 2440, height: 400};
+const C_BOX = {x: 180, y: 260, width: 3280, height: 400};
 const LEFT_X = 180;
-const LEFT_W = 1080;
+const LEFT_W = 1880;
 const DF_H = 960;
 const D_Y = C_BOX.y + C_BOX.height + LANE;
 const F_Y = D_Y + DF_H + LANE;
 const F_BOTTOM = F_Y + DF_H;
 const RIGHT_X = LEFT_X + LEFT_W + SPINE;
-const RIGHT_W = C_BOX.x + C_BOX.width - RIGHT_X;
 const BA_SPAN = F_BOTTOM - D_Y;
 const B_H = Math.round((BA_SPAN - BA_LANE) * (9 / 16));
 const A_H = BA_SPAN - BA_LANE - B_H;
@@ -157,10 +168,10 @@ const GATE = {
 };
 
 export const SCHELLE_YARD: SchelleYardGeometry = {
-  viewBox: {width: 2800, height: 3600},
+  viewBox: {width: 3720, height: 3600},
   site: {
     polygon: [
-      [920, 70],
+      [980, 70],
       [560, 100],
       [240, 170],
       [90, 300],
@@ -171,20 +182,20 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
       [80, 3120],
       [180, 3320],
       [420, 3440],
-      [820, 3488],
-      [1320, 3488],
-      [1360, 3360],
-      [1500, 3360],
-      [1540, 3488],
-      [1980, 3470],
-      [2360, 3380],
-      [2620, 3180],
-      [2700, 2780],
-      [2690, 1960],
-      [2640, 1100],
-      [2580, 380],
-      [2480, 120],
-      [1680, 58],
+      [900, 3488],
+      [1760, 3488],
+      [1800, 3360],
+      [1980, 3360],
+      [2020, 3488],
+      [2680, 3470],
+      [3180, 3380],
+      [3480, 3180],
+      [3580, 2780],
+      [3570, 1960],
+      [3520, 1100],
+      [3460, 380],
+      [3320, 120],
+      [2200, 58],
     ],
   },
   yardSurface: {
@@ -195,20 +206,20 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
       [140, 2860],
       [240, 3180],
       [520, 3340],
-      [820, 3380],
-      [1320, 3380],
-      [1360, 3260],
-      [1500, 3260],
-      [1540, 3380],
-      [1960, 3350],
-      [2320, 3220],
-      [2500, 2980],
-      [2560, 2580],
-      [2540, 1180],
-      [2460, 360],
-      [2360, 180],
-      [1680, 160],
-      [920, 170],
+      [900, 3380],
+      [1760, 3380],
+      [1800, 3260],
+      [1980, 3260],
+      [2020, 3380],
+      [2680, 3350],
+      [3180, 3220],
+      [3380, 2980],
+      [3460, 2580],
+      [3440, 1180],
+      [3360, 360],
+      [3200, 180],
+      [2200, 160],
+      [980, 170],
     ],
   },
   roads: [
@@ -290,16 +301,16 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
     {
       id: "brandekensweg",
       kind: "label",
-      x: 420,
+      x: 520,
       y: 3496,
-      width: 1960,
+      width: 2680,
       height: 48,
       label: "Brandekensweg",
     },
     {
       id: "molenberglei",
       kind: "label",
-      x: 2720,
+      x: 3600,
       y: 900,
       width: 48,
       height: 1200,
@@ -325,14 +336,14 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
       height: DF_H,
       pRowAxis: "y",
       rowFromBack: true,
-      positionsLeftToRight: false,
+      positionsLeftToRight: true,
       title: "D — RETOURS / ARRIVÉES",
       visualBands: [
-        {label: "CONTENEURS MARITIMES", rowCodes: ["P1"]},
-        {label: "CONTENEURS MARITIMES", rowCodes: ["P2"]},
-        {label: "RETOURS / ARRIVÉES", rowCodes: ["P3", "P4"]},
-        {label: "RETOURS / ARRIVÉES", rowCodes: ["P5", "P6"]},
-        {label: "ZONE DE LAVAGE", rowCodes: ["P7", "P8"]},
+        {label: "CONTENEURS MARITIMES", rowCodes: ["P1"], slotRatio: {w: 0.92, h: 0.52}},
+        {label: "CONTENEURS MARITIMES", rowCodes: ["P2"], slotRatio: {w: 0.92, h: 0.52}},
+        {label: "RETOURS / ARRIVÉES", rowCodes: ["P3"], slotRatio: {w: 0.8, h: 0.7}},
+        {label: "RETOURS / ARRIVÉES", rowCodes: ["P4"], slotRatio: {w: 0.8, h: 0.7}},
+        {label: "ZONE DE LAVAGE", rowCodes: ["P5"], slotRatio: {w: 0.8, h: 0.7}},
       ],
     },
     B: {
@@ -357,8 +368,9 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
       rowFromBack: true,
       positionsLeftToRight: false,
       positionsFromBottom: true,
+      slotsAsHorizontalRows: true,
       title: "F — ZONE DE PRODUCTION",
-      slotRatio: {w: 0.86, h: 0.8},
+      slotRatio: {w: 0.86, h: 0.7},
     },
     A: {
       code: "A",
@@ -381,4 +393,8 @@ export function geometryForBlock(code: string): BlockGeometry | null {
 
 export function layoutSpecForBlock(code: string): BlockLayoutSpec | null {
   return SCHELLE_BLOCK_SPEC[code.trim().toUpperCase()] ?? null;
+}
+
+export function positionsCountForRow(spec: BlockLayoutSpec, pCode: string) {
+  return spec.positionsByRow?.[pCode] ?? spec.positionsPerRow;
 }
