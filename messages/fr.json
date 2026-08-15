@@ -156,6 +156,7 @@
     "tapHint": "Touchez un bloc, puis une position ou un module.",
     "empty": "Aucun bloc de yard dans la base.",
     "building": "Bâtiment",
+    "office": "Bureau",
     "gate": "Portail"
   },
   "search": {

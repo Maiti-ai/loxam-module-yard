@@ -1,63 +1,33 @@
 /**
- * Schelle yard visual geometry, traced from the marked inplantingsplan
+ * Schelle yard visual geometry, rebuilt from the marked inplantingsplan
  * (LOXAM 2, Brandekensweg 48/50, 2627 Schelle).
  *
- * Mapping report (scan = geometric source of truth)
- * -------------------------------------------------
- * Orientation of the SVG matches the scan: top = BACK (north-ish),
- * bottom = FRONT / Brandekensweg / gate. P1 is the rear row of each
- * block (closest to the back fence for that block).
+ * Mapping report
+ * --------------
+ * SVG matches the scan: top = rear, bottom = Brandekensweg / gate.
+ * Grey driving surface fills the inner yard; storage pads sit on it so
+ * aisles stay visible between blocks. The office is only the south
+ * bureau footprint, not the whole warehouse. Production F is the strip
+ * immediately north of (behind) that office.
  *
- * Site perimeter
- *   Irregular rectangle with a large rounded north-west corner, smaller
- *   rounded south-west and south-east corners, and a rectangular gate
- *   notch on Brandekensweg. Green landscape + trees sit between the
- *   fence and the inner perimeter road. Molenberglei runs along the
- *   east edge. The building and grids are NOT recentred to make the
- *   SVG rectangular.
+ * C  back / north, full width. P1–P4 as east–west bands (P1 at the rear).
+ *    13 positions on each band, numbered right → left.
+ * D  west, south of C / north of F. ARRIVES + MARITIMES. P1–P8 along the
+ *    south edge, right → left; two module depths.
+ * B  east STOCK, south of C / north of A. P1–P9 bands, 6 positions R→L.
+ * A  south-east VERZENDING / DEPARTS. P1–P7 bands, 5 positions R→L.
+ * F  production strip directly behind the office. P1–P3 along the south
+ *    edge, right → left.
  *
- * Building
- *   Real footprint in the south-west interior, west of the central
- *   north–south aisle. South annex (office / sanitary rooms) stays
- *   attached to the south face. It is a landmark, not a storage block.
- *
- * Block C — back / north
- *   Full-width 6×3 grid against the rear perimeter road.
- *   P1 (rear) … P4 (front of C). Columns R13 west → R1 east.
- *   13 positions per P-row.
- *
- * Block D — west, north of the building
- *   MARITIMES (rear, yellow) + ARRIVES (south of that) + RETOUR /
- *   Reinigen on the aisle side. P1 rear. Bottom of ARRIVES is marked
- *   P1…P8 west→east on the scan; the operational P-rows remain P1–P8.
- *
- * Block B — east STOCK (not a simplified centre rectangle)
- *   The 6-wide × 9-deep grid on the east side, south of C and north of
- *   A, against the east landscape strip. P1 rear … P9. R6 west → R1
- *   east. Labelled STOCK on the scan. No extra invented B geometry.
- *
- * Block A — south-east VERZENDING / DEPARTS
- *   Right-aligned with B, one aisle south of it. 5-wide × 7-deep.
- *   P1 rear … P7. R5 west → R1 east. DEPARTS highlight on mid rows.
- *   Does not swallow the open front yard or the building.
- *
- * Block F — production, east face of the building
- *   Narrow strip between the building and the central aisle, where the
- *   scan marks F. P1 rear … P3, 4 positions. Not moved to the front
- *   of the yard.
- *
- * Ignore: handwritten module/type numbers (60150, 60142, 60144, …)
- * and temporary notes. Keep block letters and P-row markings.
- *
- * Hierarchy: BLOCK → P-row → position → LEVEL
- * Example: C / P2 / 4 / Level 1
+ * Keep handwritten block letters and P-numbers. Ignore 60150 / 60142 /
+ * 60144 and other module/type notes. No Block E.
  */
 
 export const PRODUCTION_BLOCK_CODE = "F";
 
 export type Point = readonly [number, number];
 
-export type LandmarkKind = "pavement" | "road" | "building" | "gate" | "label";
+export type LandmarkKind = "building" | "gate" | "label";
 
 export type YardLandmark = {
   id: string;
@@ -67,10 +37,23 @@ export type YardLandmark = {
   width: number;
   height: number;
   label?: string;
-  /** When set, drawn as a polygon instead of the bounding rect. */
   points?: readonly Point[];
   rotate?: number;
 };
+
+export type RoadRect = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+/**
+ * y = P-rows are east–west bands, P1 at the rear (top).
+ * x = P-rows stand as columns along the south edge, P1 at the right.
+ */
+export type PRowAxis = "x" | "y";
 
 export type BlockGeometry = {
   code: string;
@@ -78,9 +61,10 @@ export type BlockGeometry = {
   y: number;
   width: number;
   height: number;
-  /** P1 is at the BACK (smaller y / top of SVG). */
+  pRowAxis: PRowAxis;
+  /** P1 is at the BACK (top) when pRowAxis is y. */
   rowFromBack: boolean;
-  /** On the plan, R1 / position 1 is on the east (right) for A, B, C. */
+  /** Position 1 is on the east (right). */
   positionsLeftToRight: boolean;
   zoneLabel?: string;
 };
@@ -91,10 +75,6 @@ export type BlockLayoutSpec = {
   zoneLabel?: string;
 };
 
-/**
- * Permanent P-rows readable on the marked plan.
- * Individual slots inside a P-row are numbered 1…N (shown as Position 4).
- */
 export const SCHELLE_BLOCK_SPEC: Record<string, BlockLayoutSpec> = {
   C: {
     pRows: ["P1", "P2", "P3", "P4"],
@@ -126,7 +106,8 @@ export const SCHELLE_BLOCK_SPEC: Record<string, BlockLayoutSpec> = {
 export type SchelleYardGeometry = {
   viewBox: {width: number; height: number};
   site: {polygon: readonly Point[]};
-  pavement: {polygon: readonly Point[]};
+  yardSurface: {polygon: readonly Point[]};
+  roads: readonly RoadRect[];
   landmarks: YardLandmark[];
   blocks: Record<string, BlockGeometry>;
 };
@@ -136,100 +117,99 @@ export function polygonPoints(points: readonly Point[]) {
 }
 
 /**
- * Coordinates are proportional to the scan (origin near the NW fence).
- * Bottom = FRONT / gate / Brandekensweg. Top = BACK. P1 at the back.
+ * Large canvas so the real proportions stay readable.
+ * Scale is taken from the scan; blocks are not recentred into a square.
  */
 export const SCHELLE_YARD: SchelleYardGeometry = {
-  viewBox: {width: 1000, height: 1280},
+  viewBox: {width: 2560, height: 3300},
   site: {
     polygon: [
-      [330, 18],
-      [210, 28],
-      [90, 55],
-      [30, 100],
-      [15, 140],
-      [10, 300],
-      [10, 700],
-      [12, 1000],
-      [18, 1120],
-      [40, 1205],
-      [130, 1248],
-      [290, 1260],
-      [490, 1260],
-      [500, 1215],
-      [555, 1215],
-      [565, 1260],
-      [730, 1255],
-      [870, 1235],
-      [965, 1160],
-      [982, 1040],
-      [978, 800],
-      [958, 500],
-      [938, 180],
-      [925, 50],
-      [870, 18],
-      [610, 12],
+      [864, 95],
+      [570, 120],
+      [276, 186],
+      [129, 296],
+      [92, 394],
+      [80, 786],
+      [80, 1766],
+      [85, 2501],
+      [100, 2795],
+      [154, 3003],
+      [374, 3109],
+      [766, 3138],
+      [1256, 3138],
+      [1280, 3028],
+      [1415, 3028],
+      [1440, 3138],
+      [1844, 3126],
+      [2187, 3077],
+      [2420, 2893],
+      [2461, 2599],
+      [2452, 2011],
+      [2403, 1276],
+      [2354, 492],
+      [2322, 174],
+      [2187, 95],
+      [1550, 80],
     ],
   },
-  pavement: {
+  yardSurface: {
     polygon: [
-      [72, 108],
-      [58, 160],
-      [55, 700],
-      [58, 1110],
-      [120, 1218],
-      [280, 1236],
-      [488, 1236],
-      [500, 1194],
-      [555, 1194],
-      [568, 1236],
-      [740, 1230],
-      [858, 1208],
-      [918, 1132],
-      [926, 780],
-      [912, 170],
-      [896, 72],
-      [610, 54],
-      [210, 72],
-      [88, 96],
+      [220, 250],
+      [180, 420],
+      [170, 1760],
+      [190, 2680],
+      [280, 2920],
+      [520, 3010],
+      [760, 3040],
+      [1260, 3040],
+      [1288, 2940],
+      [1408, 2940],
+      [1440, 3040],
+      [1820, 3020],
+      [2140, 2940],
+      [2280, 2760],
+      [2320, 2480],
+      [2300, 1260],
+      [2240, 420],
+      [2180, 220],
+      [1560, 200],
+      [900, 210],
     ],
   },
+  roads: [
+    {id: "aisle-south-of-c", x: 170, y: 700, width: 2140, height: 90},
+    {id: "aisle-spine", x: 1140, y: 700, width: 430, height: 2220},
+    {id: "aisle-west-court", x: 200, y: 1620, width: 940, height: 420},
+    {id: "aisle-between-ba", x: 1580, y: 1938, width: 660, height: 60},
+    {id: "aisle-east", x: 2220, y: 250, width: 120, height: 2700},
+    {id: "aisle-entry", x: 1140, y: 2680, width: 430, height: 360},
+  ],
   landmarks: [
     {
       id: "building",
       kind: "building",
-      x: 132,
-      y: 668,
-      width: 348,
-      height: 400,
-      points: [
-        [132, 668],
-        [480, 668],
-        [480, 1068],
-        [390, 1068],
-        [390, 1145],
-        [210, 1145],
-        [210, 1068],
-        [132, 1068],
-      ],
+      x: 520,
+      y: 2480,
+      width: 440,
+      height: 230,
     },
-    {id: "gate", kind: "gate", x: 500, y: 1215, width: 55, height: 42, label: "gate"},
+    {id: "gate", kind: "gate", x: 1280, y: 2940, width: 128, height: 88, label: "gate"},
     {
       id: "brandekensweg",
       kind: "label",
-      x: 120,
-      y: 1248,
-      width: 720,
-      height: 28,
+      x: 400,
+      y: 3160,
+      width: 1760,
+      height: 48,
       label: "Brandekensweg",
     },
     {
       id: "molenberglei",
       kind: "label",
-      x: 948,
-      y: 420,
-      width: 36,
-      height: 420,
+      x: 2470,
+      y: 900,
+      width: 48,
+      height: 1100,
       label: "Molenberglei",
       rotate: 90,
     },
@@ -237,50 +217,55 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
   blocks: {
     C: {
       code: "C",
-      x: 45,
-      y: 118,
-      width: 838,
-      height: 145,
+      x: 166,
+      y: 340,
+      width: 2053,
+      height: 355,
+      pRowAxis: "y",
       rowFromBack: true,
       positionsLeftToRight: false,
       zoneLabel: "storage",
     },
     D: {
       code: "D",
-      x: 65,
-      y: 305,
-      width: 370,
-      height: 330,
+      x: 215,
+      y: 798,
+      width: 906,
+      height: 809,
+      pRowAxis: "x",
       rowFromBack: true,
-      positionsLeftToRight: true,
+      positionsLeftToRight: false,
       zoneLabel: "ARRIVES",
     },
     B: {
       code: "B",
-      x: 628,
-      y: 328,
-      width: 255,
-      height: 440,
+      x: 1594,
+      y: 855,
+      width: 625,
+      height: 1078,
+      pRowAxis: "y",
       rowFromBack: true,
       positionsLeftToRight: false,
       zoneLabel: "STOCK",
     },
     F: {
       code: "F",
-      x: 488,
-      y: 675,
-      width: 118,
-      height: 250,
+      x: 400,
+      y: 2120,
+      width: 700,
+      height: 320,
+      pRowAxis: "x",
       rowFromBack: true,
-      positionsLeftToRight: true,
+      positionsLeftToRight: false,
       zoneLabel: "production",
     },
     A: {
       code: "A",
-      x: 670,
-      y: 798,
-      width: 213,
-      height: 325,
+      x: 1717,
+      y: 2006,
+      width: 502,
+      height: 796,
+      pRowAxis: "y",
       rowFromBack: true,
       positionsLeftToRight: false,
       zoneLabel: "VERZENDING",

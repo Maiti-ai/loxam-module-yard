@@ -4,7 +4,7 @@ import {useState} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {Link, useRouter} from "@/i18n/navigation";
 import {TouchButton} from "@/components/ui/touch-button";
-import {SchelleYardMap} from "@/components/yard/schelle-yard-map";
+import {SchelleYardMap, displayBlocks} from "@/components/yard/schelle-yard-map";
 import {YardPosition} from "@/components/yard/yard-position";
 import {LevelStack} from "@/components/yard/level-stack";
 import {moveModuleAction} from "@/features/movements/actions";
@@ -37,7 +37,8 @@ export function MoveWizard({
   const [error, setError] = useState<string | null>(null);
   const [toLocation, setToLocation] = useState(module.location);
 
-  const block = snapshot.blocks.find((item) => item.id === blockId) ?? null;
+  const blocks = displayBlocks(snapshot);
+  const block = blocks.find((item) => item.id === blockId) ?? null;
   const rowCode =
     block?.rows.find((row) => row.positions.some((item) => item.id === position?.id))?.code ?? "";
 
@@ -133,32 +134,31 @@ export function MoveWizard({
       ) : null}
 
       {step === "position" && block ? (
-        <div className="space-y-6">
-          <p className="text-sm font-bold text-loxam-muted">{t("move.backOfYard")}</p>
-          {block.rows.map((row, index) => (
-            <div key={row.id}>
-              <p className="mb-3 text-xl font-black">{formatRowCode(row.code)}</p>
-              <div className="flex flex-wrap gap-3">
-                {row.positions.map((item) => (
-                  <YardPosition
-                    key={item.id}
-                    position={item}
-                    onSelect={() => {
-                      setPosition(item);
-                      setLevel(null);
-                      setOccupiedNumber(null);
-                      setStep("level");
-                    }}
-                  />
-                ))}
+        <div className="space-y-4">
+          <div className="flex flex-row-reverse flex-wrap justify-start gap-5">
+            {block.rows.map((row) => (
+              <div key={row.id} className="flex flex-col items-center gap-3">
+                <div className="flex flex-col-reverse gap-3">
+                  {row.positions.map((item) => (
+                    <YardPosition
+                      key={item.id}
+                      position={item}
+                      onSelect={() => {
+                        if (item.levels.length === 0) {
+                          return;
+                        }
+                        setPosition(item);
+                        setLevel(null);
+                        setOccupiedNumber(null);
+                        setStep("level");
+                      }}
+                    />
+                  ))}
+                </div>
+                <p className="text-xl font-black">{formatRowCode(row.code)}</p>
               </div>
-              {index === block.rows.length - 1 ? (
-                <p className="mt-3 text-sm font-bold text-loxam-muted">
-                  {t("move.frontOfYard")}
-                </p>
-              ) : null}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : null}
 
