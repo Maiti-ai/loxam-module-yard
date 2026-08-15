@@ -3,11 +3,12 @@
 import {useTranslations} from "next-intl";
 import {
   SCHELLE_YARD,
+  YARD_MAP_FR,
   geometryForBlock,
   layoutSpecForBlock,
   polygonPoints,
 } from "@/config/yard-geometry";
-import type {BlockGeometry} from "@/config/yard-geometry";
+import type {BlockGeometry, VisualBand} from "@/config/yard-geometry";
 import {isProductionBlock} from "@/config/yard";
 import {primaryOccupant} from "@/features/yard-locations/queries-client";
 import {formatRowCode} from "@/lib/format";
@@ -116,8 +117,62 @@ function slotFill(occupant: Occupant | null, selected: boolean) {
   return "#c41e3a";
 }
 
+function cellSlot(
+  cellX: number,
+  cellY: number,
+  cellW: number,
+  cellH: number,
+  ratioW: number,
+  ratioH: number,
+) {
+  const width = cellW * ratioW;
+  const height = cellH * ratioH;
+  return {
+    x: cellX + (cellW - width) / 2,
+    y: cellY + (cellH - height) / 2,
+    width,
+    height,
+  };
+}
+
+function SlotRect({
+  x,
+  y,
+  width,
+  height,
+  occupant,
+  selected,
+  label,
+  onClick,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  occupant: Occupant | null;
+  selected: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <rect
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      fill={slotFill(occupant, selected)}
+      stroke="#161616"
+      strokeWidth={2}
+      strokeOpacity={selected ? 1 : 0.22}
+      className="cursor-pointer"
+      onClick={onClick}
+    >
+      <title>{label}</title>
+    </rect>
+  );
+}
+
 function LandmarkLayer() {
-  const t = useTranslations();
   return (
     <>
       {SCHELLE_YARD.landmarks.map((landmark) => {
@@ -138,11 +193,11 @@ function LandmarkLayer() {
                 y={landmark.y + landmark.height / 2 - 12}
                 textAnchor="middle"
                 fill="#161616"
-                fontSize="28"
+                fontSize="26"
                 fontWeight="800"
                 style={{textTransform: "uppercase"}}
               >
-                {t("yard.building")}
+                {YARD_MAP_FR.building}
               </text>
               <text
                 x={landmark.x + landmark.width / 2}
@@ -153,7 +208,7 @@ function LandmarkLayer() {
                 fontWeight="700"
                 style={{textTransform: "uppercase"}}
               >
-                {t("yard.office")}
+                {YARD_MAP_FR.office}
               </text>
             </g>
           );
@@ -177,7 +232,7 @@ function LandmarkLayer() {
                 fontSize="22"
                 fontWeight="800"
               >
-                {t("yard.gate")}
+                {YARD_MAP_FR.gate}
               </text>
             </g>
           );
@@ -230,7 +285,7 @@ export function SchelleYardMap({
     <div className="overflow-auto border-4 border-loxam-black bg-[#d4cfc6]">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="h-auto w-full min-h-[70vh] min-w-[920px] lg:min-h-[82vh]"
+        className="h-auto w-full min-h-[78vh] min-w-[1080px] lg:min-h-[88vh]"
         role="img"
         aria-label={t("yard.title")}
       >
@@ -255,7 +310,7 @@ export function SchelleYardMap({
         ))}
 
         <text x={width / 2} y={64} textAnchor="middle" fill="#2f3d2c" fontSize="26" fontWeight="800">
-          {t("move.backOfYard")}
+          {YARD_MAP_FR.back}
         </text>
         <text
           x={width / 2}
@@ -265,7 +320,7 @@ export function SchelleYardMap({
           fontSize="24"
           fontWeight="800"
         >
-          {t("move.frontOfYard")}
+          {YARD_MAP_FR.front}
         </text>
 
         {blocks.map((block) => {
@@ -313,7 +368,6 @@ function BlockPad({
   onSelectRow?: (blockId: string, rowId: string) => void;
   onSelectPosition?: (blockId: string, position: YardPositionNode) => void;
 }) {
-  const t = useTranslations();
   const {occupied, total} = occupancy(block);
   const production = block.productionZone;
   const padFill = selected ? "#f8d5d8" : production ? "#d5e4f4" : "#f7f4ef";
@@ -343,30 +397,17 @@ function BlockPad({
       />
       <text
         x={geom.x + 18}
-        y={geom.y + 44}
+        y={geom.y + 40}
         fill="#161616"
-        fontSize="42"
+        fontSize={geom.width < 900 ? 28 : 34}
         fontWeight="900"
         className="pointer-events-none"
       >
-        {block.code}
+        {geom.title}
       </text>
-      {geom.zoneLabel ? (
-        <text
-          x={geom.x + 78}
-          y={geom.y + 42}
-          fill={production ? "#0b5cab" : "#5c5c5c"}
-          fontSize="18"
-          fontWeight="800"
-          className="pointer-events-none"
-          style={{textTransform: "uppercase"}}
-        >
-          {geom.zoneLabel === "production" ? t("move.productionZone") : geom.zoneLabel}
-        </text>
-      ) : null}
       <text
         x={geom.x + geom.width - 16}
-        y={geom.y + 40}
+        y={geom.y + 38}
         textAnchor="end"
         fill="#5c5c5c"
         fontSize="18"
@@ -401,6 +442,27 @@ function BlockSlotGrid({
     return null;
   }
 
+  function selectSlot(row: YardRowNode, position: YardPositionNode) {
+    onSelectBlock(block.id);
+    onSelectRow?.(block.id, row.id);
+    onSelectPosition?.(block.id, position);
+  }
+
+  if (geom.visualBands && geom.visualBands.length > 0) {
+    return (
+      <BandedSlotGrid
+        block={block}
+        geom={geom}
+        bands={geom.visualBands}
+        selectedRowId={selectedRowId}
+        selectedPositionId={selectedPositionId}
+        selectSlot={selectSlot}
+      />
+    );
+  }
+
+  const ratioW = geom.slotRatio?.w ?? 0.78;
+  const ratioH = geom.slotRatio?.h ?? 0.68;
   const padLeft = 16;
   const padRight = geom.pRowAxis === "y" ? 52 : 16;
   const padTop = 56;
@@ -409,12 +471,6 @@ function BlockSlotGrid({
   const innerY = geom.y + padTop;
   const innerW = geom.width - padLeft - padRight;
   const innerH = geom.height - padTop - padBottom;
-
-  function selectSlot(row: YardRowNode, position: YardPositionNode) {
-    onSelectBlock(block.id);
-    onSelectRow?.(block.id, row.id);
-    onSelectPosition?.(block.id, position);
-  }
 
   if (geom.pRowAxis === "x") {
     const colW = innerW / rows.length;
@@ -442,30 +498,19 @@ function BlockSlotGrid({
               />
               {row.positions.map((position, posIndex) => {
                 const occupant = primaryOccupant(position);
-                const is3x3 = occupant?.moduleTypeCode === "3x3";
-                const cellY = innerY + posIndex * cellH;
-                const slotW = colW * (is3x3 ? 0.42 : 0.72);
-                const slotH = cellH * 0.7;
+                const drawPos = geom.positionsFromBottom ? maxPositions - 1 - posIndex : posIndex;
+                const cellY = innerY + drawPos * cellH;
+                const slot = cellSlot(colX, cellY, colW, cellH, ratioW, ratioH);
                 const selected = position.id === selectedPositionId;
                 return (
-                  <rect
+                  <SlotRect
                     key={position.id}
-                    x={colX + (colW - slotW) / 2}
-                    y={cellY + (cellH - slotH) / 2}
-                    width={Math.max(slotW, 8)}
-                    height={Math.max(slotH, 8)}
-                    fill={slotFill(occupant, selected)}
-                    opacity={occupant ? 0.92 : 0.38}
-                    stroke={selected ? "#161616" : "#161616"}
-                    strokeWidth={selected ? 3 : 0.6}
-                    strokeOpacity={selected ? 1 : 0.15}
-                    className="cursor-pointer"
+                    {...slot}
+                    occupant={occupant}
+                    selected={selected}
+                    label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
                     onClick={() => selectSlot(row, position)}
-                  >
-                    <title>
-                      {block.code} {formatRowCode(row.code)} {positionKey(position.code)}
-                    </title>
-                  </rect>
+                  />
                 );
               })}
               <text
@@ -522,30 +567,19 @@ function BlockSlotGrid({
             </text>
             {row.positions.map((position, posIndex) => {
               const occupant = primaryOccupant(position);
-              const is3x3 = occupant?.moduleTypeCode === "3x3";
               const drawIndex = geom.positionsLeftToRight ? posIndex : maxPositions - 1 - posIndex;
               const cellX = innerX + drawIndex * cellW;
-              const slotW = cellW * (is3x3 ? 0.42 : 0.78);
-              const slotH = rowH * 0.62;
+              const slot = cellSlot(cellX, rowY, cellW, rowH, ratioW, ratioH);
               const selected = position.id === selectedPositionId;
               return (
-                <rect
+                <SlotRect
                   key={position.id}
-                  x={cellX + (cellW - slotW) / 2}
-                  y={rowY + (rowH - slotH) / 2}
-                  width={Math.max(slotW, 6)}
-                  height={Math.max(slotH, 6)}
-                  fill={slotFill(occupant, selected)}
-                  opacity={occupant ? 0.92 : 0.38}
-                  stroke={selected ? "#161616" : "none"}
-                  strokeWidth={selected ? 3 : 0}
-                  className="cursor-pointer"
+                  {...slot}
+                  occupant={occupant}
+                  selected={selected}
+                  label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
                   onClick={() => selectSlot(row, position)}
-                >
-                  <title>
-                    {block.code} {formatRowCode(row.code)} {positionKey(position.code)}
-                  </title>
-                </rect>
+                />
               );
             })}
           </g>
@@ -567,6 +601,111 @@ function BlockSlotGrid({
           >
             {index + 1}
           </text>
+        );
+      })}
+    </g>
+  );
+}
+
+function bandSlots(
+  band: VisualBand,
+  rowsByCode: Map<string, YardRowNode>,
+  positionsLeftToRight: boolean,
+) {
+  const rowCodes = positionsLeftToRight ? [...band.rowCodes] : [...band.rowCodes].reverse();
+  const slots: {row: YardRowNode; position: YardPositionNode}[] = [];
+  for (const code of rowCodes) {
+    const row = rowsByCode.get(rowKey(code));
+    if (!row) {
+      continue;
+    }
+    const positions = positionsLeftToRight ? row.positions : [...row.positions].reverse();
+    for (const position of positions) {
+      slots.push({row, position});
+    }
+  }
+  return slots;
+}
+
+function BandedSlotGrid({
+  block,
+  geom,
+  bands,
+  selectedRowId,
+  selectedPositionId,
+  selectSlot,
+}: {
+  block: YardBlockNode;
+  geom: BlockGeometry;
+  bands: readonly VisualBand[];
+  selectedRowId?: string | null;
+  selectedPositionId?: string | null;
+  selectSlot: (row: YardRowNode, position: YardPositionNode) => void;
+}) {
+  const rowsByCode = new Map(block.rows.map((row) => [rowKey(row.code), row]));
+  const padLeft = 22;
+  const padRight = 22;
+  const padTop = 58;
+  const padBottom = 18;
+  const innerX = geom.x + padLeft;
+  const innerY = geom.y + padTop;
+  const innerW = geom.width - padLeft - padRight;
+  const innerH = geom.height - padTop - padBottom;
+  const bandH = innerH / bands.length;
+  const labelH = 26;
+  const ratioW = 0.82;
+  const ratioH = 0.72;
+
+  return (
+    <g>
+      {bands.map((band, bandIndex) => {
+        const bandY = innerY + bandIndex * bandH;
+        const slotsY = bandY + labelH;
+        const slotsH = Math.max(bandH - labelH - 8, 24);
+        const slots = bandSlots(band, rowsByCode, geom.positionsLeftToRight);
+        const cellW = slots.length > 0 ? innerW / slots.length : innerW;
+        return (
+          <g key={`${band.label}-${bandIndex}`}>
+            <text
+              x={innerX}
+              y={bandY + 18}
+              fill="#5c5c5c"
+              fontSize="15"
+              fontWeight="800"
+              className="pointer-events-none"
+              style={{textTransform: "uppercase", letterSpacing: "0.04em"}}
+            >
+              {band.label}
+            </text>
+            {slots.map(({row, position}, slotIndex) => {
+              const occupant = primaryOccupant(position);
+              const cellX = innerX + slotIndex * cellW;
+              const slot = cellSlot(cellX, slotsY, cellW, slotsH, ratioW, ratioH);
+              const selected = position.id === selectedPositionId;
+              const rowSelected = row.id === selectedRowId;
+              return (
+                <g key={position.id}>
+                  {rowSelected ? (
+                    <rect
+                      x={cellX}
+                      y={slotsY}
+                      width={cellW}
+                      height={slotsH}
+                      fill="rgba(196,30,58,0.08)"
+                      className="pointer-events-none"
+                    />
+                  ) : null}
+                  <SlotRect
+                    {...slot}
+                    occupant={occupant}
+                    selected={selected}
+                    label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
+                    onClick={() => selectSlot(row, position)}
+                  />
+                </g>
+              );
+            })}
+          </g>
         );
       })}
     </g>

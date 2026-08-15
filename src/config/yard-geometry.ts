@@ -1,26 +1,17 @@
 /**
- * Schelle yard visual geometry, rebuilt from the marked inplantingsplan
- * (LOXAM 2, Brandekensweg 48/50, 2627 Schelle).
+ * Schelle yard visual geometry.
  *
- * Mapping report
- * --------------
- * SVG matches the scan: top = rear, bottom = Brandekensweg / gate.
- * Grey driving surface fills the inner yard; storage pads sit on it so
- * aisles stay visible between blocks. The office is only the south
- * bureau footprint, not the whole warehouse. Production F is the strip
- * immediately north of (behind) that office.
+ * Visual layout only. Block letters and P-row data mappings stay in
+ * SCHELLE_BLOCK_SPEC and must not be changed for occupancy / DB logic.
  *
- * C  back / north, full width. P1–P4 as east–west bands (P1 at the rear).
- *    13 positions on each band, numbered right → left.
- * D  west, south of C / north of F. ARRIVES + MARITIMES. P1–P8 along the
- *    south edge, right → left; two module depths.
- * B  east STOCK, south of C / north of A. P1–P9 bands, 6 positions R→L.
- * A  south-east VERZENDING / DEPARTS. P1–P7 bands, 5 positions R→L.
- * F  production strip directly behind the office. P1–P3 along the south
- *    edge, right → left.
+ * SVG: top = rear, bottom = Brandekensweg / gate / PORTAIL.
+ * Grey driving lanes follow the gaps BETWEEN the blocks.
  *
- * Keep handwritten block letters and P-numbers. Ignore 60150 / 60142 /
- * 60144 and other module/type notes. No Block E.
+ * C  rear storage, full width. P1–P4 as east–west bands (P1 at the rear).
+ * D  west, five visual bands (maritime / retours / lavage). Data still P1–P8.
+ * F  west, below D, same outer size as D. 3 columns × 4 rows (P1–P3 × 4).
+ * B  east of D, top edge aligned with D. P1–P9 bands, 6 positions R→L.
+ * A  under B; bottom aligned with F. P1–P7 bands, 5 positions R→L.
  */
 
 export const PRODUCTION_BLOCK_CODE = "F";
@@ -51,9 +42,15 @@ export type RoadRect = {
 
 /**
  * y = P-rows are east–west bands, P1 at the rear (top).
- * x = P-rows stand as columns along the south edge, P1 at the right.
+ * x = P-rows stand as columns, P1 at the right.
  */
 export type PRowAxis = "x" | "y";
+
+/** Groups existing P-rows into one visual band. Data codes stay unchanged. */
+export type VisualBand = {
+  label: string;
+  rowCodes: readonly string[];
+};
 
 export type BlockGeometry = {
   code: string;
@@ -66,42 +63,52 @@ export type BlockGeometry = {
   rowFromBack: boolean;
   /** Position 1 is on the east (right). */
   positionsLeftToRight: boolean;
-  zoneLabel?: string;
+  /** Position 1 is drawn at the bottom when pRowAxis is x. */
+  positionsFromBottom?: boolean;
+  title: string;
+  visualBands?: readonly VisualBand[];
+  slotRatio?: {w: number; h: number};
 };
 
 export type BlockLayoutSpec = {
   pRows: readonly string[];
   positionsPerRow: number;
-  zoneLabel?: string;
 };
 
 export const SCHELLE_BLOCK_SPEC: Record<string, BlockLayoutSpec> = {
   C: {
     pRows: ["P1", "P2", "P3", "P4"],
     positionsPerRow: 13,
-    zoneLabel: "storage",
   },
   B: {
     pRows: ["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"],
     positionsPerRow: 6,
-    zoneLabel: "STOCK",
   },
   A: {
     pRows: ["P1", "P2", "P3", "P4", "P5", "P6", "P7"],
     positionsPerRow: 5,
-    zoneLabel: "VERZENDING",
   },
   D: {
     pRows: ["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8"],
     positionsPerRow: 2,
-    zoneLabel: "ARRIVES",
   },
   F: {
     pRows: ["P1", "P2", "P3"],
     positionsPerRow: 4,
-    zoneLabel: "production",
   },
 };
+
+/** Visible yard-map copy. Operational labels on the map are French. */
+export const YARD_MAP_FR = {
+  back: "ARRIÈRE",
+  front: "AVANT",
+  building: "BÂTIMENT",
+  office: "BUREAU",
+  gate: "PORTAIL",
+  free: "LIBRE",
+  occupied: "OCCUPÉ",
+  rented: "LOUÉ",
+} as const;
 
 export type SchelleYardGeometry = {
   viewBox: {width: number; height: number};
@@ -117,99 +124,185 @@ export function polygonPoints(points: readonly Point[]) {
 }
 
 /**
- * Large canvas so the real proportions stay readable.
- * Scale is taken from the scan; blocks are not recentred into a square.
+ * Named layout so block alignment stays maintainable.
+ *
+ *   C full width at the rear
+ *   D (left)     B (right)   — tops aligned
+ *   F (left)     A (right)   — bottoms aligned
  */
+const LANE = 108;
+const SPINE = 300;
+const BA_LANE = 80;
+
+const C_BOX = {x: 180, y: 260, width: 2440, height: 400};
+const LEFT_X = 180;
+const LEFT_W = 1080;
+const DF_H = 960;
+const D_Y = C_BOX.y + C_BOX.height + LANE;
+const F_Y = D_Y + DF_H + LANE;
+const F_BOTTOM = F_Y + DF_H;
+const RIGHT_X = LEFT_X + LEFT_W + SPINE;
+const RIGHT_W = C_BOX.x + C_BOX.width - RIGHT_X;
+const BA_SPAN = F_BOTTOM - D_Y;
+const B_H = Math.round((BA_SPAN - BA_LANE) * (9 / 16));
+const A_H = BA_SPAN - BA_LANE - B_H;
+const A_Y = D_Y + B_H + BA_LANE;
+const C_RIGHT = C_BOX.x + C_BOX.width;
+const OFFICE = {x: 300, y: F_BOTTOM + 92, width: 400, height: 176};
+const GATE = {
+  x: LEFT_X + LEFT_W + (SPINE - 160) / 2,
+  y: OFFICE.y + OFFICE.height + 88,
+  width: 160,
+  height: 92,
+};
+
 export const SCHELLE_YARD: SchelleYardGeometry = {
-  viewBox: {width: 2560, height: 3300},
+  viewBox: {width: 2800, height: 3600},
   site: {
     polygon: [
-      [864, 95],
-      [570, 120],
-      [276, 186],
-      [129, 296],
-      [92, 394],
-      [80, 786],
-      [80, 1766],
-      [85, 2501],
-      [100, 2795],
-      [154, 3003],
-      [374, 3109],
-      [766, 3138],
-      [1256, 3138],
-      [1280, 3028],
-      [1415, 3028],
-      [1440, 3138],
-      [1844, 3126],
-      [2187, 3077],
-      [2420, 2893],
-      [2461, 2599],
-      [2452, 2011],
-      [2403, 1276],
-      [2354, 492],
-      [2322, 174],
-      [2187, 95],
-      [1550, 80],
+      [920, 70],
+      [560, 100],
+      [240, 170],
+      [90, 300],
+      [55, 420],
+      [48, 820],
+      [48, 1880],
+      [55, 2680],
+      [80, 3120],
+      [180, 3320],
+      [420, 3440],
+      [820, 3488],
+      [1320, 3488],
+      [1360, 3360],
+      [1500, 3360],
+      [1540, 3488],
+      [1980, 3470],
+      [2360, 3380],
+      [2620, 3180],
+      [2700, 2780],
+      [2690, 1960],
+      [2640, 1100],
+      [2580, 380],
+      [2480, 120],
+      [1680, 58],
     ],
   },
   yardSurface: {
     polygon: [
-      [220, 250],
-      [180, 420],
-      [170, 1760],
-      [190, 2680],
-      [280, 2920],
-      [520, 3010],
-      [760, 3040],
-      [1260, 3040],
-      [1288, 2940],
-      [1408, 2940],
-      [1440, 3040],
-      [1820, 3020],
-      [2140, 2940],
-      [2280, 2760],
-      [2320, 2480],
-      [2300, 1260],
-      [2240, 420],
-      [2180, 220],
-      [1560, 200],
-      [900, 210],
+      [200, 200],
+      [140, 400],
+      [120, 1780],
+      [140, 2860],
+      [240, 3180],
+      [520, 3340],
+      [820, 3380],
+      [1320, 3380],
+      [1360, 3260],
+      [1500, 3260],
+      [1540, 3380],
+      [1960, 3350],
+      [2320, 3220],
+      [2500, 2980],
+      [2560, 2580],
+      [2540, 1180],
+      [2460, 360],
+      [2360, 180],
+      [1680, 160],
+      [920, 170],
     ],
   },
   roads: [
-    {id: "aisle-south-of-c", x: 170, y: 700, width: 2140, height: 90},
-    {id: "aisle-spine", x: 1140, y: 700, width: 430, height: 2220},
-    {id: "aisle-west-court", x: 200, y: 1620, width: 940, height: 420},
-    {id: "aisle-between-ba", x: 1580, y: 1938, width: 660, height: 60},
-    {id: "aisle-east", x: 2220, y: 250, width: 120, height: 2700},
-    {id: "aisle-entry", x: 1140, y: 2680, width: 430, height: 360},
+    {
+      id: "aisle-south-of-c",
+      x: C_BOX.x,
+      y: C_BOX.y + C_BOX.height,
+      width: C_BOX.width,
+      height: LANE,
+    },
+    {
+      id: "aisle-spine",
+      x: LEFT_X + LEFT_W,
+      y: D_Y,
+      width: SPINE,
+      height: BA_SPAN,
+    },
+    {
+      id: "aisle-between-df",
+      x: LEFT_X,
+      y: D_Y + DF_H,
+      width: LEFT_W,
+      height: LANE,
+    },
+    {
+      id: "aisle-between-ba",
+      x: RIGHT_X,
+      y: D_Y + B_H,
+      width: RIGHT_W,
+      height: BA_LANE,
+    },
+    {
+      id: "aisle-east",
+      x: C_RIGHT,
+      y: C_BOX.y,
+      width: LANE,
+      height: F_BOTTOM - C_BOX.y,
+    },
+    {
+      id: "aisle-west",
+      x: C_BOX.x - LANE,
+      y: C_BOX.y,
+      width: LANE,
+      height: F_BOTTOM - C_BOX.y,
+    },
+    {
+      id: "aisle-south-court",
+      x: LEFT_X,
+      y: F_BOTTOM,
+      width: LEFT_W + SPINE + RIGHT_W,
+      height: 92,
+    },
+    {
+      id: "aisle-entry",
+      x: LEFT_X + LEFT_W,
+      y: F_BOTTOM,
+      width: SPINE,
+      height: GATE.y + GATE.height - F_BOTTOM,
+    },
   ],
   landmarks: [
     {
       id: "building",
       kind: "building",
-      x: 520,
-      y: 2480,
-      width: 440,
-      height: 230,
+      x: OFFICE.x,
+      y: OFFICE.y,
+      width: OFFICE.width,
+      height: OFFICE.height,
     },
-    {id: "gate", kind: "gate", x: 1280, y: 2940, width: 128, height: 88, label: "gate"},
+    {
+      id: "gate",
+      kind: "gate",
+      x: GATE.x,
+      y: GATE.y,
+      width: GATE.width,
+      height: GATE.height,
+      label: YARD_MAP_FR.gate,
+    },
     {
       id: "brandekensweg",
       kind: "label",
-      x: 400,
-      y: 3160,
-      width: 1760,
+      x: 420,
+      y: 3496,
+      width: 1960,
       height: 48,
       label: "Brandekensweg",
     },
     {
       id: "molenberglei",
       kind: "label",
-      x: 2470,
+      x: 2720,
       y: 900,
       width: 48,
-      height: 1100,
+      height: 1200,
       label: "Molenberglei",
       rotate: 90,
     },
@@ -217,58 +310,67 @@ export const SCHELLE_YARD: SchelleYardGeometry = {
   blocks: {
     C: {
       code: "C",
-      x: 166,
-      y: 340,
-      width: 2053,
-      height: 355,
+      ...C_BOX,
       pRowAxis: "y",
       rowFromBack: true,
       positionsLeftToRight: false,
-      zoneLabel: "storage",
+      title: "C — STOCKAGE",
+      slotRatio: {w: 0.78, h: 0.64},
     },
     D: {
       code: "D",
-      x: 215,
-      y: 798,
-      width: 906,
-      height: 809,
-      pRowAxis: "x",
+      x: LEFT_X,
+      y: D_Y,
+      width: LEFT_W,
+      height: DF_H,
+      pRowAxis: "y",
       rowFromBack: true,
       positionsLeftToRight: false,
-      zoneLabel: "ARRIVES",
+      title: "D — RETOURS / ARRIVÉES",
+      visualBands: [
+        {label: "CONTENEURS MARITIMES", rowCodes: ["P1"]},
+        {label: "CONTENEURS MARITIMES", rowCodes: ["P2"]},
+        {label: "RETOURS / ARRIVÉES", rowCodes: ["P3", "P4"]},
+        {label: "RETOURS / ARRIVÉES", rowCodes: ["P5", "P6"]},
+        {label: "ZONE DE LAVAGE", rowCodes: ["P7", "P8"]},
+      ],
     },
     B: {
       code: "B",
-      x: 1594,
-      y: 855,
-      width: 625,
-      height: 1078,
+      x: RIGHT_X,
+      y: D_Y,
+      width: RIGHT_W,
+      height: B_H,
       pRowAxis: "y",
       rowFromBack: true,
       positionsLeftToRight: false,
-      zoneLabel: "STOCK",
+      title: "B — STOCK",
+      slotRatio: {w: 0.78, h: 0.64},
     },
     F: {
       code: "F",
-      x: 400,
-      y: 2120,
-      width: 700,
-      height: 320,
+      x: LEFT_X,
+      y: F_Y,
+      width: LEFT_W,
+      height: DF_H,
       pRowAxis: "x",
       rowFromBack: true,
       positionsLeftToRight: false,
-      zoneLabel: "production",
+      positionsFromBottom: true,
+      title: "F — ZONE DE PRODUCTION",
+      slotRatio: {w: 0.86, h: 0.8},
     },
     A: {
       code: "A",
-      x: 1717,
-      y: 2006,
-      width: 502,
-      height: 796,
+      x: RIGHT_X,
+      y: A_Y,
+      width: RIGHT_W,
+      height: A_H,
       pRowAxis: "y",
       rowFromBack: true,
       positionsLeftToRight: false,
-      zoneLabel: "VERZENDING",
+      title: "A — EXPÉDITION",
+      slotRatio: {w: 0.78, h: 0.64},
     },
   },
 };
