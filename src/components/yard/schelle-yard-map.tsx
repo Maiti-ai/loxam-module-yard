@@ -1,8 +1,8 @@
 "use client";
 
 import {useTranslations} from "next-intl";
-import {SCHELLE_YARD, geometryForBlock} from "@/config/yard-geometry";
-import type {BlockGeometry} from "@/config/yard-geometry";
+import {SCHELLE_YARD, geometryForBlock, polygonPoints} from "@/config/yard-geometry";
+import type {BlockGeometry, YardLandmark} from "@/config/yard-geometry";
 import {primaryOccupant} from "@/features/yard-locations/queries-client";
 import {formatRowCode} from "@/lib/format";
 import type {YardBlockNode, YardSnapshot} from "@/features/yard-locations/types";
@@ -36,6 +36,102 @@ function fillForBlock(block: YardBlockNode, selected: boolean) {
   return "#5c5c5c";
 }
 
+function LandmarkShape({landmark}: {landmark: YardLandmark}) {
+  const t = useTranslations();
+  if (landmark.kind === "pavement" || landmark.kind === "road") {
+    return (
+      <rect
+        x={landmark.x}
+        y={landmark.y}
+        width={landmark.width}
+        height={landmark.height}
+        fill={landmark.kind === "road" ? "#8f8a84" : "#cfc8be"}
+      />
+    );
+  }
+  if (landmark.kind === "building") {
+    const shape = landmark.points ? (
+      <polygon
+        points={polygonPoints(landmark.points)}
+        fill="#f4f2f0"
+        stroke="#161616"
+        strokeWidth="4"
+      />
+    ) : (
+      <rect
+        x={landmark.x}
+        y={landmark.y}
+        width={landmark.width}
+        height={landmark.height}
+        fill="#f4f2f0"
+        stroke="#161616"
+        strokeWidth="4"
+      />
+    );
+    return (
+      <g>
+        {shape}
+        <text
+          x={landmark.x + landmark.width / 2}
+          y={landmark.y + Math.min(landmark.height, 400) / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#161616"
+          fontSize="22"
+          fontWeight="800"
+          style={{textTransform: "uppercase"}}
+        >
+          {t("yard.building")}
+        </text>
+      </g>
+    );
+  }
+  if (landmark.kind === "gate") {
+    return (
+      <g>
+        <rect
+          x={landmark.x}
+          y={landmark.y}
+          width={landmark.width}
+          height={landmark.height}
+          fill="#c41e3a"
+        />
+        <text
+          x={landmark.x + landmark.width / 2}
+          y={landmark.y + landmark.height / 2}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill="#ffffff"
+          fontSize="14"
+          fontWeight="800"
+        >
+          {t("yard.gate")}
+        </text>
+      </g>
+    );
+  }
+  const cx = landmark.x + landmark.width / 2;
+  const cy = landmark.y + landmark.height / 2;
+  const rotate = landmark.rotate
+    ? `rotate(${landmark.rotate} ${cx} ${cy})`
+    : undefined;
+  return (
+    <text
+      x={cx}
+      y={cy}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fill="#161616"
+      fontSize="18"
+      fontWeight="800"
+      transform={rotate}
+      style={{textTransform: "uppercase", letterSpacing: "0.14em"}}
+    >
+      {landmark.label}
+    </text>
+  );
+}
+
 export function SchelleYardMap({
   snapshot,
   selectedBlockId,
@@ -58,115 +154,24 @@ export function SchelleYardMap({
         aria-label={t("yard.title")}
       >
         <rect width={width} height={height} fill="#d9d3cb" />
-        <rect
-          x={SCHELLE_YARD.site.x}
-          y={SCHELLE_YARD.site.y}
-          width={SCHELLE_YARD.site.width}
-          height={SCHELLE_YARD.site.height}
-          fill="none"
+        <polygon
+          points={polygonPoints(SCHELLE_YARD.site.polygon)}
+          fill="#8faf7a"
           stroke="#161616"
-          strokeWidth="6"
+          strokeWidth="5"
         />
+        <polygon points={polygonPoints(SCHELLE_YARD.pavement.polygon)} fill="#cfc8be" />
 
-        {SCHELLE_YARD.landmarks.map((landmark) => {
-          if (landmark.kind === "pavement") {
-            return (
-              <rect
-                key={landmark.id}
-                x={landmark.x}
-                y={landmark.y}
-                width={landmark.width}
-                height={landmark.height}
-                fill="#cfc8be"
-              />
-            );
-          }
-          if (landmark.kind === "road") {
-            return (
-              <rect
-                key={landmark.id}
-                x={landmark.x}
-                y={landmark.y}
-                width={landmark.width}
-                height={landmark.height}
-                fill="#8f8a84"
-              />
-            );
-          }
-          if (landmark.kind === "building") {
-            return (
-              <g key={landmark.id}>
-                <rect
-                  x={landmark.x}
-                  y={landmark.y}
-                  width={landmark.width}
-                  height={landmark.height}
-                  fill="#f4f2f0"
-                  stroke="#161616"
-                  strokeWidth="4"
-                />
-                <text
-                  x={landmark.x + landmark.width / 2}
-                  y={landmark.y + landmark.height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#161616"
-                  fontSize="22"
-                  fontWeight="800"
-                  style={{textTransform: "uppercase"}}
-                >
-                  {t("yard.building")}
-                </text>
-              </g>
-            );
-          }
-          if (landmark.kind === "gate") {
-            return (
-              <g key={landmark.id}>
-                <rect
-                  x={landmark.x}
-                  y={landmark.y}
-                  width={landmark.width}
-                  height={landmark.height}
-                  fill="#c41e3a"
-                />
-                <text
-                  x={landmark.x + landmark.width / 2}
-                  y={landmark.y + landmark.height / 2}
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fill="#ffffff"
-                  fontSize="14"
-                  fontWeight="800"
-                >
-                  {t("yard.gate")}
-                </text>
-              </g>
-            );
-          }
-          return (
-            <text
-              key={landmark.id}
-              x={landmark.x + landmark.width / 2}
-              y={landmark.y + landmark.height / 2}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="#161616"
-              fontSize="20"
-              fontWeight="800"
-              style={{textTransform: "uppercase", letterSpacing: "0.18em"}}
-            >
-              {landmark.label}
-            </text>
-          );
-        })}
+        {SCHELLE_YARD.landmarks.map((landmark) => (
+          <LandmarkShape key={landmark.id} landmark={landmark} />
+        ))}
 
-        <text x={width / 2} y={44} textAnchor="middle" fill="#5c5c5c" fontSize="16" fontWeight="700">
+        <text x={width / 2} y={38} textAnchor="middle" fill="#3d4a38" fontSize="16" fontWeight="700">
           {t("move.backOfYard")}
         </text>
         <text
           x={width / 2}
-          y={736}
+          y={height - 18}
           textAnchor="middle"
           fill="#5c5c5c"
           fontSize="16"
@@ -183,6 +188,7 @@ export function SchelleYardMap({
           const selected = block.id === selectedBlockId;
           const {occupied, total} = occupancy(block);
           const fill = fillForBlock(block, selected);
+          const compact = geom.width < 160 || geom.height < 160;
           return (
             <g key={block.id}>
               <rect
@@ -205,10 +211,10 @@ export function SchelleYardMap({
                 height={geom.height}
               />
               <text
-                x={geom.x + 14}
-                y={geom.y + 32}
+                x={geom.x + (compact ? 8 : 14)}
+                y={geom.y + (compact ? 22 : 32)}
                 fill={selected ? "#ffffff" : "#161616"}
-                fontSize="34"
+                fontSize={compact ? 22 : 34}
                 fontWeight="900"
                 className="pointer-events-none"
               >
@@ -216,10 +222,10 @@ export function SchelleYardMap({
               </text>
               {geom.zoneLabel && geom.zoneLabel !== "storage" && geom.zoneLabel !== "production" ? (
                 <text
-                  x={geom.x + 56}
-                  y={geom.y + 30}
+                  x={geom.x + (compact ? 28 : 56)}
+                  y={geom.y + (compact ? 20 : 30)}
                   fill={selected ? "#ffffff" : "#5c5c5c"}
-                  fontSize="13"
+                  fontSize={compact ? 10 : 13}
                   fontWeight="800"
                   className="pointer-events-none"
                 >
@@ -228,10 +234,10 @@ export function SchelleYardMap({
               ) : null}
               {block.productionZone ? (
                 <text
-                  x={geom.x + 16}
-                  y={geom.y + geom.height - 16}
+                  x={geom.x + 8}
+                  y={geom.y + geom.height - 10}
                   fill={selected ? "#ffffff" : "#0b5cab"}
-                  fontSize="14"
+                  fontSize="12"
                   fontWeight="800"
                   className="pointer-events-none"
                 >
@@ -239,11 +245,11 @@ export function SchelleYardMap({
                 </text>
               ) : (
                 <text
-                  x={geom.x + geom.width - 16}
-                  y={geom.y + 28}
+                  x={geom.x + geom.width - 10}
+                  y={geom.y + (compact ? 20 : 28)}
                   textAnchor="end"
                   fill={selected ? "#ffffff" : "#5c5c5c"}
-                  fontSize="14"
+                  fontSize={compact ? 11 : 14}
                   fontWeight="700"
                   className="pointer-events-none"
                 >
@@ -290,8 +296,9 @@ function BlockMiniGrid({
   if (rows.length === 0) {
     return null;
   }
-  const padX = 36;
-  const padTop = 40;
+  const compact = width < 160;
+  const padX = compact ? 22 : 36;
+  const padTop = compact ? 26 : 40;
   const padBottom = block.productionZone ? 26 : 12;
   const innerW = width - padX - 10;
   const innerH = height - padTop - padBottom;
@@ -306,10 +313,10 @@ function BlockMiniGrid({
         return (
           <g key={row.id}>
             <text
-              x={x + 8}
+              x={x + 6}
               y={rowY + rowH / 2 + 4}
               fill="#161616"
-              fontSize={Math.min(13, Math.max(9, rowH - 4))}
+              fontSize={Math.min(13, Math.max(8, rowH - 4))}
               fontWeight="800"
             >
               {formatRowCode(row.code)}
