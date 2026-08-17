@@ -1,7 +1,8 @@
 "use client";
 
-import {useLocale, useTranslations} from "next-intl";
-import {formatLevelCode} from "@/lib/format";
+import {useTranslations} from "next-intl";
+import {formatLevelLabel} from "@/lib/format";
+import {hasInconsistentStack, STACK_LEVEL_NUMBER, stackLevelsForHeight} from "@/features/yard-locations/stacking";
 import type {YardLevelCell} from "@/features/yard-locations/types";
 import type {StackLevel} from "@/types/database";
 
@@ -9,25 +10,30 @@ export function LevelStack({
   levels,
   onSelect,
   selectable = true,
+  highlightLevel,
+  maxStackLevels,
 }: {
   levels: YardLevelCell[];
   onSelect?: (level: YardLevelCell) => void;
   selectable?: boolean;
+  highlightLevel?: StackLevel | null;
+  maxStackLevels?: number;
 }) {
   const t = useTranslations();
-  const locale = useLocale();
+  const inconsistent = hasInconsistentStack(levels, {maxStackLevels});
+  const visible = maxStackLevels
+    ? levels.filter((cell) => STACK_LEVEL_NUMBER[cell.level] < maxStackLevels)
+    : levels;
 
   return (
     <div className="space-y-3">
-      {levels.map((cell) => {
+      {inconsistent ? (
+        <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
+      ) : null}
+      {visible.map((cell) => {
         const occupied = Boolean(cell.occupant);
-        const label = formatLevelCode(cell.level, locale);
-        const fullKey =
-          cell.level === "GROUND"
-            ? "levels.GROUND_FULL"
-            : cell.level === "LEVEL_1"
-              ? "levels.LEVEL_1_FULL"
-              : "levels.LEVEL_2_FULL";
+        const label = formatLevelLabel(cell.level);
+        const highlighted = highlightLevel === cell.level;
 
         return (
           <button
@@ -36,14 +42,15 @@ export function LevelStack({
             disabled={!selectable || (occupied && !onSelect)}
             onClick={() => onSelect?.(cell)}
             className={`flex min-h-24 w-full items-center justify-between px-5 text-left ${
-              occupied
-                ? "border-4 border-loxam-occupied bg-loxam-occupied-soft"
-                : "border-4 border-loxam-free bg-loxam-free-soft"
+              highlighted
+                ? "border-4 border-loxam-black bg-white ring-4 ring-loxam-free"
+                : occupied
+                  ? "border-4 border-loxam-occupied bg-loxam-occupied-soft"
+                  : "border-4 border-loxam-free bg-loxam-free-soft"
             }`}
           >
             <div>
               <p className="text-3xl font-black text-loxam-black">{label}</p>
-              <p className="text-sm font-bold text-loxam-muted">{t(fullKey)}</p>
             </div>
             <div className="text-right">
               <p
@@ -64,16 +71,25 @@ export function LevelStack({
   );
 }
 
-export function MiniLevelStack({levels}: {levels: YardLevelCell[]}) {
+export function MiniLevelStack({
+  levels,
+  maxStackLevels = 3,
+}: {
+  levels: YardLevelCell[];
+  maxStackLevels?: number;
+}) {
+  const visible = [...stackLevelsForHeight(maxStackLevels)].reverse();
   return (
-    <div className="flex h-16 w-10 flex-col justify-between">
-      {(["LEVEL_2", "LEVEL_1", "GROUND"] as StackLevel[]).map((level) => {
+    <div className={`flex w-10 flex-col justify-between ${maxStackLevels > 1 ? "h-16" : "h-6"}`}>
+      {visible.map((level) => {
         const cell = levels.find((item) => item.level === level);
         const occupied = Boolean(cell?.occupant);
         return (
           <span
             key={level}
-            className={`block h-4 w-full ${occupied ? "bg-loxam-occupied" : "bg-loxam-free"}`}
+            className={`block w-full ${maxStackLevels > 1 ? "h-4" : "h-6"} ${
+              occupied ? "bg-loxam-occupied" : "bg-loxam-free"
+            }`}
           />
         );
       })}

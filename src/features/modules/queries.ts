@@ -1,4 +1,6 @@
 import {createClient} from "@/lib/supabase/server";
+import {yardCapacity} from "@/features/yard-locations/capacity";
+import {displayBlocks} from "@/features/yard-locations/display-blocks";
 import {getYardSnapshot, locationFromView} from "@/features/yard-locations/queries";
 import type {AircoSummary, ModuleSummary} from "@/features/yard-locations/types";
 import type {ModuleStatus, ModuleTypeCode} from "@/types/database";
@@ -78,13 +80,16 @@ export async function getModuleByNumber(moduleNumber: string): Promise<ModuleSum
 
 export async function getDashboardStats() {
   const [modules, yard] = await Promise.all([listModuleSummaries(), getYardSnapshot()]);
+  const capacity = yardCapacity(displayBlocks(yard));
 
   return {
     total: modules.length,
     available: modules.filter((module) => module.status === "AVAILABLE").length,
     rented: modules.filter((module) => module.status === "RENTED").length,
     withoutLocation: modules.filter((module) => !module.location).length,
-    occupiedSlots: yard.occupiedSlotCount,
-    freeSlots: Math.max(0, yard.slotCount - yard.occupiedSlotCount),
+    physicalPositions: capacity.physicalPositions,
+    totalCapacity: capacity.total,
+    occupiedSlots: capacity.occupied,
+    freeSlots: capacity.available,
   };
 }

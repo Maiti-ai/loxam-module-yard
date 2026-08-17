@@ -1,16 +1,10 @@
 "use client";
 
 import {useTranslations} from "next-intl";
-import {
-  SCHELLE_YARD,
-  YARD_MAP_FR,
-  geometryForBlock,
-  layoutSpecForBlock,
-  polygonPoints,
-  positionsCountForRow,
-} from "@/config/yard-geometry";
+import {SCHELLE_YARD, YARD_MAP_FR, geometryForBlock, polygonPoints} from "@/config/yard-geometry";
 import type {BlockGeometry, VisualBand} from "@/config/yard-geometry";
-import {isProductionBlock} from "@/config/yard";
+import {blockCapacity, formatOccupiedTotal} from "@/features/yard-locations/capacity";
+import {displayBlocks} from "@/features/yard-locations/display-blocks";
 import {primaryOccupant} from "@/features/yard-locations/queries-client";
 import {formatRowCode} from "@/lib/format";
 import type {
@@ -21,17 +15,7 @@ import type {
   YardSnapshot,
 } from "@/features/yard-locations/types";
 
-function occupancy(block: YardBlockNode) {
-  let occupied = 0;
-  let total = 0;
-  for (const row of block.rows) {
-    for (const position of row.positions) {
-      total += position.levels.length;
-      occupied += position.levels.filter((level) => level.occupant).length;
-    }
-  }
-  return {occupied, total};
-}
+export {displayBlocks};
 
 function rowKey(code: string) {
   return formatRowCode(code).toUpperCase();
@@ -42,73 +26,7 @@ function positionKey(code: string) {
   return Number.isFinite(numeric) ? String(numeric) : code.trim();
 }
 
-function emptyPosition(blockCode: string, rowCode: string, index: number): YardPositionNode {
-  return {
-    id: `visual:${blockCode}:${rowCode}:${index + 1}`,
-    code: String(index + 1).padStart(2, "0"),
-    sortOrder: index + 1,
-    levels: [],
-  };
-}
-
-/** Plan grid from the spec, with live occupancy overlaid when the DB has matching cells. */
-export function displayBlocks(snapshot: YardSnapshot): YardBlockNode[] {
-  const liveByCode = new Map(
-    snapshot.blocks
-      .filter((block) => block.isActive)
-      .map((block) => [block.code.trim().toUpperCase(), block]),
-  );
-
-  return Object.keys(SCHELLE_YARD.blocks).map((code, sortOrder) => {
-    const spec = layoutSpecForBlock(code);
-    const live = liveByCode.get(code);
-    if (!spec) {
-      return (
-        live ?? {
-          id: `visual:${code}`,
-          code,
-          name: `Block ${code}`,
-          sortOrder,
-          isActive: true,
-          productionZone: isProductionBlock(code),
-          rows: [],
-        }
-      );
-    }
-
-    const liveRows = new Map((live?.rows ?? []).map((row) => [rowKey(row.code), row]));
-    const rows: YardRowNode[] = spec.pRows.map((pCode, rowIndex) => {
-      const liveRow = liveRows.get(pCode);
-      const livePositions = new Map(
-        (liveRow?.positions ?? []).map((position) => [positionKey(position.code), position]),
-      );
-      const positions = Array.from({length: positionsCountForRow(spec, pCode)}, (_, index) => {
-        return livePositions.get(String(index + 1)) ?? emptyPosition(code, pCode, index);
-      });
-      return {
-        id: liveRow?.id ?? `visual:${code}:${pCode}`,
-        code: liveRow?.code ?? pCode,
-        sortOrder: rowIndex + 1,
-        positions,
-      };
-    });
-
-    return {
-      id: live?.id ?? `visual:${code}`,
-      code,
-      name: live?.name ?? `Block ${code}`,
-      sortOrder: live?.sortOrder ?? sortOrder,
-      isActive: true,
-      productionZone: isProductionBlock(code) || Boolean(live?.productionZone),
-      rows,
-    };
-  });
-}
-
-function slotFill(occupant: Occupant | null, selected: boolean) {
-  if (selected) {
-    return "#c41e3a";
-  }
+function slotFill(occupant: Occupant | null) {
   if (!occupant) {
     return "#1f8a4c";
   }
@@ -136,11 +54,15 @@ function cellSlot(
   };
 }
 
-function SlotRect({
+function YardPositionCell({
   x,
   y,
   width,
   height,
+  cellX,
+  cellY,
+  cellW,
+  cellH,
   occupant,
   selected,
   label,
@@ -150,26 +72,72 @@ function SlotRect({
   y: number;
   width: number;
   height: number;
+  cellX: number;
+  cellY: number;
+  cellW: number;
+  cellH: number;
   occupant: Occupant | null;
   selected: boolean;
   label: string;
   onClick: () => void;
 }) {
   return (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill={slotFill(occupant, selected)}
-      stroke="#161616"
-      strokeWidth={2}
-      strokeOpacity={selected ? 1 : 0.22}
-      className="cursor-pointer"
-      onClick={onClick}
-    >
-      <title>{label}</title>
-    </rect>
+    <g>
+      <rect
+        x={cellX}
+        y={cellY}
+        width={cellW}
+        height={cellH}
+        rx={2}
+        stroke={selected ? "#c41e3a" : "transparent"}
+        strokeWidth={selected ? 3.4 : 0}
+        className={`yard-pos-hit${selected ? " is-selected" : ""}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onClick();
+        }}
+      >
+        <title>{label}</title>
+      </rect>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={slotFill(occupant)}
+        stroke="#161616"
+        strokeWidth={2}
+        strokeOpacity={0.22}
+        rx={1.4}
+        pointerEvents="none"
+      />
+      {selected ? (
+        <rect
+          x={cellX}
+          y={cellY}
+          width={cellW}
+          height={cellH}
+          fill="none"
+          stroke="#c41e3a"
+          strokeWidth={3.4}
+          rx={2}
+          pointerEvents="none"
+        />
+      ) : null}
+      {selected ? (
+        <rect
+          x={cellX}
+          y={cellY}
+          width={cellW}
+          height={cellH}
+          fill="none"
+          stroke="#c41e3a"
+          strokeWidth={3.4}
+          rx={2}
+          pointerEvents="none"
+        />
+      ) : null}
+    </g>
   );
 }
 
@@ -369,7 +337,7 @@ function BlockPad({
   onSelectRow?: (blockId: string, rowId: string) => void;
   onSelectPosition?: (blockId: string, position: YardPositionNode) => void;
 }) {
-  const {occupied, total} = occupancy(block);
+  const capacity = blockCapacity(block);
   const production = block.productionZone;
   const padFill = selected ? "#f8d5d8" : production ? "#d5e4f4" : "#f7f4ef";
   const stroke = selected ? "#c41e3a" : production ? "#0b5cab" : "#161616";
@@ -415,7 +383,7 @@ function BlockPad({
         fontWeight="700"
         className="pointer-events-none"
       >
-        {occupied}/{total}
+        {formatOccupiedTotal(capacity)}
       </text>
     </g>
   );
@@ -520,9 +488,13 @@ function BlockSlotGrid({
                 const slot = cellSlot(colX, cellY, colW, cellH, ratioW, ratioH);
                 const selected = position.id === selectedPositionId;
                 return (
-                  <SlotRect
+                  <YardPositionCell
                     key={position.id}
                     {...slot}
+                    cellX={colX}
+                    cellY={cellY}
+                    cellW={colW}
+                    cellH={cellH}
                     occupant={occupant}
                     selected={selected}
                     label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
@@ -589,9 +561,13 @@ function BlockSlotGrid({
               const slot = cellSlot(cellX, rowY, cellW, rowH, ratioW, ratioH);
               const selected = position.id === selectedPositionId;
               return (
-                <SlotRect
+                <YardPositionCell
                   key={position.id}
                   {...slot}
+                  cellX={cellX}
+                  cellY={rowY}
+                  cellW={cellW}
+                  cellH={rowH}
                   occupant={occupant}
                   selected={selected}
                   label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
@@ -709,9 +685,13 @@ function HorizontalRowSlotGrid({
               };
               const selected = position.id === selectedPositionId;
               return (
-                <SlotRect
+                <YardPositionCell
                   key={position.id}
                   {...slot}
+                  cellX={colX}
+                  cellY={cellY}
+                  cellW={colW}
+                  cellH={rowH}
                   occupant={occupant}
                   selected={selected}
                   label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
@@ -829,19 +809,18 @@ function BandedSlotGrid({
             >
               {band.label}
             </text>
-            {row ? (
-              <text
-                x={geom.x + geom.width - 10}
-                y={slotsY + slotsH / 2 + 6}
-                textAnchor="end"
-                fill="#161616"
-                fontSize="16"
-                fontWeight="800"
-                className="pointer-events-none"
-              >
-                {formatRowCode(row.code)}
-              </text>
-            ) : null}
+            <text
+              x={geom.x + geom.width - 10}
+              y={slotsY + slotsH / 2}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fill="#161616"
+              fontSize="16"
+              fontWeight="800"
+              className="pointer-events-none"
+            >
+              {bandIndex + 1}
+            </text>
             {slots.map(({row: slotRow, position}, slotIndex) => {
               const occupant = primaryOccupant(position);
               const cellX = innerX + slotIndex * cellW;
@@ -855,9 +834,13 @@ function BandedSlotGrid({
               };
               const selected = position.id === selectedPositionId;
               return (
-                <SlotRect
+                <YardPositionCell
                   key={position.id}
                   {...slot}
+                  cellX={cellX}
+                  cellY={slotsY}
+                  cellW={cellW}
+                  cellH={slotsH}
                   occupant={occupant}
                   selected={selected}
                   label={`${block.code} ${formatRowCode(slotRow.code)} ${positionKey(position.code)}`}
@@ -866,6 +849,24 @@ function BandedSlotGrid({
               );
             })}
           </g>
+        );
+      })}
+      {Array.from({length: gridCols}, (_, index) => {
+        const drawIndex = geom.positionsLeftToRight ? index : gridCols - 1 - index;
+        const cellX = innerX + drawIndex * cellW;
+        return (
+          <text
+            key={`pos-label-${index}`}
+            x={cellX + cellW / 2}
+            y={geom.y + geom.height - 8}
+            textAnchor="middle"
+            fill="#161616"
+            fontSize={Math.min(16, Math.max(11, cellW * 0.08))}
+            fontWeight="800"
+            className="pointer-events-none"
+          >
+            {`P${index + 1}`}
+          </text>
         );
       })}
     </g>
