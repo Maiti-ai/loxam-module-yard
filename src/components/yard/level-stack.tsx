@@ -1,7 +1,8 @@
 "use client";
 
-import {useLocale, useTranslations} from "next-intl";
-import {formatLevelCode} from "@/lib/format";
+import {useTranslations} from "next-intl";
+import {formatLevelLabel} from "@/lib/format";
+import {hasInconsistentStack} from "@/features/yard-locations/stacking";
 import type {YardLevelCell} from "@/features/yard-locations/types";
 import type {StackLevel} from "@/types/database";
 
@@ -9,25 +10,25 @@ export function LevelStack({
   levels,
   onSelect,
   selectable = true,
+  highlightLevel,
 }: {
   levels: YardLevelCell[];
   onSelect?: (level: YardLevelCell) => void;
   selectable?: boolean;
+  highlightLevel?: StackLevel | null;
 }) {
   const t = useTranslations();
-  const locale = useLocale();
+  const inconsistent = hasInconsistentStack(levels);
 
   return (
     <div className="space-y-3">
+      {inconsistent ? (
+        <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
+      ) : null}
       {levels.map((cell) => {
         const occupied = Boolean(cell.occupant);
-        const label = formatLevelCode(cell.level, locale);
-        const fullKey =
-          cell.level === "GROUND"
-            ? "levels.GROUND_FULL"
-            : cell.level === "LEVEL_1"
-              ? "levels.LEVEL_1_FULL"
-              : "levels.LEVEL_2_FULL";
+        const label = formatLevelLabel(cell.level);
+        const highlighted = highlightLevel === cell.level;
 
         return (
           <button
@@ -36,14 +37,15 @@ export function LevelStack({
             disabled={!selectable || (occupied && !onSelect)}
             onClick={() => onSelect?.(cell)}
             className={`flex min-h-24 w-full items-center justify-between px-5 text-left ${
-              occupied
-                ? "border-4 border-loxam-occupied bg-loxam-occupied-soft"
-                : "border-4 border-loxam-free bg-loxam-free-soft"
+              highlighted
+                ? "border-4 border-loxam-black bg-white ring-4 ring-loxam-free"
+                : occupied
+                  ? "border-4 border-loxam-occupied bg-loxam-occupied-soft"
+                  : "border-4 border-loxam-free bg-loxam-free-soft"
             }`}
           >
             <div>
               <p className="text-3xl font-black text-loxam-black">{label}</p>
-              <p className="text-sm font-bold text-loxam-muted">{t(fullKey)}</p>
             </div>
             <div className="text-right">
               <p

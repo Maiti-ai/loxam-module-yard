@@ -4,7 +4,7 @@ import {useMemo, useState} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {Link} from "@/i18n/navigation";
 import {ModuleStatusBadge} from "@/components/module/module-status";
-import {formatDateTime, formatDimensions, formatLevelCode} from "@/lib/format";
+import {formatDateTime, formatDimensions, formatLevelLabel} from "@/lib/format";
 import type {ModuleSummary} from "@/features/yard-locations/types";
 
 type FilterOption = {value: string; label: string};
@@ -114,7 +114,7 @@ export function InventoryTable({modules}: {modules: ModuleSummary[]}) {
                   <td className="px-3 py-3">{module.location?.rowCode ?? "—"}</td>
                   <td className="px-3 py-3">{module.location?.positionCode ?? "—"}</td>
                   <td className="px-3 py-3">
-                    {module.location ? formatLevelCode(module.location.level, locale) : "—"}
+                    {module.location ? formatLevelLabel(module.location.level, locale) : "—"}
                   </td>
                   <td className="px-3 py-3">{formatDateTime(module.lastMovedAt, locale)}</td>
                 </tr>

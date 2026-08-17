@@ -8,7 +8,8 @@ import {SchelleYardMap, displayBlocks} from "@/components/yard/schelle-yard-map"
 import {YardPosition} from "@/components/yard/yard-position";
 import {LevelStack} from "@/components/yard/level-stack";
 import {moveModuleAction} from "@/features/movements/actions";
-import {formatCompactLocation, formatRowCode} from "@/lib/format";
+import {firstFreeCell, hasInconsistentStack, isStackFull} from "@/features/yard-locations/stacking";
+import {formatCompactLocation, formatLevelLabel, formatPositionCode, formatRowCode} from "@/lib/format";
 import type {
   ModuleSummary,
   YardLevelCell,
@@ -16,7 +17,7 @@ import type {
   YardSnapshot,
 } from "@/features/yard-locations/types";
 
-type Step = "block" | "position" | "level" | "confirm" | "success";
+type Step = "block" | "position" | "confirm" | "success";
 
 export function MoveWizard({
   module,
@@ -34,34 +35,56 @@ export function MoveWizard({
   const [level, setLevel] = useState<YardLevelCell | null>(null);
   const [pending, setPending] = useState(false);
   const [occupiedNumber, setOccupiedNumber] = useState<string | null>(null);
+  const [positionFull, setPositionFull] = useState(false);
+  const [reassigned, setReassigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toLocation, setToLocation] = useState(module.location);
 
   const blocks = displayBlocks(snapshot);
   const block = blocks.find((item) => item.id === blockId) ?? null;
-  const rowCode =
-    block?.rows.find((row) => row.positions.some((item) => item.id === position?.id))?.code ?? "";
+  const row =
+    block?.rows.find((item) => item.positions.some((entry) => entry.id === position?.id)) ?? null;
+
+  function selectPosition(item: YardPositionNode) {
+    setOccupiedNumber(null);
+    setReassigned(false);
+    setError(null);
+    const assigned = firstFreeCell(item.levels, {ignoreModuleId: module.id});
+    if (!assigned) {
+      setPosition(item);
+      setLevel(null);
+      setPositionFull(true);
+      return;
+    }
+    setPositionFull(false);
+    setPosition(item);
+    setLevel(assigned);
+    setStep("confirm");
+  }
 
   async function confirm() {
-    if (!level) {
+    if (!position || !level) {
       return;
     }
     setPending(true);
     setError(null);
-    const result = await moveModuleAction(module.id, level.slotId);
+    const result = await moveModuleAction(module.id, position.id, level.level);
     setPending(false);
 
     if (!result.ok) {
-      if (result.code === "SLOT_OCCUPIED") {
+      if (result.code === "POSITION_FULL" || result.code === "SLOT_OCCUPIED") {
+        setPositionFull(result.code === "POSITION_FULL");
         setOccupiedNumber(result.occupantNumber ?? null);
         setLevel(null);
         setStep("position");
+        router.refresh();
         return;
       }
       setError(t(`errors.${result.code}`));
       return;
     }
 
+    setReassigned(Boolean(result.reassigned));
     setToLocation(result.location);
     setStep("success");
   }
@@ -73,9 +96,12 @@ export function MoveWizard({
         <h1 className="text-4xl font-black uppercase">
           {t("module.label")} {module.moduleNumber} {t("move.success")}
         </h1>
-        <p className="text-2xl font-black">
-          {formatCompactLocation({...toLocation, locale})}
-        </p>
+        <p className="text-2xl font-black">{formatCompactLocation({...toLocation, locale})}</p>
+        {reassigned ? (
+          <p className="border-4 border-loxam-black bg-white p-4 text-lg font-bold">
+            {t("move.levelReassigned", {level: formatLevelLabel(toLocation.level, locale)})}
+          </p>
+        ) : null}
         <p className="text-loxam-muted">{t("move.successBody")}</p>
         <TouchButton onClick={() => router.push(`/modules/${module.moduleNumber}`)}>
           {t("common.open")}
@@ -96,19 +122,23 @@ export function MoveWizard({
         <h1 className="mt-2 text-3xl font-black">
           {step === "block" && t("move.chooseBlock")}
           {step === "position" && t("move.choosePosition")}
-          {step === "level" && t("move.chooseLevel")}
           {step === "confirm" && t("move.confirmTitle")}
         </h1>
       </div>
+
+      {step === "position" && positionFull ? (
+        <div className="border-4 border-loxam-occupied bg-loxam-occupied-soft p-4">
+          <p className="text-xl font-black">{t("move.positionFullTitle")}</p>
+          <p className="mt-2 text-sm font-bold">{t("move.positionFullBody")}</p>
+        </div>
+      ) : null}
 
       {step === "position" && occupiedNumber ? (
         <div className="border-4 border-loxam-occupied bg-loxam-occupied-soft p-4">
           <p className="text-xl font-black">{t("move.occupiedTitle")}</p>
           <p className="mt-2 text-sm font-bold">
             {t("move.occupiedBody", {
-              occupant: occupiedNumber
-                ? t("move.occupiedBy", {number: occupiedNumber})
-                : "",
+              occupant: occupiedNumber ? t("move.occupiedBy", {number: occupiedNumber}) : "",
             })}
           </p>
         </div>
@@ -128,6 +158,7 @@ export function MoveWizard({
             setBlockId(id);
             setPosition(null);
             setLevel(null);
+            setPositionFull(false);
             setStep("position");
           }}
         />
@@ -136,52 +167,46 @@ export function MoveWizard({
       {step === "position" && block ? (
         <div className="space-y-4">
           <div className="flex flex-row-reverse flex-wrap justify-start gap-5">
-            {block.rows.map((row) => (
-              <div key={row.id} className="flex flex-col items-center gap-3">
+            {block.rows.map((item) => (
+              <div key={item.id} className="flex flex-col items-center gap-3">
                 <div className="flex flex-col-reverse gap-3">
-                  {row.positions.map((item) => (
+                  {item.positions.map((entry) => (
                     <YardPosition
-                      key={item.id}
-                      position={item}
+                      key={entry.id}
+                      position={entry}
+                      selected={position?.id === entry.id}
+                      full={isStackFull(entry.levels, {ignoreModuleId: module.id})}
                       onSelect={() => {
-                        if (item.levels.length === 0) {
+                        if (entry.levels.length === 0) {
                           return;
                         }
-                        setPosition(item);
-                        setLevel(null);
-                        setOccupiedNumber(null);
-                        setStep("level");
+                        selectPosition(entry);
                       }}
                     />
                   ))}
                 </div>
-                <p className="text-xl font-black">{formatRowCode(row.code)}</p>
+                <p className="text-xl font-black">{formatRowCode(item.code)}</p>
               </div>
             ))}
           </div>
         </div>
       ) : null}
 
-      {step === "level" && position ? (
-        <LevelStack
-          levels={position.levels}
-          onSelect={(cell) => {
-            if (cell.occupant && cell.occupant.moduleId !== module.id) {
-              setOccupiedNumber(cell.occupant.moduleNumber);
-              setStep("position");
-              return;
-            }
-            setLevel(cell);
-            setStep("confirm");
-          }}
-        />
-      ) : null}
-
-      {step === "confirm" && block && position && level ? (
+      {step === "confirm" && block && row && position && level ? (
         <div className="space-y-5 border-4 border-loxam-black bg-white p-5">
           <p className="text-4xl font-black">
             {t("module.label")} {module.moduleNumber}
           </p>
+          <div>
+            <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.selectedPosition")}</p>
+            <p className="text-xl font-black">
+              {t("move.block")} {block.code}
+            </p>
+            <p className="text-xl font-black">{formatRowCode(row.code)}</p>
+            <p className="text-xl font-black">
+              {t("move.position")} {formatPositionCode(position.code)}
+            </p>
+          </div>
           <div>
             <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.from")}</p>
             <p className="text-xl font-black">
@@ -190,18 +215,19 @@ export function MoveWizard({
                 : t("module.noLocation")}
             </p>
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.to")}</p>
-            <p className="text-xl font-black">
-              {formatCompactLocation({
-                blockCode: block.code,
-                rowCode,
-                positionCode: position.code,
-                level: level.level,
-                locale,
-              })}
+          <div className="border-4 border-loxam-free bg-loxam-free-soft p-4">
+            <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.autoLevelTitle")}</p>
+            <p className="mt-1 text-3xl font-black uppercase">
+              {formatLevelLabel(level.level, locale)}
+            </p>
+            <p className="mt-2 text-sm font-bold">
+              {t("move.autoLevel", {level: formatLevelLabel(level.level, locale)})}
             </p>
           </div>
+          {hasInconsistentStack(position.levels) ? (
+            <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
+          ) : null}
+          <LevelStack levels={position.levels} selectable={false} highlightLevel={level.level} />
           <TouchButton disabled={pending} onClick={confirm}>
             {pending ? t("move.busy") : t("move.confirm")}
           </TouchButton>
@@ -213,11 +239,8 @@ export function MoveWizard({
           variant="ghost"
           onClick={() => {
             setError(null);
+            setPositionFull(false);
             if (step === "confirm") {
-              setStep("level");
-              return;
-            }
-            if (step === "level") {
               setStep("position");
               return;
             }

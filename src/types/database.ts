@@ -546,6 +546,14 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: boolean;
       };
+      assign_first_free_stack_slot: {
+        Args: {
+          p_module_id: string;
+          p_position_id: string;
+          p_preferred_level?: StackLevel | null;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       app_role: AppRole;

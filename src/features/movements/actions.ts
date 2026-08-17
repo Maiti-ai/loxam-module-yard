@@ -3,16 +3,167 @@
 import {revalidatePath} from "next/cache";
 import {getCurrentProfile} from "@/features/auth";
 import {roleCan} from "@/features/roles";
+import {firstFreeLevel} from "@/features/yard-locations/stacking";
 import {findLocationBySlot, getYardSnapshot} from "@/features/yard-locations/queries";
-import {isUniqueViolation, type ActionResult} from "@/lib/errors";
+import {isUniqueViolation, type ActionResult, type AppErrorCode} from "@/lib/errors";
 import {createClient} from "@/lib/supabase/server";
+import type {Json, StackLevel} from "@/types/database";
 import type {YardLocation} from "@/features/yard-locations/types";
 
-export type MoveModuleResult = ActionResult<{location: YardLocation}>;
+export type MoveModuleResult = ActionResult<{
+  location: YardLocation;
+  reassigned?: boolean;
+}>;
+
+type AssignPayload = {
+  ok?: boolean;
+  slot_id?: string;
+  level?: StackLevel;
+  reassigned?: boolean;
+  unchanged?: boolean;
+  error_code?: string;
+};
+
+function asAssignPayload(value: Json | null): AssignPayload | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  return value as AssignPayload;
+}
+
+function asErrorCode(value: string | undefined): AppErrorCode {
+  if (
+    value === "UNAUTHENTICATED" ||
+    value === "FORBIDDEN" ||
+    value === "NOT_FOUND" ||
+    value === "SLOT_OCCUPIED" ||
+    value === "SLOT_MISSING" ||
+    value === "POSITION_FULL" ||
+    value === "MOVE_FAILED"
+  ) {
+    return value;
+  }
+  return "MOVE_FAILED";
+}
+
+function isMissingRpc(error: {code?: string; message?: string} | null) {
+  if (!error) {
+    return false;
+  }
+  return (
+    error.code === "PGRST202" ||
+    error.code === "42883" ||
+    /assign_first_free_stack_slot|could not find the function/i.test(error.message ?? "")
+  );
+}
+
+async function assignInApp(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  moduleId: string,
+  positionId: string,
+  userId: string,
+  preferredLevel: StackLevel | null,
+): Promise<MoveModuleResult> {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const {data: slots, error: slotsError} = await supabase
+      .from("yard_slots")
+      .select("id, position_id, level")
+      .eq("position_id", positionId);
+
+    if (slotsError) {
+      return {ok: false, code: "MOVE_FAILED"};
+    }
+    if (!slots || slots.length === 0) {
+      return {ok: false, code: "SLOT_MISSING"};
+    }
+
+    const slotIds = slots.map((slot) => slot.id);
+    const {data: occupants, error: occupantsError} = await supabase
+      .from("module_locations")
+      .select("module_id, slot_id")
+      .in("slot_id", slotIds);
+
+    if (occupantsError) {
+      return {ok: false, code: "MOVE_FAILED"};
+    }
+
+    const occupantBySlot = new Map(
+      (occupants ?? []).map((row) => [row.slot_id, row.module_id]),
+    );
+
+    const {data: current, error: currentError} = await supabase
+      .from("module_locations")
+      .select("module_id, slot_id")
+      .eq("module_id", moduleId)
+      .maybeSingle();
+
+    if (currentError) {
+      return {ok: false, code: "MOVE_FAILED"};
+    }
+
+    if (current && slotIds.includes(current.slot_id)) {
+      const snapshot = await getYardSnapshot();
+      const location = findLocationBySlot(snapshot, current.slot_id);
+      if (!location) {
+        return {ok: false, code: "SLOT_MISSING"};
+      }
+      return {ok: true, location, reassigned: false};
+    }
+
+    const levels = slots.map((slot) => ({
+      slotId: slot.id,
+      level: slot.level,
+      occupant: occupantBySlot.get(slot.id) ? {moduleId: occupantBySlot.get(slot.id) as string} : null,
+    }));
+
+    const assignedLevel = firstFreeLevel(levels, {ignoreModuleId: moduleId});
+    if (!assignedLevel) {
+      return {ok: false, code: "POSITION_FULL"};
+    }
+
+    const chosen = slots.find((slot) => slot.level === assignedLevel);
+    if (!chosen) {
+      return {ok: false, code: "SLOT_MISSING"};
+    }
+
+    const payload = {slot_id: chosen.id, updated_by: userId};
+    const write = current
+      ? await supabase.from("module_locations").update(payload).eq("module_id", moduleId)
+      : await supabase.from("module_locations").insert({
+          module_id: moduleId,
+          ...payload,
+        });
+
+    if (write.error) {
+      if (isUniqueViolation(write.error) && attempt === 0) {
+        continue;
+      }
+      if (isUniqueViolation(write.error)) {
+        return {ok: false, code: "POSITION_FULL"};
+      }
+      return {ok: false, code: "MOVE_FAILED"};
+    }
+
+    const snapshot = await getYardSnapshot();
+    const location = findLocationBySlot(snapshot, chosen.id);
+    if (!location) {
+      return {ok: false, code: "MOVE_FAILED"};
+    }
+    revalidatePath("/", "layout");
+    return {
+      ok: true,
+      location,
+      reassigned: Boolean(preferredLevel && preferredLevel !== assignedLevel),
+    };
+  }
+
+  return {ok: false, code: "POSITION_FULL"};
+}
 
 export async function moveModuleAction(
   moduleId: string,
-  slotId: string,
+  positionId: string,
+  preferredLevel?: StackLevel | null,
 ): Promise<MoveModuleResult> {
   const profile = await getCurrentProfile();
   if (!profile) {
@@ -23,82 +174,37 @@ export async function moveModuleAction(
   }
 
   const supabase = await createClient();
+  const rpc = await supabase.rpc("assign_first_free_stack_slot", {
+    p_module_id: moduleId,
+    p_position_id: positionId,
+    p_preferred_level: preferredLevel ?? null,
+  });
 
-  const {data: slot, error: slotError} = await supabase
-    .from("yard_slots")
-    .select("id")
-    .eq("id", slotId)
-    .maybeSingle();
-
-  if (slotError) {
-    return {ok: false, code: "MOVE_FAILED"};
-  }
-  if (!slot) {
-    return {ok: false, code: "SLOT_MISSING"};
+  if (rpc.error && isMissingRpc(rpc.error)) {
+    return assignInApp(supabase, moduleId, positionId, profile.id, preferredLevel ?? null);
   }
 
-  const {data: occupant, error: occupantError} = await supabase
-    .from("module_locations")
-    .select("module_id, modules(module_number)")
-    .eq("slot_id", slotId)
-    .maybeSingle();
-
-  if (occupantError) {
-    return {ok: false, code: "MOVE_FAILED"};
-  }
-
-  if (occupant && occupant.module_id !== moduleId) {
-    const occupantRow = occupant.modules as {module_number: string} | {module_number: string}[] | null;
-    const occupantNumber = Array.isArray(occupantRow)
-      ? occupantRow[0]?.module_number
-      : occupantRow?.module_number;
-    return {ok: false, code: "SLOT_OCCUPIED", occupantNumber: occupantNumber ?? null};
-  }
-
-  const {data: current, error: currentError} = await supabase
-    .from("module_locations")
-    .select("module_id, slot_id")
-    .eq("module_id", moduleId)
-    .maybeSingle();
-
-  if (currentError) {
-    return {ok: false, code: "MOVE_FAILED"};
-  }
-
-  if (current?.slot_id === slotId) {
-    const snapshot = await getYardSnapshot();
-    const location = findLocationBySlot(snapshot, slotId);
-    if (!location) {
-      return {ok: false, code: "SLOT_MISSING"};
-    }
-    return {ok: true, location};
-  }
-
-  const payload = {
-    slot_id: slotId,
-    updated_by: profile.id,
-  };
-
-  const write = current
-    ? await supabase.from("module_locations").update(payload).eq("module_id", moduleId)
-    : await supabase.from("module_locations").insert({
-        module_id: moduleId,
-        ...payload,
-      });
-
-  if (write.error) {
-    if (isUniqueViolation(write.error)) {
+  if (rpc.error) {
+    if (isUniqueViolation(rpc.error)) {
       return {ok: false, code: "SLOT_OCCUPIED"};
     }
     return {ok: false, code: "MOVE_FAILED"};
   }
 
+  const payload = asAssignPayload(rpc.data);
+  if (!payload?.ok) {
+    return {ok: false, code: asErrorCode(payload?.error_code)};
+  }
+  if (!payload.slot_id) {
+    return {ok: false, code: "MOVE_FAILED"};
+  }
+
   const snapshot = await getYardSnapshot();
-  const location = findLocationBySlot(snapshot, slotId);
+  const location = findLocationBySlot(snapshot, payload.slot_id);
   if (!location) {
     return {ok: false, code: "MOVE_FAILED"};
   }
 
   revalidatePath("/", "layout");
-  return {ok: true, location};
+  return {ok: true, location, reassigned: Boolean(payload.reassigned)};
 }
