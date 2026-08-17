@@ -26,10 +26,7 @@ function positionKey(code: string) {
   return Number.isFinite(numeric) ? String(numeric) : code.trim();
 }
 
-function slotFill(occupant: Occupant | null, selected: boolean) {
-  if (selected) {
-    return "#c41e3a";
-  }
+function slotFill(occupant: Occupant | null) {
   if (!occupant) {
     return "#1f8a4c";
   }
@@ -57,11 +54,15 @@ function cellSlot(
   };
 }
 
-function SlotRect({
+function YardPositionCell({
   x,
   y,
   width,
   height,
+  cellX,
+  cellY,
+  cellW,
+  cellH,
   occupant,
   selected,
   label,
@@ -71,26 +72,72 @@ function SlotRect({
   y: number;
   width: number;
   height: number;
+  cellX: number;
+  cellY: number;
+  cellW: number;
+  cellH: number;
   occupant: Occupant | null;
   selected: boolean;
   label: string;
   onClick: () => void;
 }) {
   return (
-    <rect
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill={slotFill(occupant, selected)}
-      stroke="#161616"
-      strokeWidth={2}
-      strokeOpacity={selected ? 1 : 0.22}
-      className="cursor-pointer"
-      onClick={onClick}
-    >
-      <title>{label}</title>
-    </rect>
+    <g>
+      <rect
+        x={cellX}
+        y={cellY}
+        width={cellW}
+        height={cellH}
+        rx={2}
+        stroke={selected ? "#c41e3a" : "transparent"}
+        strokeWidth={selected ? 3.4 : 0}
+        className={`yard-pos-hit${selected ? " is-selected" : ""}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onClick();
+        }}
+      >
+        <title>{label}</title>
+      </rect>
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill={slotFill(occupant)}
+        stroke="#161616"
+        strokeWidth={2}
+        strokeOpacity={0.22}
+        rx={1.4}
+        pointerEvents="none"
+      />
+      {selected ? (
+        <rect
+          x={cellX}
+          y={cellY}
+          width={cellW}
+          height={cellH}
+          fill="none"
+          stroke="#c41e3a"
+          strokeWidth={3.4}
+          rx={2}
+          pointerEvents="none"
+        />
+      ) : null}
+      {selected ? (
+        <rect
+          x={cellX}
+          y={cellY}
+          width={cellW}
+          height={cellH}
+          fill="none"
+          stroke="#c41e3a"
+          strokeWidth={3.4}
+          rx={2}
+          pointerEvents="none"
+        />
+      ) : null}
+    </g>
   );
 }
 
@@ -441,9 +488,13 @@ function BlockSlotGrid({
                 const slot = cellSlot(colX, cellY, colW, cellH, ratioW, ratioH);
                 const selected = position.id === selectedPositionId;
                 return (
-                  <SlotRect
+                  <YardPositionCell
                     key={position.id}
                     {...slot}
+                    cellX={colX}
+                    cellY={cellY}
+                    cellW={colW}
+                    cellH={cellH}
                     occupant={occupant}
                     selected={selected}
                     label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
@@ -510,9 +561,13 @@ function BlockSlotGrid({
               const slot = cellSlot(cellX, rowY, cellW, rowH, ratioW, ratioH);
               const selected = position.id === selectedPositionId;
               return (
-                <SlotRect
+                <YardPositionCell
                   key={position.id}
                   {...slot}
+                  cellX={cellX}
+                  cellY={rowY}
+                  cellW={cellW}
+                  cellH={rowH}
                   occupant={occupant}
                   selected={selected}
                   label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
@@ -630,9 +685,13 @@ function HorizontalRowSlotGrid({
               };
               const selected = position.id === selectedPositionId;
               return (
-                <SlotRect
+                <YardPositionCell
                   key={position.id}
                   {...slot}
+                  cellX={colX}
+                  cellY={cellY}
+                  cellW={colW}
+                  cellH={rowH}
                   occupant={occupant}
                   selected={selected}
                   label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
@@ -775,9 +834,13 @@ function BandedSlotGrid({
               };
               const selected = position.id === selectedPositionId;
               return (
-                <SlotRect
+                <YardPositionCell
                   key={position.id}
                   {...slot}
+                  cellX={cellX}
+                  cellY={slotsY}
+                  cellW={cellW}
+                  cellH={slotsH}
                   occupant={occupant}
                   selected={selected}
                   label={`${block.code} ${formatRowCode(slotRow.code)} ${positionKey(position.code)}`}

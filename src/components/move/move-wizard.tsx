@@ -5,10 +5,13 @@ import {useLocale, useTranslations} from "next-intl";
 import {Link, useRouter} from "@/i18n/navigation";
 import {TouchButton} from "@/components/ui/touch-button";
 import {SchelleYardMap, displayBlocks} from "@/components/yard/schelle-yard-map";
-import {YardPosition} from "@/components/yard/yard-position";
 import {LevelStack} from "@/components/yard/level-stack";
 import {moveModuleAction} from "@/features/movements/actions";
-import {firstFreeCell, hasInconsistentStack, isStackFull} from "@/features/yard-locations/stacking";
+import {
+  destinationChoice,
+  firstFreeCell,
+  hasInconsistentStack,
+} from "@/features/yard-locations/stacking";
 import {formatCompactLocation, formatLevelLabel, formatPositionCode, formatRowCode} from "@/lib/format";
 import type {
   ModuleSummary,
@@ -48,15 +51,31 @@ export function MoveWizard({
   function selectPosition(item: YardPositionNode) {
     setOccupiedNumber(null);
     setReassigned(false);
-    setError(null);
+    const choice = destinationChoice(item.levels, {ignoreModuleId: module.id});
+    if (!choice.ok) {
+      setPosition(null);
+      setLevel(null);
+      setStep("position");
+      if (choice.reason === "full") {
+        setPositionFull(true);
+        setError(null);
+      } else {
+        setPositionFull(false);
+        setError(t("errors.SLOT_MISSING"));
+      }
+      return;
+    }
     const assigned = firstFreeCell(item.levels, {ignoreModuleId: module.id});
     if (!assigned) {
-      setPosition(item);
+      setPosition(null);
       setLevel(null);
       setPositionFull(true);
+      setError(null);
+      setStep("position");
       return;
     }
     setPositionFull(false);
+    setError(null);
     setPosition(item);
     setLevel(assigned);
     setStep("confirm");
@@ -76,6 +95,7 @@ export function MoveWizard({
         setPositionFull(result.code === "POSITION_FULL");
         setOccupiedNumber(result.occupantNumber ?? null);
         setLevel(null);
+        setPosition(null);
         setStep("position");
         router.refresh();
         return;
@@ -124,6 +144,9 @@ export function MoveWizard({
           {step === "position" && t("move.choosePosition")}
           {step === "confirm" && t("move.confirmTitle")}
         </h1>
+        {step !== "block" ? (
+          <p className="mt-2 text-base font-bold text-loxam-muted">{t("yard.tapPosition")}</p>
+        ) : null}
       </div>
 
       {step === "position" && positionFull ? (
@@ -150,89 +173,75 @@ export function MoveWizard({
         </p>
       ) : null}
 
-      {step === "block" ? (
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <SchelleYardMap
           snapshot={snapshot}
           selectedBlockId={blockId}
+          selectedRowId={row?.id}
+          selectedPositionId={step === "confirm" ? position?.id : null}
           onSelectBlock={(id) => {
             setBlockId(id);
-            setPosition(null);
-            setLevel(null);
             setPositionFull(false);
-            setStep("position");
+            setOccupiedNumber(null);
+            if (step === "confirm") {
+              setPosition(null);
+              setLevel(null);
+              setStep("position");
+            } else {
+              setStep("position");
+            }
+          }}
+          onSelectPosition={(_blockId, nextPosition) => {
+            selectPosition(nextPosition);
           }}
         />
-      ) : null}
 
-      {step === "position" && block ? (
-        <div className="space-y-4">
-          <div className="flex flex-row-reverse flex-wrap justify-start gap-5">
-            {block.rows.map((item) => (
-              <div key={item.id} className="flex flex-col items-center gap-3">
-                <div className="flex flex-col-reverse gap-3">
-                  {item.positions.map((entry) => (
-                    <YardPosition
-                      key={entry.id}
-                      position={entry}
-                      selected={position?.id === entry.id}
-                      full={isStackFull(entry.levels, {ignoreModuleId: module.id})}
-                      onSelect={() => {
-                        if (entry.levels.length === 0) {
-                          return;
-                        }
-                        selectPosition(entry);
-                      }}
-                    />
-                  ))}
-                </div>
-                <p className="text-xl font-black">{formatRowCode(item.code)}</p>
-              </div>
-            ))}
+        {step === "confirm" && block && row && position && level ? (
+          <div className="space-y-5 border-4 border-loxam-black bg-white p-5">
+            <p className="text-4xl font-black">
+              {t("module.label")} {module.moduleNumber}
+            </p>
+            <div>
+              <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.selectedPosition")}</p>
+              <p className="text-xl font-black">
+                {t("move.block")} {block.code}
+              </p>
+              <p className="text-xl font-black">{formatRowCode(row.code)}</p>
+              <p className="text-xl font-black">
+                {t("move.position")} {formatPositionCode(position.code)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.from")}</p>
+              <p className="text-xl font-black">
+                {module.location
+                  ? formatCompactLocation({...module.location, locale})
+                  : t("module.noLocation")}
+              </p>
+            </div>
+            <div className="border-4 border-loxam-free bg-loxam-free-soft p-4">
+              <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.autoLevelTitle")}</p>
+              <p className="mt-1 text-3xl font-black uppercase">
+                {formatLevelLabel(level.level, locale)}
+              </p>
+              <p className="mt-2 text-sm font-bold">
+                {t("move.autoLevel", {level: formatLevelLabel(level.level, locale)})}
+              </p>
+            </div>
+            {hasInconsistentStack(position.levels) ? (
+              <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
+            ) : null}
+            <LevelStack levels={position.levels} selectable={false} highlightLevel={level.level} />
+            <TouchButton disabled={pending} onClick={confirm}>
+              {pending ? t("move.busy") : t("move.confirm")}
+            </TouchButton>
           </div>
-        </div>
-      ) : null}
-
-      {step === "confirm" && block && row && position && level ? (
-        <div className="space-y-5 border-4 border-loxam-black bg-white p-5">
-          <p className="text-4xl font-black">
-            {t("module.label")} {module.moduleNumber}
+        ) : (
+          <p className="border border-dashed border-loxam-line bg-white p-6 text-lg font-bold text-loxam-muted">
+            {step === "block" ? t("move.chooseBlock") : t("yard.tapPosition")}
           </p>
-          <div>
-            <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.selectedPosition")}</p>
-            <p className="text-xl font-black">
-              {t("move.block")} {block.code}
-            </p>
-            <p className="text-xl font-black">{formatRowCode(row.code)}</p>
-            <p className="text-xl font-black">
-              {t("move.position")} {formatPositionCode(position.code)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.from")}</p>
-            <p className="text-xl font-black">
-              {module.location
-                ? formatCompactLocation({...module.location, locale})
-                : t("module.noLocation")}
-            </p>
-          </div>
-          <div className="border-4 border-loxam-free bg-loxam-free-soft p-4">
-            <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.autoLevelTitle")}</p>
-            <p className="mt-1 text-3xl font-black uppercase">
-              {formatLevelLabel(level.level, locale)}
-            </p>
-            <p className="mt-2 text-sm font-bold">
-              {t("move.autoLevel", {level: formatLevelLabel(level.level, locale)})}
-            </p>
-          </div>
-          {hasInconsistentStack(position.levels) ? (
-            <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
-          ) : null}
-          <LevelStack levels={position.levels} selectable={false} highlightLevel={level.level} />
-          <TouchButton disabled={pending} onClick={confirm}>
-            {pending ? t("move.busy") : t("move.confirm")}
-          </TouchButton>
-        </div>
-      ) : null}
+        )}
+      </div>
 
       {step !== "block" && step !== "success" ? (
         <TouchButton

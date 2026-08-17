@@ -89,6 +89,27 @@ export function isStackFull(
   return levels.length > 0 && firstFreeLevel(levels, options) === null;
 }
 
+export type DestinationChoice =
+  | {ok: true; level: StackLevel}
+  | {ok: false; reason: "full" | "unconfigured"};
+
+/** Move-mode destination from a tapped physical position. */
+export function destinationChoice(
+  levels: StackOccupancyCell[],
+  options?: {ignoreModuleId?: string},
+): DestinationChoice {
+  if (levels.length === 0) {
+    return {ok: false, reason: "unconfigured"};
+  }
+  const level = firstFreeLevel(levels, options);
+  if (!level) {
+    return {ok: false, reason: "full"};
+  }
+  return {ok: true, level};
+}
+
+export const DISPLAY_LEVELS = STACK_LEVELS_BOTTOM_UP;
+
 /**
  * True when a higher level is occupied while a lower one is empty.
  * Existing records are left untouched; new placements still fill bottom-up.
