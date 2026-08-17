@@ -2,7 +2,7 @@
 
 import {useTranslations} from "next-intl";
 import {formatLevelLabel} from "@/lib/format";
-import {hasInconsistentStack} from "@/features/yard-locations/stacking";
+import {hasInconsistentStack, STACK_LEVEL_NUMBER, stackLevelsForHeight} from "@/features/yard-locations/stacking";
 import type {YardLevelCell} from "@/features/yard-locations/types";
 import type {StackLevel} from "@/types/database";
 
@@ -11,21 +11,26 @@ export function LevelStack({
   onSelect,
   selectable = true,
   highlightLevel,
+  maxStackLevels,
 }: {
   levels: YardLevelCell[];
   onSelect?: (level: YardLevelCell) => void;
   selectable?: boolean;
   highlightLevel?: StackLevel | null;
+  maxStackLevels?: number;
 }) {
   const t = useTranslations();
-  const inconsistent = hasInconsistentStack(levels);
+  const inconsistent = hasInconsistentStack(levels, {maxStackLevels});
+  const visible = maxStackLevels
+    ? levels.filter((cell) => STACK_LEVEL_NUMBER[cell.level] < maxStackLevels)
+    : levels;
 
   return (
     <div className="space-y-3">
       {inconsistent ? (
         <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
       ) : null}
-      {levels.map((cell) => {
+      {visible.map((cell) => {
         const occupied = Boolean(cell.occupant);
         const label = formatLevelLabel(cell.level);
         const highlighted = highlightLevel === cell.level;
@@ -66,16 +71,25 @@ export function LevelStack({
   );
 }
 
-export function MiniLevelStack({levels}: {levels: YardLevelCell[]}) {
+export function MiniLevelStack({
+  levels,
+  maxStackLevels = 3,
+}: {
+  levels: YardLevelCell[];
+  maxStackLevels?: number;
+}) {
+  const visible = [...stackLevelsForHeight(maxStackLevels)].reverse();
   return (
-    <div className="flex h-16 w-10 flex-col justify-between">
-      {(["LEVEL_2", "LEVEL_1", "GROUND"] as StackLevel[]).map((level) => {
+    <div className={`flex w-10 flex-col justify-between ${maxStackLevels > 1 ? "h-16" : "h-6"}`}>
+      {visible.map((level) => {
         const cell = levels.find((item) => item.level === level);
         const occupied = Boolean(cell?.occupant);
         return (
           <span
             key={level}
-            className={`block h-4 w-full ${occupied ? "bg-loxam-occupied" : "bg-loxam-free"}`}
+            className={`block w-full ${maxStackLevels > 1 ? "h-4" : "h-6"} ${
+              occupied ? "bg-loxam-occupied" : "bg-loxam-free"
+            }`}
           />
         );
       })}

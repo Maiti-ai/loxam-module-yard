@@ -1,4 +1,5 @@
 export {STACK_LEVELS_BOTTOM_UP as STACK_LEVELS, MAX_STACK_HEIGHT} from "./stacking";
+export {maxStackLevelsForBlock, BLOCK_MAX_STACK_LEVELS} from "@/config/yard";
 export {blockCapacity, positionCapacity, yardCapacity, formatOccupiedTotal} from "./capacity";
 export {displayBlocks} from "./display-blocks";
 

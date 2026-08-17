@@ -4,7 +4,8 @@ import {revalidatePath} from "next/cache";
 import {getCurrentProfile} from "@/features/auth";
 import {roleCan} from "@/features/roles";
 import {firstFreeLevel} from "@/features/yard-locations/stacking";
-import {findLocationBySlot, getYardSnapshot} from "@/features/yard-locations/queries";
+import {findBlockCodeForPosition, findLocationBySlot, getYardSnapshot} from "@/features/yard-locations/queries";
+import {maxStackLevelsForBlock} from "@/config/yard";
 import {isUniqueViolation, type ActionResult, type AppErrorCode} from "@/lib/errors";
 import {createClient} from "@/lib/supabase/server";
 import type {Json, StackLevel} from "@/types/database";
@@ -101,8 +102,8 @@ async function assignInApp(
       return {ok: false, code: "MOVE_FAILED"};
     }
 
+    const snapshot = await getYardSnapshot();
     if (current && slotIds.includes(current.slot_id)) {
-      const snapshot = await getYardSnapshot();
       const location = findLocationBySlot(snapshot, current.slot_id);
       if (!location) {
         return {ok: false, code: "SLOT_MISSING"};
@@ -116,7 +117,11 @@ async function assignInApp(
       occupant: occupantBySlot.get(slot.id) ? {moduleId: occupantBySlot.get(slot.id) as string} : null,
     }));
 
-    const assignedLevel = firstFreeLevel(levels, {ignoreModuleId: moduleId});
+    const blockCode = findBlockCodeForPosition(snapshot, positionId);
+    const assignedLevel = firstFreeLevel(levels, {
+      ignoreModuleId: moduleId,
+      maxStackLevels: maxStackLevelsForBlock(blockCode ?? ""),
+    });
     if (!assignedLevel) {
       return {ok: false, code: "POSITION_FULL"};
     }
@@ -144,8 +149,8 @@ async function assignInApp(
       return {ok: false, code: "MOVE_FAILED"};
     }
 
-    const snapshot = await getYardSnapshot();
-    const location = findLocationBySlot(snapshot, chosen.id);
+    const nextSnapshot = await getYardSnapshot();
+    const location = findLocationBySlot(nextSnapshot, chosen.id);
     if (!location) {
       return {ok: false, code: "MOVE_FAILED"};
     }

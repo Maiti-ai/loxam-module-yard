@@ -111,6 +111,12 @@ describe("inconsistent existing stacks", () => {
     assert.equal(hasInconsistentStack(stack("a", null, null)), false);
     assert.equal(hasInconsistentStack(stack("a", "b", "c")), false);
   });
+
+  it("flags production occupancy above the allowed height without rewriting it", () => {
+    const levels = stack(null, "legacy", null);
+    assert.equal(hasInconsistentStack(levels, {blockCode: "F"}), true);
+    assert.equal(levels[1]?.occupant?.moduleId, "legacy");
+  });
 });
 
 describe("visible level terminology", () => {

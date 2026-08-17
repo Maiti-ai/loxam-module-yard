@@ -3,7 +3,7 @@
 import {useTranslations} from "next-intl";
 import {MiniLevelStack} from "@/components/yard/level-stack";
 import {primaryOccupant} from "@/features/yard-locations/queries-client";
-import {isStackFull, stackOccupancy} from "@/features/yard-locations/stacking";
+import {isStackFull, resolveMaxStackLevels, stackOccupancy} from "@/features/yard-locations/stacking";
 import {formatCodeNumber} from "@/lib/format";
 import type {YardPositionNode} from "@/features/yard-locations/types";
 
@@ -12,17 +12,21 @@ export function YardPosition({
   onSelect,
   selected = false,
   full = false,
+  blockCode,
 }: {
   position: YardPositionNode;
   onSelect?: () => void;
   selected?: boolean;
   full?: boolean;
+  blockCode?: string;
 }) {
   const t = useTranslations();
   const occupant = primaryOccupant(position);
   const is3x3 = occupant?.moduleTypeCode === "3x3";
-  const occupancy = stackOccupancy(position.levels);
-  const stackFull = full || isStackFull(position.levels);
+  const stackOptions = {blockCode};
+  const occupancy = stackOccupancy(position.levels, stackOptions);
+  const stackFull = full || isStackFull(position.levels, stackOptions);
+  const maxStackLevels = resolveMaxStackLevels(stackOptions);
 
   return (
     <button
@@ -50,14 +54,14 @@ export function YardPosition({
           }`}
         />
       </div>
-      <MiniLevelStack levels={position.levels} />
+      <MiniLevelStack levels={position.levels} maxStackLevels={maxStackLevels} />
       {position.levels.length > 0 ? (
         <span
           className={`text-xs font-black uppercase ${
             stackFull ? "text-loxam-occupied" : "text-loxam-muted"
           }`}
         >
-          {t("move.capacity", occupancy)}
+          {t(occupancy.total === 1 ? "move.capacitySingular" : "move.capacity", occupancy)}
         </span>
       ) : null}
     </button>

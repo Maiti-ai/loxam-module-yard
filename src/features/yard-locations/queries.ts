@@ -186,6 +186,17 @@ export function findLocationBySlot(
   return null;
 }
 
+export function findBlockCodeForPosition(snapshot: YardSnapshot, positionId: string) {
+  for (const block of snapshot.blocks) {
+    for (const row of block.rows) {
+      if (row.positions.some((position) => position.id === positionId)) {
+        return block.code;
+      }
+    }
+  }
+  return null;
+}
+
 export function occupantAtSlot(snapshot: YardSnapshot, slotId: string) {
   for (const block of snapshot.blocks) {
     for (const row of block.rows) {

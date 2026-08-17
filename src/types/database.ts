@@ -554,6 +554,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      max_stack_levels_for_block: {
+        Args: {p_code: string};
+        Returns: number;
+      };
     };
     Enums: {
       app_role: AppRole;

@@ -95,6 +95,7 @@ export function YardMap({snapshot}: {snapshot: YardSnapshot}) {
                       key={item.id}
                       position={item}
                       selected={false}
+                      blockCode={block.code}
                       onSelect={() => setPosition(item)}
                     />
                   ))}

@@ -1,3 +1,4 @@
+import {DEFAULT_MAX_STACK_LEVELS, maxStackLevelsForBlock} from "../../config/yard";
 import type {StackLevel} from "../../types/database";
 
 /** Physical stack: bottom, middle, top. There is no fourth level. */
@@ -22,6 +23,37 @@ export type StackOccupancyCell = {
   occupant: {moduleId: string} | null;
 };
 
+export type StackRuleOptions = {
+  ignoreModuleId?: string;
+  maxStackLevels?: number;
+  blockCode?: string;
+};
+
+export function resolveMaxStackLevels(options?: StackRuleOptions) {
+  if (options?.maxStackLevels != null) {
+    return clampStackHeight(options.maxStackLevels);
+  }
+  if (options?.blockCode) {
+    return maxStackLevelsForBlock(options.blockCode);
+  }
+  return DEFAULT_MAX_STACK_LEVELS;
+}
+
+function clampStackHeight(value: number) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_MAX_STACK_LEVELS;
+  }
+  return Math.min(MAX_STACK_HEIGHT, Math.max(1, Math.trunc(value)));
+}
+
+export function stackLevelsForHeight(maxStackLevels: number = DEFAULT_MAX_STACK_LEVELS) {
+  return STACK_LEVELS_BOTTOM_UP.slice(0, clampStackHeight(maxStackLevels));
+}
+
+export function displayLevelsForBlock(blockCode: string) {
+  return stackLevelsForHeight(maxStackLevelsForBlock(blockCode));
+}
+
 function occupantId(cell: StackOccupancyCell | undefined, ignoreModuleId?: string) {
   const id = cell?.occupant?.moduleId;
   if (!id || id === ignoreModuleId) {
@@ -34,19 +66,34 @@ function cellFor(levels: StackOccupancyCell[], level: StackLevel) {
   return levels.find((item) => item.level === level);
 }
 
+function hasOccupantAboveAllowed(
+  levels: StackOccupancyCell[],
+  maxStackLevels: number,
+  ignoreModuleId?: string,
+) {
+  const allowed = new Set(stackLevelsForHeight(maxStackLevels));
+  return levels.some((cell) => !allowed.has(cell.level) && Boolean(occupantId(cell, ignoreModuleId)));
+}
+
 /**
- * First free level from the bottom. Never skips a free lower level,
- * so a new placement cannot float above an empty Niveau 0 or 1.
+ * First free level from the bottom, limited to the block's max stack height.
+ * Never skips a free lower allowed level. Occupants above the allowed height
+ * (e.g. Niveau 1 in F) block placement without rewriting that data.
  */
 export function firstFreeLevel(
   levels: StackOccupancyCell[],
-  options?: {ignoreModuleId?: string},
+  options?: StackRuleOptions,
 ): StackLevel | null {
   if (levels.length === 0) {
     return null;
   }
 
-  for (const level of STACK_LEVELS_BOTTOM_UP) {
+  const maxStackLevels = resolveMaxStackLevels(options);
+  if (hasOccupantAboveAllowed(levels, maxStackLevels, options?.ignoreModuleId)) {
+    return null;
+  }
+
+  for (const level of stackLevelsForHeight(maxStackLevels)) {
     const cell = cellFor(levels, level);
     if (!cell) {
       continue;
@@ -61,7 +108,7 @@ export function firstFreeLevel(
 
 export function firstFreeCell<T extends StackOccupancyCell>(
   levels: T[],
-  options?: {ignoreModuleId?: string},
+  options?: StackRuleOptions,
 ): T | null {
   const level = firstFreeLevel(levels, options);
   if (!level) {
@@ -72,19 +119,26 @@ export function firstFreeCell<T extends StackOccupancyCell>(
 
 export function stackOccupancy(
   levels: StackOccupancyCell[],
-  options?: {ignoreModuleId?: string},
+  options?: StackRuleOptions,
 ) {
-  const occupied = STACK_LEVELS_BOTTOM_UP.filter((level) => {
-    const cell = cellFor(levels, level);
-    return Boolean(occupantId(cell, options?.ignoreModuleId));
-  }).length;
+  const maxStackLevels = resolveMaxStackLevels(options);
+  const ids = new Set<string>();
+  for (const cell of levels) {
+    const id = occupantId(cell, options?.ignoreModuleId);
+    if (id) {
+      ids.add(id);
+    }
+  }
 
-  return {occupied, total: MAX_STACK_HEIGHT};
+  return {
+    occupied: Math.min(ids.size, maxStackLevels),
+    total: maxStackLevels,
+  };
 }
 
 export function isStackFull(
   levels: StackOccupancyCell[],
-  options?: {ignoreModuleId?: string},
+  options?: StackRuleOptions,
 ) {
   return levels.length > 0 && firstFreeLevel(levels, options) === null;
 }
@@ -96,7 +150,7 @@ export type DestinationChoice =
 /** Move-mode destination from a tapped physical position. */
 export function destinationChoice(
   levels: StackOccupancyCell[],
-  options?: {ignoreModuleId?: string},
+  options?: StackRuleOptions,
 ): DestinationChoice {
   if (levels.length === 0) {
     return {ok: false, reason: "unconfigured"};
@@ -111,12 +165,20 @@ export function destinationChoice(
 export const DISPLAY_LEVELS = STACK_LEVELS_BOTTOM_UP;
 
 /**
- * True when a higher level is occupied while a lower one is empty.
- * Existing records are left untouched; new placements still fill bottom-up.
+ * True when occupancy violates the block's stacking rule.
+ * Existing records are left untouched.
  */
-export function hasInconsistentStack(levels: StackOccupancyCell[]) {
+export function hasInconsistentStack(
+  levels: StackOccupancyCell[],
+  options?: StackRuleOptions,
+) {
+  const maxStackLevels = resolveMaxStackLevels(options);
+  if (hasOccupantAboveAllowed(levels, maxStackLevels)) {
+    return true;
+  }
+
   let seenEmpty = false;
-  for (const level of STACK_LEVELS_BOTTOM_UP) {
+  for (const level of stackLevelsForHeight(maxStackLevels)) {
     const occupied = Boolean(cellFor(levels, level)?.occupant);
     if (!occupied) {
       seenEmpty = true;

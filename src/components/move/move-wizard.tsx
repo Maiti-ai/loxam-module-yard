@@ -11,6 +11,7 @@ import {
   destinationChoice,
   firstFreeCell,
   hasInconsistentStack,
+  resolveMaxStackLevels,
 } from "@/features/yard-locations/stacking";
 import {formatCompactLocation, formatLevelLabel, formatPositionCode, formatRowCode} from "@/lib/format";
 import type {
@@ -48,10 +49,11 @@ export function MoveWizard({
   const row =
     block?.rows.find((item) => item.positions.some((entry) => entry.id === position?.id)) ?? null;
 
-  function selectPosition(item: YardPositionNode) {
+  function selectPosition(item: YardPositionNode, blockCode: string) {
     setOccupiedNumber(null);
     setReassigned(false);
-    const choice = destinationChoice(item.levels, {ignoreModuleId: module.id});
+    const stackOptions = {ignoreModuleId: module.id, blockCode};
+    const choice = destinationChoice(item.levels, stackOptions);
     if (!choice.ok) {
       setPosition(null);
       setLevel(null);
@@ -65,7 +67,7 @@ export function MoveWizard({
       }
       return;
     }
-    const assigned = firstFreeCell(item.levels, {ignoreModuleId: module.id});
+    const assigned = firstFreeCell(item.levels, stackOptions);
     if (!assigned) {
       setPosition(null);
       setLevel(null);
@@ -151,8 +153,16 @@ export function MoveWizard({
 
       {step === "position" && positionFull ? (
         <div className="border-4 border-loxam-occupied bg-loxam-occupied-soft p-4">
-          <p className="text-xl font-black">{t("move.positionFullTitle")}</p>
-          <p className="mt-2 text-sm font-bold">{t("move.positionFullBody")}</p>
+          <p className="text-xl font-black">
+            {resolveMaxStackLevels({blockCode: block?.code}) === 1
+              ? t("move.productionOccupiedTitle")
+              : t("move.positionFullTitle")}
+          </p>
+          <p className="mt-2 text-sm font-bold">
+            {resolveMaxStackLevels({blockCode: block?.code}) === 1
+              ? t("move.productionOccupiedBody")
+              : t("move.positionFullBody")}
+          </p>
         </div>
       ) : null}
 
@@ -191,8 +201,9 @@ export function MoveWizard({
               setStep("position");
             }
           }}
-          onSelectPosition={(_blockId, nextPosition) => {
-            selectPosition(nextPosition);
+          onSelectPosition={(nextBlockId, nextPosition) => {
+            const nextBlock = blocks.find((item) => item.id === nextBlockId);
+            selectPosition(nextPosition, nextBlock?.code ?? "");
           }}
         />
 
@@ -219,19 +230,37 @@ export function MoveWizard({
                   : t("module.noLocation")}
               </p>
             </div>
-            <div className="border-4 border-loxam-free bg-loxam-free-soft p-4">
-              <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.autoLevelTitle")}</p>
-              <p className="mt-1 text-3xl font-black uppercase">
-                {formatLevelLabel(level.level, locale)}
-              </p>
-              <p className="mt-2 text-sm font-bold">
-                {t("move.autoLevel", {level: formatLevelLabel(level.level, locale)})}
-              </p>
-            </div>
-            {hasInconsistentStack(position.levels) ? (
-              <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
-            ) : null}
-            <LevelStack levels={position.levels} selectable={false} highlightLevel={level.level} />
+            {resolveMaxStackLevels({blockCode: block.code}) > 1 ? (
+              <>
+                <div className="border-4 border-loxam-free bg-loxam-free-soft p-4">
+                  <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.autoLevelTitle")}</p>
+                  <p className="mt-1 text-3xl font-black uppercase">
+                    {formatLevelLabel(level.level, locale)}
+                  </p>
+                  <p className="mt-2 text-sm font-bold">
+                    {t("move.autoLevel", {level: formatLevelLabel(level.level, locale)})}
+                  </p>
+                </div>
+                {hasInconsistentStack(position.levels, {blockCode: block.code}) ? (
+                  <p className="text-sm font-bold text-loxam-muted">{t("move.inconsistentStack")}</p>
+                ) : null}
+                <LevelStack
+                  levels={position.levels}
+                  selectable={false}
+                  highlightLevel={level.level}
+                  maxStackLevels={resolveMaxStackLevels({blockCode: block.code})}
+                />
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-black text-loxam-free">{t("yard.positionFree")}</p>
+                {hasInconsistentStack(position.levels, {blockCode: block.code}) ? (
+                  <p className="text-sm font-bold text-loxam-occupied">
+                    {t("move.inconsistentProductionStack")}
+                  </p>
+                ) : null}
+              </>
+            )}
             <TouchButton disabled={pending} onClick={confirm}>
               {pending ? t("move.busy") : t("move.confirm")}
             </TouchButton>

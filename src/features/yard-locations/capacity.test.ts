@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {describe, it} from "node:test";
 import {positionsCountForRow, SCHELLE_BLOCK_SPEC} from "../../config/yard-geometry";
+import {maxStackLevelsForBlock} from "../../config/yard";
 import {MAX_STACK_HEIGHT} from "./stacking";
 import {
   blockCapacity,
@@ -147,21 +148,23 @@ describe("yard module-slot capacity", () => {
     assert.equal(formatOccupiedTotal(positionCapacity(position(["a", null, null]))), "1 / 3");
   });
 
-  it("derives Schelle capacity from physical positions × 3, not a hardcoded total", () => {
+  it("derives Schelle capacity from per-block stack height, not a hardcoded total", () => {
     const byBlock = Object.fromEntries(
       Object.entries(SCHELLE_BLOCK_SPEC).map(([code, spec]) => {
         const physical = spec.pRows.reduce(
           (sum, row) => sum + positionsCountForRow(spec, row),
           0,
         );
-        return [code, {physical, total: physical * MAX_STACK_HEIGHT}];
+        return [code, {physical, total: physical * maxStackLevelsForBlock(code)}];
       }),
     );
     const physicalPositions = Object.values(byBlock).reduce((sum, item) => sum + item.physical, 0);
-    const total = physicalPositions * MAX_STACK_HEIGHT;
-    assert.equal(total, Object.values(byBlock).reduce((sum, item) => sum + item.total, 0));
-    assert.ok(physicalPositions > 0);
-    assert.equal(total, physicalPositions * 3);
+    const total = Object.values(byBlock).reduce((sum, item) => sum + item.total, 0);
+    assert.equal(byBlock.F?.physical, 12);
+    assert.equal(byBlock.F?.total, 12);
+    assert.equal(byBlock.D?.physical, 46);
+    assert.equal(byBlock.D?.total, 138);
+    assert.equal(total, physicalPositions * 3 - 12 * 2);
   });
 });
 
