@@ -5,6 +5,12 @@ import {getCurrentProfile} from "@/features/auth";
 import {roleCan} from "@/features/roles";
 import {firstFreeLevel} from "@/features/yard-locations/stacking";
 import {findBlockCodeForPosition, findLocationBySlot, getYardSnapshot} from "@/features/yard-locations/queries";
+import {
+  findLivePosition,
+  isSpecPhysicalCell,
+  isUuid,
+  parseVisualPositionId,
+} from "@/features/yard-locations/resolve-position";
 import {maxStackLevelsForBlock} from "@/config/yard";
 import {isUniqueViolation, type ActionResult, type AppErrorCode} from "@/lib/errors";
 import {createClient} from "@/lib/supabase/server";
@@ -165,6 +171,33 @@ async function assignInApp(
   return {ok: false, code: "POSITION_FULL"};
 }
 
+async function resolveLivePositionId(
+  positionId: string,
+): Promise<{ok: true; positionId: string} | {ok: false; code: "SLOT_MISSING"}> {
+  const snapshot = await getYardSnapshot();
+  if (isUuid(positionId)) {
+    for (const block of snapshot.blocks) {
+      for (const row of block.rows) {
+        const match = row.positions.find((item) => item.id === positionId && item.levels.length > 0);
+        if (match) {
+          return {ok: true, positionId: match.id};
+        }
+      }
+    }
+    return {ok: false, code: "SLOT_MISSING"};
+  }
+
+  const parsed = parseVisualPositionId(positionId);
+  if (!parsed || !isSpecPhysicalCell(parsed.blockCode, parsed.rowCode, parsed.positionNumber)) {
+    return {ok: false, code: "SLOT_MISSING"};
+  }
+  const live = findLivePosition(snapshot, parsed.blockCode, parsed.rowCode, parsed.positionNumber);
+  if (!live) {
+    return {ok: false, code: "SLOT_MISSING"};
+  }
+  return {ok: true, positionId: live.id};
+}
+
 export async function moveModuleAction(
   moduleId: string,
   positionId: string,
@@ -178,15 +211,21 @@ export async function moveModuleAction(
     return {ok: false, code: "FORBIDDEN"};
   }
 
+  const resolved = await resolveLivePositionId(positionId);
+  if (!resolved.ok) {
+    return resolved;
+  }
+  const livePositionId = resolved.positionId;
+
   const supabase = await createClient();
   const rpc = await supabase.rpc("assign_first_free_stack_slot", {
     p_module_id: moduleId,
-    p_position_id: positionId,
+    p_position_id: livePositionId,
     p_preferred_level: preferredLevel ?? null,
   });
 
   if (rpc.error && isMissingRpc(rpc.error)) {
-    return assignInApp(supabase, moduleId, positionId, profile.id, preferredLevel ?? null);
+    return assignInApp(supabase, moduleId, livePositionId, profile.id, preferredLevel ?? null);
   }
 
   if (rpc.error) {

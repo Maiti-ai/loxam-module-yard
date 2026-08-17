@@ -7,6 +7,11 @@ import {TouchButton} from "@/components/ui/touch-button";
 import {SchelleYardMap, displayBlocks} from "@/components/yard/schelle-yard-map";
 import {LevelStack} from "@/components/yard/level-stack";
 import {moveModuleAction} from "@/features/movements/actions";
+import {resolvePhysicalPositionAction} from "@/features/yard-locations/actions";
+import {
+  displayedCellIdentity,
+  needsRegistryResolve,
+} from "@/features/yard-locations/resolve-position";
 import {
   destinationChoice,
   firstFreeCell,
@@ -42,21 +47,51 @@ export function MoveWizard({
   const [positionFull, setPositionFull] = useState(false);
   const [reassigned, setReassigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clickedPositionId, setClickedPositionId] = useState<string | null>(null);
   const [toLocation, setToLocation] = useState(module.location);
 
   const blocks = displayBlocks(snapshot);
   const block = blocks.find((item) => item.id === blockId) ?? null;
   const row =
-    block?.rows.find((item) => item.positions.some((entry) => entry.id === position?.id)) ?? null;
+    block?.rows.find((item) =>
+      item.positions.some(
+        (entry) => entry.id === clickedPositionId || entry.id === position?.id,
+      ),
+    ) ?? null;
 
-  function selectPosition(item: YardPositionNode, blockCode: string) {
+  async function selectPosition(item: YardPositionNode, blockCode: string, rowCode: string) {
+    if (pending) {
+      return;
+    }
     setOccupiedNumber(null);
     setReassigned(false);
     const stackOptions = {ignoreModuleId: module.id, blockCode};
-    const choice = destinationChoice(item.levels, stackOptions);
+    let target = item;
+    if (needsRegistryResolve(item)) {
+      const identity = displayedCellIdentity(blockCode, rowCode, item);
+      setPending(true);
+      const resolved = await resolvePhysicalPositionAction(
+        identity.blockCode,
+        identity.rowCode,
+        identity.positionNumber,
+      );
+      setPending(false);
+      if (!resolved.ok) {
+        setPosition(null);
+        setLevel(null);
+        setClickedPositionId(null);
+        setPositionFull(false);
+        setStep("position");
+        setError(t(`errors.${resolved.code}`));
+        return;
+      }
+      target = resolved.position;
+    }
+    const choice = destinationChoice(target.levels, stackOptions);
     if (!choice.ok) {
       setPosition(null);
       setLevel(null);
+      setClickedPositionId(null);
       setStep("position");
       if (choice.reason === "full") {
         setPositionFull(true);
@@ -67,10 +102,11 @@ export function MoveWizard({
       }
       return;
     }
-    const assigned = firstFreeCell(item.levels, stackOptions);
+    const assigned = firstFreeCell(target.levels, stackOptions);
     if (!assigned) {
       setPosition(null);
       setLevel(null);
+      setClickedPositionId(null);
       setPositionFull(true);
       setError(null);
       setStep("position");
@@ -78,7 +114,8 @@ export function MoveWizard({
     }
     setPositionFull(false);
     setError(null);
-    setPosition(item);
+    setClickedPositionId(item.id);
+    setPosition(target);
     setLevel(assigned);
     setStep("confirm");
   }
@@ -98,6 +135,7 @@ export function MoveWizard({
         setOccupiedNumber(result.occupantNumber ?? null);
         setLevel(null);
         setPosition(null);
+        setClickedPositionId(null);
         setStep("position");
         router.refresh();
         return;
@@ -188,7 +226,7 @@ export function MoveWizard({
           snapshot={snapshot}
           selectedBlockId={blockId}
           selectedRowId={row?.id}
-          selectedPositionId={step === "confirm" ? position?.id : null}
+          selectedPositionId={step === "confirm" ? clickedPositionId : null}
           onSelectBlock={(id) => {
             setBlockId(id);
             setPositionFull(false);
@@ -196,6 +234,7 @@ export function MoveWizard({
             if (step === "confirm") {
               setPosition(null);
               setLevel(null);
+              setClickedPositionId(null);
               setStep("position");
             } else {
               setStep("position");
@@ -203,7 +242,10 @@ export function MoveWizard({
           }}
           onSelectPosition={(nextBlockId, nextPosition) => {
             const nextBlock = blocks.find((item) => item.id === nextBlockId);
-            selectPosition(nextPosition, nextBlock?.code ?? "");
+            const nextRow = nextBlock?.rows.find((entry) =>
+              entry.positions.some((cell) => cell.id === nextPosition.id),
+            );
+            void selectPosition(nextPosition, nextBlock?.code ?? "", nextRow?.code ?? "");
           }}
         />
 

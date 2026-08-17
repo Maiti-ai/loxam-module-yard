@@ -10,6 +10,12 @@ import type {
   YardSnapshot,
 } from "./types";
 
+async function ensureSchellePhysicalPositions(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
+  await supabase.rpc("ensure_schelle_physical_positions");
+}
+
 const LEVEL_ORDER: StackLevel[] = ["LEVEL_2", "LEVEL_1", "GROUND"];
 
 function asLevel(value: string): StackLevel {
@@ -25,6 +31,7 @@ function asTypeCode(value: string | null | undefined): ModuleTypeCode {
 
 export async function getYardSnapshot(): Promise<YardSnapshot> {
   const supabase = await createClient();
+  await ensureSchellePhysicalPositions(supabase);
 
   const [blocksRes, rowsRes, positionsRes, slotsRes, locationsRes, modulesRes] =
     await Promise.all([

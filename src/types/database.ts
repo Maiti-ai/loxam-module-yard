@@ -558,6 +558,10 @@ export type Database = {
         Args: {p_code: string};
         Returns: number;
       };
+      ensure_schelle_physical_positions: {
+        Args: Record<PropertyKey, never>;
+        Returns: number;
+      };
     };
     Enums: {
       app_role: AppRole;
