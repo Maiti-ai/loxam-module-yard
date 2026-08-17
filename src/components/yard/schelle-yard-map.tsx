@@ -829,19 +829,6 @@ function BandedSlotGrid({
             >
               {band.label}
             </text>
-            {row ? (
-              <text
-                x={geom.x + geom.width - 10}
-                y={slotsY + slotsH / 2 + 6}
-                textAnchor="end"
-                fill="#161616"
-                fontSize="16"
-                fontWeight="800"
-                className="pointer-events-none"
-              >
-                {formatRowCode(row.code)}
-              </text>
-            ) : null}
             {slots.map(({row: slotRow, position}, slotIndex) => {
               const occupant = primaryOccupant(position);
               const cellX = innerX + slotIndex * cellW;
@@ -866,6 +853,24 @@ function BandedSlotGrid({
               );
             })}
           </g>
+        );
+      })}
+      {Array.from({length: gridCols}, (_, index) => {
+        const drawIndex = geom.positionsLeftToRight ? index : gridCols - 1 - index;
+        const cellX = innerX + drawIndex * cellW;
+        return (
+          <text
+            key={`pos-label-${index}`}
+            x={cellX + cellW / 2}
+            y={geom.y + geom.height - 8}
+            textAnchor="middle"
+            fill="#161616"
+            fontSize={Math.min(16, Math.max(11, cellW * 0.08))}
+            fontWeight="800"
+            className="pointer-events-none"
+          >
+            {`P${index + 1}`}
+          </text>
         );
       })}
     </g>
