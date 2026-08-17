@@ -21,7 +21,8 @@ function emptyPosition(blockCode: string, rowCode: string, index: number): YardP
   };
 }
 
-/** Plan grid from the spec, with live occupancy overlaid when the DB has matching cells. */
+/** Plan grid from the spec, with live occupancy overlaid when the DB has matching cells.
+ *  `visual:` ids mean the hosted registry is missing that physical position. */
 export function displayBlocks(snapshot: YardSnapshot): YardBlockNode[] {
   const liveByCode = new Map(
     snapshot.blocks
