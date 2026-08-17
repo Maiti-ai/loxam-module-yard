@@ -10,6 +10,7 @@ import {moveModuleAction} from "@/features/movements/actions";
 import {resolvePhysicalPositionAction} from "@/features/yard-locations/actions";
 import {
   displayedCellIdentity,
+  isSpecPhysicalCell,
   needsRegistryResolve,
 } from "@/features/yard-locations/resolve-position";
 import {
@@ -66,9 +67,18 @@ export function MoveWizard({
     setOccupiedNumber(null);
     setReassigned(false);
     const stackOptions = {ignoreModuleId: module.id, blockCode};
+    const identity = displayedCellIdentity(blockCode, rowCode, item);
+    if (!isSpecPhysicalCell(identity.blockCode, identity.rowCode, identity.positionNumber)) {
+      setPosition(null);
+      setLevel(null);
+      setClickedPositionId(null);
+      setPositionFull(false);
+      setStep("position");
+      setError(t("errors.SLOT_MISSING"));
+      return;
+    }
     let target = item;
     if (needsRegistryResolve(item)) {
-      const identity = displayedCellIdentity(blockCode, rowCode, item);
       setPending(true);
       const resolved = await resolvePhysicalPositionAction(
         identity.blockCode,

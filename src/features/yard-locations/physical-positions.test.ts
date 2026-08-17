@@ -9,6 +9,7 @@ import {
 import {blockCapacity, yardCapacity} from "./capacity";
 import {displayBlocks} from "./display-blocks";
 import {destinationChoice} from "./stacking";
+import {formatRowCode} from "../../lib/format";
 import type {YardBlockNode, YardLevelCell, YardSnapshot} from "./types";
 
 function emptyLevels(positionId: string): YardLevelCell[] {
@@ -145,24 +146,25 @@ describe("Schelle physical position registry", () => {
         assert.equal(row.id.startsWith("visual:"), false, `${block.code} ${row.code} row id`);
         for (const position of row.positions) {
           assert.equal(position.id.startsWith("visual:"), false, `${block.code} ${row.code} ${position.code}`);
-          assert.equal(position.levels.length, 3);
+          assert.equal(position.canonicalCode, `${block.code}-${formatRowCode(row.code)}-${String(Number(position.code)).padStart(2, "0")}`);
+          assert.ok(position.levels.length > 0);
         }
       }
     }
   });
 
-  it("shows why the MVP snapshot left later A/B rows and C/D/F unusable", () => {
+  it("shows that the MVP snapshot is missing later A/B rows and all of C/D/F in the database", () => {
     const displayed = displayBlocks(mvpSnapshot());
-    const visual = displayed.flatMap((block) =>
+    const unmapped = displayed.flatMap((block) =>
       block.rows.flatMap((row) =>
-        row.positions.filter((position) => position.id.startsWith("visual:")),
+        row.positions.filter((position) => position.id === position.canonicalCode),
       ),
     );
-    assert.ok(visual.length > 0);
+    assert.ok(unmapped.length > 0);
     const byBlock = Object.fromEntries(
       displayed.map((block) => [
         block.code,
-        block.rows.flatMap((row) => row.positions).filter((position) => position.id.startsWith("visual:")).length,
+        block.rows.flatMap((row) => row.positions).filter((position) => position.id === position.canonicalCode).length,
       ]),
     );
     assert.equal(byBlock.A, 35 - 6);
@@ -170,6 +172,12 @@ describe("Schelle physical position registry", () => {
     assert.equal(byBlock.C, 52);
     assert.equal(byBlock.D, 46);
     assert.equal(byBlock.F, 12);
+    for (const position of unmapped) {
+      assert.deepEqual(destinationChoice(position.levels, {blockCode: position.canonicalCode?.[0]}), {
+        ok: true,
+        level: "GROUND",
+      });
+    }
   });
 
   it("makes first and last cells of every row selectable for placement after the registry is complete", () => {

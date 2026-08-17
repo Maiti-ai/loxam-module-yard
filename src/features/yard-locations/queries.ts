@@ -1,6 +1,7 @@
 import {isProductionBlock} from "@/config/yard";
 import {createClient} from "@/lib/supabase/server";
 import {yardCapacity} from "./capacity";
+import {displayBlocks} from "./display-blocks";
 import type {ModuleStatus, ModuleTypeCode, StackLevel} from "@/types/database";
 import type {
   Occupant,
@@ -158,7 +159,7 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
       rows: (rowsByBlock.get(block.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
     }));
 
-  const capacity = yardCapacity(blocks);
+  const capacity = yardCapacity(displayBlocks({blocks, slotCount: 0, occupiedSlotCount: 0}));
 
   return {
     blocks,

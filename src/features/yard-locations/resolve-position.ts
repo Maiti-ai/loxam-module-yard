@@ -1,10 +1,18 @@
-import {schellePhysicalLayout} from "../../config/yard-geometry";
 import {formatPositionCode, formatRowCode} from "../../lib/format";
 import {displayBlocks} from "./display-blocks";
+import {
+  formatCanonicalPositionCode,
+  getPhysicalPosition,
+  hasLivePlacementSlots,
+  identityFromClick,
+  isRegisteredPhysicalPosition,
+  occupancyLookup,
+  parseCanonicalPositionCode,
+  validateRegisteredDestination,
+} from "./physical-registry";
 import {destinationChoice, type StackRuleOptions} from "./stacking";
 import type {YardPositionNode, YardSnapshot} from "./types";
 
-/** Cells the live placement flow must resolve without SLOT_MISSING. */
 export const REQUIRED_PLACEMENT_CELLS = [
   ["A", "P1", 1],
   ["A", "P3", 1],
@@ -26,37 +34,24 @@ export const REQUIRED_PLACEMENT_CELLS = [
   ["F", "P3", 4],
 ] as const;
 
+export {formatCanonicalPositionCode, parseCanonicalPositionCode, isRegisteredPhysicalPosition};
+
 export function isVisualPositionId(id: string) {
   return id.startsWith("visual:");
 }
 
 export function parseVisualPositionId(id: string) {
-  const match = id.match(/^visual:([A-Z]):(P?\d+):(\d+)$/i);
-  if (!match) {
-    return null;
-  }
-  return {
-    blockCode: match[1].toUpperCase(),
-    rowCode: formatRowCode(match[2]),
-    positionNumber: Number(match[3]),
-  };
+  return parseCanonicalPositionCode(id);
 }
 
-export function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
+export {isUuid} from "./physical-registry";
 
 export function needsRegistryResolve(position: YardPositionNode) {
-  return position.levels.length === 0 || isVisualPositionId(position.id);
+  return !hasLivePlacementSlots(position);
 }
 
 export function isSpecPhysicalCell(blockCode: string, rowCode: string, positionNumber: number) {
-  const row = formatRowCode(rowCode);
-  const block = blockCode.trim().toUpperCase();
-  return schellePhysicalLayout().some(
-    (cell) =>
-      cell.blockCode === block && cell.rowCode === row && cell.positionNumber === positionNumber,
-  );
+  return isRegisteredPhysicalPosition(blockCode, rowCode, positionNumber);
 }
 
 export function findLivePosition(
@@ -65,20 +60,7 @@ export function findLivePosition(
   rowCode: string,
   positionNumber: number,
 ) {
-  const block = snapshot.blocks.find(
-    (item) => item.code.trim().toUpperCase() === blockCode.trim().toUpperCase(),
-  );
-  if (!block) {
-    return null;
-  }
-  const row = block.rows.find((item) => formatRowCode(item.code) === formatRowCode(rowCode));
-  if (!row) {
-    return null;
-  }
-  return (
-    row.positions.find((item) => Number(item.code) === positionNumber && item.levels.length > 0) ??
-    null
-  );
+  return occupancyLookup(snapshot, blockCode, rowCode, positionNumber)?.live ?? null;
 }
 
 export function placementClickPayload(input: {
@@ -86,14 +68,17 @@ export function placementClickPayload(input: {
   rowCode: string;
   position: YardPositionNode;
 }) {
+  const identity = identityFromClick(input);
   return {
     blockCode: input.blockCode.trim().toUpperCase(),
     rowCode: formatRowCode(input.rowCode),
     positionCode: formatPositionCode(input.position.code),
     positionNumber: Number(input.position.code),
     positionId: input.position.id,
+    canonicalCode: identity?.canonicalCode ?? input.position.canonicalCode ?? null,
     levelsLength: input.position.levels.length,
     needsRegistry: needsRegistryResolve(input.position),
+    registered: Boolean(identity && getPhysicalPosition(identity.blockCode, identity.rowCode, identity.positionNumber)),
   };
 }
 
@@ -103,10 +88,12 @@ export function displayedCellIdentity(
   position: YardPositionNode,
 ) {
   return (
-    parseVisualPositionId(position.id) ?? {
+    identityFromClick({blockCode, rowCode, position}) ?? {
       blockCode: blockCode.trim().toUpperCase(),
       rowCode: formatRowCode(rowCode),
       positionNumber: Number(position.code),
+      positionCode: String(Number(position.code)).padStart(2, "0"),
+      canonicalCode: formatCanonicalPositionCode(blockCode, rowCode, Number(position.code)),
     }
   );
 }
@@ -125,21 +112,31 @@ export function findDisplayedCell(
 }
 
 /**
- * Pre-resolve wizard mapping: empty `levels` (including `visual:` overlay
- * cells) is what currently surfaces as "Deze plaats bestaat niet."
+ * Existence is the canonical registry, not "does this overlay node have DB slots".
+ * SLOT_MISSING is only for identities that are not on the current yard map.
  */
 export function evaluatePlacementClick(
   position: YardPositionNode,
   options?: StackRuleOptions,
 ) {
-  if (needsRegistryResolve(position)) {
+  const identity = identityFromClick({
+    blockCode: options?.blockCode ?? "",
+    rowCode: "",
+    position,
+  });
+  const registered =
+    identity != null &&
+    isRegisteredPhysicalPosition(identity.blockCode, identity.rowCode, identity.positionNumber);
+  if (!registered && position.levels.length === 0) {
     return {ok: false as const, reason: "unconfigured" as const, errorCode: "SLOT_MISSING" as const};
   }
-  return evaluateLiveDestination(position, options);
-}
-
-function evaluateLiveDestination(position: YardPositionNode, options?: StackRuleOptions) {
-  const choice = destinationChoice(position.levels, options);
+  const choice = destinationChoice(position.levels, {
+    ...options,
+    blockCode: identity?.blockCode ?? options?.blockCode,
+    maxStackLevels: identity
+      ? getPhysicalPosition(identity.blockCode, identity.rowCode, identity.positionNumber)?.maxLevels
+      : options?.maxStackLevels,
+  });
   if (!choice.ok) {
     return choice.reason === "full"
       ? {ok: false as const, reason: "full" as const, position}
@@ -148,10 +145,6 @@ function evaluateLiveDestination(position: YardPositionNode, options?: StackRule
   return {...choice, position};
 }
 
-/**
- * Shared placement decision after the physical registry is available.
- * Overlay `visual:` cells are mapped onto live `yard_positions` + `yard_slots`.
- */
 export function choosePlacementDestination(
   displayed: YardPositionNode,
   registry: YardSnapshot,
@@ -160,17 +153,5 @@ export function choosePlacementDestination(
   options?: StackRuleOptions,
 ) {
   const identity = displayedCellIdentity(blockCode, rowCode, displayed);
-  if (!isSpecPhysicalCell(identity.blockCode, identity.rowCode, identity.positionNumber)) {
-    return {ok: false as const, reason: "unconfigured" as const, errorCode: "SLOT_MISSING" as const};
-  }
-  const live = needsRegistryResolve(displayed)
-    ? findLivePosition(registry, identity.blockCode, identity.rowCode, identity.positionNumber)
-    : displayed;
-  if (!live) {
-    return {ok: false as const, reason: "unconfigured" as const, errorCode: "SLOT_MISSING" as const};
-  }
-  return evaluateLiveDestination(live, {
-    ...options,
-    blockCode: identity.blockCode,
-  });
+  return validateRegisteredDestination(identity, registry, options);
 }

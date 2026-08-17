@@ -9,7 +9,7 @@ import {
   findLivePosition,
   isSpecPhysicalCell,
   isUuid,
-  parseVisualPositionId,
+  parseCanonicalPositionCode,
 } from "@/features/yard-locations/resolve-position";
 import {maxStackLevelsForBlock} from "@/config/yard";
 import {isUniqueViolation, type ActionResult, type AppErrorCode} from "@/lib/errors";
@@ -187,7 +187,7 @@ async function resolveLivePositionId(
     return {ok: false, code: "SLOT_MISSING"};
   }
 
-  const parsed = parseVisualPositionId(positionId);
+  const parsed = parseCanonicalPositionCode(positionId);
   if (!parsed || !isSpecPhysicalCell(parsed.blockCode, parsed.rowCode, parsed.positionNumber)) {
     return {ok: false, code: "SLOT_MISSING"};
   }

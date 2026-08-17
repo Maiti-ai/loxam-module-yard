@@ -9,7 +9,6 @@ import {
   evaluatePlacementClick,
   findDisplayedCell,
   findLivePosition,
-  needsRegistryResolve,
   parseVisualPositionId,
   placementClickPayload,
 } from "./resolve-position";
@@ -113,9 +112,10 @@ describe("placement click runtime: SLOT_MISSING", () => {
     assert.equal(payload.blockCode, "A");
     assert.equal(payload.rowCode, "P1");
     assert.equal(payload.positionNumber, 1);
+    assert.equal(payload.canonicalCode, "A-P1-01");
+    assert.equal(payload.registered, true);
     assert.equal(payload.positionId.startsWith("visual:"), false);
     assert.equal(payload.levelsLength, 3);
-    assert.equal(payload.needsRegistry, false);
     const preResolve = evaluatePlacementClick(position, {blockCode: "A"});
     assert.equal(preResolve.ok, true);
     if (preResolve.ok) {
@@ -127,7 +127,7 @@ describe("placement click runtime: SLOT_MISSING", () => {
     });
   });
 
-  it("FAILING NEW D P1 position 1 sends visual:D:P1:1 with empty levels and maps to SLOT_MISSING", () => {
+  it("NEW D P1 position 1 is a canonical registry cell D-P1-01, not SLOT_MISSING", () => {
     const displayed = displayBlocks(mvpSnapshot());
     const blockD = displayed.find((block) => block.code === "D");
     const row = blockD?.rows[0];
@@ -141,18 +141,21 @@ describe("placement click runtime: SLOT_MISSING", () => {
     assert.equal(payload.blockCode, "D");
     assert.equal(payload.rowCode, "P1");
     assert.equal(payload.positionNumber, 1);
-    assert.equal(payload.positionId, "visual:D:P1:1");
-    assert.equal(payload.levelsLength, 0);
-    assert.equal(payload.needsRegistry, true);
-    assert.deepEqual(evaluatePlacementClick(position, {blockCode: "D"}), {
-      ok: false,
-      reason: "unconfigured",
-      errorCode: "SLOT_MISSING",
-    });
+    assert.equal(payload.canonicalCode, "D-P1-01");
+    assert.equal(payload.positionId, "D-P1-01");
+    assert.equal(payload.registered, true);
+    assert.equal(payload.levelsLength, 3);
+    const click = evaluatePlacementClick(position, {blockCode: "D"});
+    assert.equal(click.ok, true);
+    if (click.ok) {
+      assert.equal(click.level, "GROUND");
+    }
     assert.deepEqual(parseVisualPositionId(payload.positionId), {
       blockCode: "D",
       rowCode: "P1",
       positionNumber: 1,
+      positionCode: "01",
+      canonicalCode: "D-P1-01",
     });
   });
 
@@ -160,7 +163,6 @@ describe("placement click runtime: SLOT_MISSING", () => {
     const displayed = displayBlocks(completeSnapshot());
     const live = findLivePosition(completeSnapshot(), "D", "P1", 1);
     assert.ok(live);
-    assert.equal(needsRegistryResolve(live), false);
     assert.deepEqual(destinationChoice(live.levels, {blockCode: "D"}), {ok: true, level: "GROUND"});
     const row1 = displayed.find((block) => block.code === "D")?.rows[0];
     assert.equal(row1?.positions[0]?.id.startsWith("visual:"), false);
@@ -213,16 +215,22 @@ describe("placement click runtime: SLOT_MISSING", () => {
     }
   });
 
-  it("without a registry the D click still maps to SLOT_MISSING", () => {
+  it("unknown identities still map to SLOT_MISSING", () => {
     const displayed = findDisplayedCell(mvpSnapshot(), "D", "P1", 1);
     assert.ok(displayed);
-    const unresolved = choosePlacementDestination(displayed, mvpSnapshot(), "D", "P1", {
-      blockCode: "D",
-    });
+    const unresolved = choosePlacementDestination(
+      {id: "Z-P9-99", code: "99", sortOrder: 99, levels: []},
+      mvpSnapshot(),
+      "Z",
+      "P9",
+      {blockCode: "Z"},
+    );
     assert.deepEqual(unresolved, {
       ok: false,
       reason: "unconfigured",
       errorCode: "SLOT_MISSING",
     });
+    const known = choosePlacementDestination(displayed, mvpSnapshot(), "D", "P1", {blockCode: "D"});
+    assert.equal(known.ok, true);
   });
 });
