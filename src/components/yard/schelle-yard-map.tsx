@@ -829,6 +829,18 @@ function BandedSlotGrid({
             >
               {band.label}
             </text>
+            <text
+              x={geom.x + geom.width - 10}
+              y={slotsY + slotsH / 2}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fill="#161616"
+              fontSize="16"
+              fontWeight="800"
+              className="pointer-events-none"
+            >
+              {bandIndex + 1}
+            </text>
             {slots.map(({row: slotRow, position}, slotIndex) => {
               const occupant = primaryOccupant(position);
               const cellX = innerX + slotIndex * cellW;
