@@ -70,6 +70,13 @@ export default async function ModuleDetailPage({
         module={yardModule}
         emphasize={yardModule.moduleNumber === "2000" || scanned === "1"}
       />
+      <AircoCard
+        moduleId={yardModule.id}
+        airco={yardModule.airco}
+        canManage={roleCan(profile.role, "manageAirco")}
+        canMaintenance={roleCan(profile.role, "updateAircoMaintenance")}
+        intervalMonths={intervalMonths}
+      />
       {canMove ? (
         <Link
           href={`/modules/${yardModule.moduleNumber}/move`}
@@ -98,13 +105,6 @@ export default async function ModuleDetailPage({
           </Link>
         ) : null}
       </section>
-      <AircoCard
-        moduleId={yardModule.id}
-        airco={yardModule.airco}
-        canManage={roleCan(profile.role, "manageAirco")}
-        canMaintenance={roleCan(profile.role, "updateAircoMaintenance")}
-        intervalMonths={intervalMonths}
-      />
       <EquipmentIcons equipment={typeRecord?.equipment ?? []} />
       <TechnicalDrawing
         typeCode={yardModule.moduleTypeCode}
