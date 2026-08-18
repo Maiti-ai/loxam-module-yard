@@ -2,7 +2,7 @@ import "server-only";
 
 import ExcelJS from "exceljs";
 import {listModuleSummaries} from "@/features/modules/queries";
-import {formatDateTime, formatDimensions, formatLevelCode} from "@/lib/format";
+import {formatDateTime, formatDimensions, formatLevelLabel} from "@/lib/format";
 
 export type InventoryRow = {
   moduleNumber: string;
@@ -34,7 +34,7 @@ export async function getInventoryRows(locale = "nl"): Promise<InventoryRow[]> {
     block: module.location?.blockCode ?? "",
     row: module.location?.rowCode ?? "",
     position: module.location?.positionCode ?? "",
-    level: module.location ? formatLevelCode(module.location.level, locale) : "",
+    level: module.location ? formatLevelLabel(module.location.level, locale) : "",
     location: "",
     acBrand: module.airco?.brand ?? "",
     acInternal: module.airco?.internalNumber ?? "",

@@ -5,6 +5,7 @@ import {requireUser} from "@/features/auth/guard";
 import {getDashboardStats, listModuleSummaries} from "@/features/modules/queries";
 import {listMovements} from "@/features/movements/queries";
 import {isDriverRole, roleCan} from "@/features/roles";
+import {formatRowCode} from "@/lib/format";
 import {tryLoad} from "@/lib/try-load";
 
 export default async function HomePage() {
@@ -99,11 +100,12 @@ export default async function HomePage() {
       <section className="mt-8 border border-loxam-line bg-white p-5">
         <h2 className="text-lg font-black">{t("dashboard.statsTitle")}</h2>
         <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <Stat value={stats.totalCapacity} label={t("dashboard.totalCapacity")} />
+          <Stat value={stats.occupiedSlots} label={t("dashboard.occupied")} />
+          <Stat value={stats.freeSlots} label={t("dashboard.free")} />
           <Stat value={stats.total} label={t("dashboard.inYard")} />
           <Stat value={stats.available} label={t("dashboard.available")} />
           <Stat value={stats.rented} label={t("dashboard.rented")} />
-          <Stat value={stats.occupiedSlots} label={t("dashboard.occupied")} />
-          <Stat value={stats.freeSlots} label={t("dashboard.free")} />
           <Stat value={stats.withoutLocation} label={t("dashboard.unlocated")} />
         </ul>
         <p className="mt-4 text-xs font-bold text-loxam-muted">{t("dashboard.aircoUnknown")}</p>
@@ -122,7 +124,9 @@ export default async function HomePage() {
               <li key={movement.id} className="flex justify-between gap-3 text-sm font-bold">
                 <Link href={`/modules/${movement.moduleNumber}`}>{movement.moduleNumber}</Link>
                 <span className="text-loxam-muted">
-                  {movement.to?.blockCode ?? "—"} / R{movement.to?.rowCode ?? "—"}
+                  {movement.to
+                    ? `${movement.to.blockCode} / ${formatRowCode(movement.to.rowCode)}`
+                    : "—"}
                 </span>
               </li>
             ))}

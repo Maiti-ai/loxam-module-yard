@@ -59,7 +59,7 @@ export async function addYardRowAction(blockId: string): Promise<ActionResult> {
   }
 
   const nextOrder = (rows?.at(-1)?.sort_order ?? 0) + 1;
-  const nextCode = String(nextOrder);
+  const nextCode = `P${nextOrder}`;
   const {error: insertError} = await supabase.from("yard_rows").insert({
     block_id: blockId,
     code: nextCode,

@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
+    "test": "tsx --test src/features/yard-locations/*.test.ts",
     "verify:supabase": "node --env-file=.env.local scripts/verify-supabase.mjs"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^5"
   },
   "description": "Loxam Module Yard — foundation for module yard inventory management"

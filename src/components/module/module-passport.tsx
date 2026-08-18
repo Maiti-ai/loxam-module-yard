@@ -2,7 +2,7 @@
 
 import {useLocale, useTranslations} from "next-intl";
 import {ModuleStatusBadge} from "@/components/module/module-status";
-import {formatCodeNumber, formatDimensions, formatLevelLabel, formatTypeLabel} from "@/lib/format";
+import {formatPositionCode, formatRowCode, formatDimensions, formatLevelLabel, formatTypeLabel} from "@/lib/format";
 import type {ModuleSummary} from "@/features/yard-locations/types";
 
 export function ModulePassport({
@@ -53,13 +53,10 @@ export function ModulePassport({
         {module.location ? (
           <div className="grid grid-cols-2 gap-3">
             <LocationCell label={t("move.block")} value={module.location.blockCode} />
-            <LocationCell
-              label={t("move.row")}
-              value={formatCodeNumber(module.location.rowCode)}
-            />
+            <LocationCell label={t("move.pLabel")} value={formatRowCode(module.location.rowCode)} />
             <LocationCell
               label={t("move.position")}
-              value={formatCodeNumber(module.location.positionCode)}
+              value={formatPositionCode(module.location.positionCode)}
             />
             <LocationCell
               label={t("module.level")}

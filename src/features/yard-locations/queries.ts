@@ -1,5 +1,7 @@
 import {isProductionBlock} from "@/config/yard";
 import {createClient} from "@/lib/supabase/server";
+import {yardCapacity} from "./capacity";
+import {displayBlocks} from "./display-blocks";
 import type {ModuleStatus, ModuleTypeCode, StackLevel} from "@/types/database";
 import type {
   Occupant,
@@ -150,10 +152,13 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
       rows: (rowsByBlock.get(block.id) ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
     }));
 
-  const slotCount = slotsRes.data?.length ?? 0;
-  const occupiedSlotCount = occupantBySlot.size;
+  const capacity = yardCapacity(displayBlocks({blocks, slotCount: 0, occupiedSlotCount: 0}));
 
-  return {blocks, slotCount, occupiedSlotCount};
+  return {
+    blocks,
+    slotCount: capacity.total,
+    occupiedSlotCount: capacity.occupied,
+  };
 }
 
 export function findLocationBySlot(
@@ -176,6 +181,17 @@ export function findLocationBySlot(
             level: level.level,
           };
         }
+      }
+    }
+  }
+  return null;
+}
+
+export function findBlockCodeForPosition(snapshot: YardSnapshot, positionId: string) {
+  for (const block of snapshot.blocks) {
+    for (const row of block.rows) {
+      if (row.positions.some((position) => position.id === positionId)) {
+        return block.code;
       }
     }
   }
