@@ -135,3 +135,17 @@ export function summarizeStorageError(error: unknown): {
     code: asNonEmptyString(record.code),
   };
 }
+
+export function summarizePostgrestError(error: {
+  code?: string;
+  message?: string;
+  details?: string;
+  hint?: string;
+} | null) {
+  return {
+    dbCode: error?.code ?? null,
+    dbMessage: error?.message ? redactSecrets(error.message) : null,
+    dbDetails: error?.details ? redactSecrets(error.details) : null,
+    dbHint: error?.hint ? redactSecrets(error.hint) : null,
+  };
+}

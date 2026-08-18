@@ -34,6 +34,12 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [diagnosticCode, setDiagnosticCode] = useState<PhotoUploadFailureCode | null>(null);
+  const [dbDiagnostic, setDbDiagnostic] = useState<{
+    dbCode: string | null;
+    dbMessage: string | null;
+    dbDetails: string | null;
+    dbHint: string | null;
+  } | null>(null);
   const pendingRef = useRef(false);
 
   async function onFile(file: File | undefined, source: PhotoSource) {
@@ -73,6 +79,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
     setPending(true);
     setError(null);
     setDiagnosticCode(null);
+    setDbDiagnostic(null);
 
     let failureCode: PhotoUploadFailureCode = "MATERIALIZE_FAILED";
     try {
@@ -161,8 +168,19 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           mimeType,
           byteSize: uploadFile.size,
           actionCode: saved.code,
+          stage: "module_photos.insert",
+          dbCode: saved.dbCode ?? null,
+          dbMessage: saved.dbMessage ?? null,
+          dbDetails: saved.dbDetails ?? null,
+          dbHint: saved.dbHint ?? null,
         });
         setDiagnosticCode("METADATA_SAVE_FAILED");
+        setDbDiagnostic({
+          dbCode: saved.dbCode ?? null,
+          dbMessage: saved.dbMessage ?? null,
+          dbDetails: saved.dbDetails ?? null,
+          dbHint: saved.dbHint ?? null,
+        });
         setError(t(`errors.${saved.code}`));
         return;
       }
@@ -239,6 +257,22 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
             <p className="mt-1 text-xs font-bold uppercase tracking-wide text-loxam-muted">
               Code: {diagnosticCode}
             </p>
+          ) : null}
+          {dbDiagnostic?.dbCode ? (
+            <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
+              DB: {dbDiagnostic.dbCode}
+            </p>
+          ) : null}
+          {dbDiagnostic?.dbMessage ? (
+            <p className="mt-1 break-all text-xs text-loxam-muted">MSG: {dbDiagnostic.dbMessage}</p>
+          ) : null}
+          {dbDiagnostic?.dbDetails ? (
+            <p className="mt-1 break-all text-xs text-loxam-muted">
+              DETAILS: {dbDiagnostic.dbDetails}
+            </p>
+          ) : null}
+          {dbDiagnostic?.dbHint ? (
+            <p className="mt-1 break-all text-xs text-loxam-muted">HINT: {dbDiagnostic.dbHint}</p>
           ) : null}
         </div>
       ) : null}

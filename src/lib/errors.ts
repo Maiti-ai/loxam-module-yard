@@ -18,6 +18,10 @@ export type ActionErr = {
   ok: false;
   code: AppErrorCode;
   occupantNumber?: string | null;
+  dbCode?: string | null;
+  dbMessage?: string | null;
+  dbDetails?: string | null;
+  dbHint?: string | null;
 };
 export type ActionResult<T = object> = ActionOk<T> | ActionErr;
 
