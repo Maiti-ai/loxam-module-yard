@@ -39,7 +39,7 @@ export function ModulePassport({
       </header>
       <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
         <div>
-          <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.type")}</dt>
+          <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.catClass")}</dt>
           <dd className="mt-1 text-xl font-black">
             {formatTypeLabel(module.moduleTypeNumber, module.moduleTypeCode)}
           </dd>
