@@ -108,7 +108,7 @@
   "module": {
     "label": "Module",
     "serialNumber": "Numéro de série",
-    "type": "Type",
+    "type": "CAT.CLASS",
     "catClass": "CAT.CLASS",
     "dimensions": "Dimensions",
     "location": "Emplacement",
