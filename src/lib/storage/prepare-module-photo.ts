@@ -5,6 +5,7 @@ export type ModulePhotoMimeType = (typeof MODULE_PHOTO_MIME_TYPES)[number];
 export const STORAGE_UPLOAD_TIMEOUT_MS = 60_000;
 
 export type PhotoUploadFailureCode =
+  | "UNSUPPORTED_TYPE"
   | "MATERIALIZE_FAILED"
   | "STORAGE_UPLOAD_FAILED"
   | "STORAGE_UPLOAD_TIMEOUT"
@@ -92,4 +93,45 @@ export async function withTimeout<T>(
       clearTimeout(timeoutId);
     }
   }
+}
+
+export function bytesToMb(byteSize: number) {
+  return Number((byteSize / (1024 * 1024)).toFixed(2));
+}
+
+function asNonEmptyString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function redactSecrets(value: string) {
+  return value
+    .replace(/https?:\/\/[^\s]+/gi, "[url]")
+    .replace(/\b(bearer|apikey|token)=?\s*[^\s,;]+/gi, "[redacted]")
+    .slice(0, 300);
+}
+
+export function summarizeStorageError(error: unknown): {
+  name?: string;
+  message?: string;
+  status?: number;
+  statusCode?: string;
+  code?: string;
+} {
+  if (!error || typeof error !== "object") {
+    return {name: "unknown", message: error == null ? "empty" : redactSecrets(String(error))};
+  }
+
+  const record = error as Record<string, unknown>;
+  const message = asNonEmptyString(record.message);
+  const statusCode =
+    asNonEmptyString(record.statusCode) ??
+    (typeof record.statusCode === "number" ? String(record.statusCode) : undefined);
+
+  return {
+    name: asNonEmptyString(record.name),
+    message: message ? redactSecrets(message) : undefined,
+    status: typeof record.status === "number" ? record.status : undefined,
+    statusCode,
+    code: asNonEmptyString(record.code),
+  };
 }

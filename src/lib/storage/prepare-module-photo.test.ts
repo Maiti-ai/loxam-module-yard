@@ -4,6 +4,7 @@ import {
   materializePhotoFile,
   normalizePhotoMimeType,
   PhotoUploadTimeoutError,
+  summarizeStorageError,
   withTimeout,
 } from "./prepare-module-photo";
 
@@ -53,5 +54,21 @@ describe("module photo upload preparation", () => {
   it("resolves when the wrapped promise finishes before the timeout", async () => {
     const value = await withTimeout(Promise.resolve("ok"), 100);
     assert.equal(value, "ok");
+  });
+
+  it("summarizes Storage errors without URLs or tokens", () => {
+    const summary = summarizeStorageError({
+      name: "StorageApiError",
+      message: "new row violates row-level security policy https://example.supabase.co/storage/v1/object?token=secret",
+      status: 403,
+      statusCode: "403",
+      code: "AccessDenied",
+    });
+    assert.equal(summary.name, "StorageApiError");
+    assert.equal(summary.status, 403);
+    assert.equal(summary.statusCode, "403");
+    assert.equal(summary.code, "AccessDenied");
+    assert.equal(summary.message?.includes("https://"), false);
+    assert.equal(summary.message?.includes("secret"), false);
   });
 });

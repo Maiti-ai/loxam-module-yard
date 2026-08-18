@@ -8,17 +8,22 @@ import {createClient} from "@/lib/supabase/client";
 import {MODULE_PHOTOS_BUCKET, modulePhotoObjectPath} from "@/lib/storage/module-photos";
 import {
   STORAGE_UPLOAD_TIMEOUT_MS,
+  bytesToMb,
   materializePhotoFile,
   normalizePhotoMimeType,
   PhotoUploadTimeoutError,
+  summarizeStorageError,
   withTimeout,
   type PhotoUploadFailureCode,
 } from "@/lib/storage/prepare-module-photo";
 
-function logPhotoUploadFailure(
-  code: PhotoUploadFailureCode,
-  details: {moduleId: string; fileName?: string; mimeType?: string; byteSize?: number},
-) {
+type PhotoSource = "camera" | "gallery";
+
+function logPhotoUpload(event: string, details: Record<string, unknown>) {
+  console.info("[photo-upload]", event, details);
+}
+
+function logPhotoUploadFailure(code: PhotoUploadFailureCode, details: Record<string, unknown>) {
   console.error("[photo-upload]", code, details);
 }
 
@@ -28,15 +33,38 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
   const [caption, setCaption] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [diagnosticCode, setDiagnosticCode] = useState<PhotoUploadFailureCode | null>(null);
   const pendingRef = useRef(false);
 
-  async function onFile(file: File | undefined) {
+  async function onFile(file: File | undefined, source: PhotoSource) {
     if (!file || pendingRef.current) {
       return;
     }
 
+    const originalFileName = file.name;
+    const originalMimeType = file.type || "";
+    const originalByteSize = file.size;
     const mimeType = normalizePhotoMimeType(file.type, file.name);
+
+    logPhotoUpload("FILE_SELECTED", {
+      source,
+      moduleId,
+      originalFileName,
+      originalMimeType,
+      originalByteSize,
+      originalSizeMb: bytesToMb(originalByteSize),
+      normalizedMimeType: mimeType,
+    });
+
     if (!mimeType) {
+      logPhotoUploadFailure("UNSUPPORTED_TYPE", {
+        source,
+        moduleId,
+        originalFileName,
+        originalMimeType,
+        originalByteSize,
+      });
+      setDiagnosticCode("UNSUPPORTED_TYPE");
       setError(t("errors.UPLOAD_FAILED"));
       return;
     }
@@ -44,13 +72,34 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
     pendingRef.current = true;
     setPending(true);
     setError(null);
+    setDiagnosticCode(null);
 
     let failureCode: PhotoUploadFailureCode = "MATERIALIZE_FAILED";
     try {
       const uploadFile = await materializePhotoFile(file, mimeType);
-      const path = modulePhotoObjectPath(moduleId, uploadFile.name);
-      const supabase = createClient();
+      logPhotoUpload("MATERIALIZE_OK", {
+        source,
+        moduleId,
+        originalFileName,
+        originalMimeType,
+        originalByteSize,
+        originalSizeMb: bytesToMb(originalByteSize),
+        materializedFileName: uploadFile.name,
+        normalizedMimeType: mimeType,
+        materializedByteSize: uploadFile.size,
+        materializedSizeMb: bytesToMb(uploadFile.size),
+      });
 
+      const path = modulePhotoObjectPath(moduleId, uploadFile.name);
+      logPhotoUpload("STORAGE_UPLOAD_START", {
+        source,
+        moduleId,
+        storagePath: path,
+        normalizedMimeType: mimeType,
+        materializedByteSize: uploadFile.size,
+      });
+
+      const supabase = createClient();
       failureCode = "STORAGE_UPLOAD_FAILED";
       const upload = await withTimeout(
         supabase.storage.from(MODULE_PHOTOS_BUCKET).upload(path, uploadFile, {
@@ -61,15 +110,37 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
       );
 
       if (upload.error) {
+        const storageError = summarizeStorageError(upload.error);
         logPhotoUploadFailure("STORAGE_UPLOAD_FAILED", {
+          source,
           moduleId,
-          fileName: uploadFile.name,
-          mimeType,
-          byteSize: uploadFile.size,
+          originalFileName,
+          originalMimeType,
+          normalizedMimeType: mimeType,
+          originalByteSize,
+          materializedByteSize: uploadFile.size,
+          storagePath: path,
+          storageError,
         });
+        setDiagnosticCode("STORAGE_UPLOAD_FAILED");
         setError(t("errors.UPLOAD_FAILED"));
         return;
       }
+
+      logPhotoUpload("STORAGE_UPLOAD_OK", {
+        source,
+        moduleId,
+        storagePath: path,
+        materializedByteSize: uploadFile.size,
+      });
+      logPhotoUpload("METADATA_SAVE_START", {
+        source,
+        moduleId,
+        storagePath: path,
+        fileName: uploadFile.name,
+        mimeType,
+        byteSize: uploadFile.size,
+      });
 
       failureCode = "METADATA_SAVE_FAILED";
       const saved = await savePhotoMetadataAction({
@@ -83,25 +154,39 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
 
       if (!saved.ok) {
         logPhotoUploadFailure("METADATA_SAVE_FAILED", {
+          source,
           moduleId,
+          storagePath: path,
           fileName: uploadFile.name,
           mimeType,
           byteSize: uploadFile.size,
+          actionCode: saved.code,
         });
+        setDiagnosticCode("METADATA_SAVE_FAILED");
         setError(t(`errors.${saved.code}`));
         return;
       }
 
+      logPhotoUpload("METADATA_SAVE_OK", {
+        source,
+        moduleId,
+        storagePath: path,
+      });
       setCaption("");
       router.refresh();
     } catch (caught) {
       const code: PhotoUploadFailureCode =
         caught instanceof PhotoUploadTimeoutError ? "STORAGE_UPLOAD_TIMEOUT" : failureCode;
       logPhotoUploadFailure(code, {
+        source,
         moduleId,
-        fileName: file.name,
-        mimeType,
+        originalFileName,
+        originalMimeType,
+        normalizedMimeType: mimeType,
+        originalByteSize,
+        thrown: summarizeStorageError(caught),
       });
+      setDiagnosticCode(code);
       setError(t("errors.UPLOAD_FAILED"));
     } finally {
       pendingRef.current = false;
@@ -129,7 +214,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           disabled={pending}
           className="sr-only"
           onChange={(event) => {
-            void onFile(event.target.files?.[0]);
+            void onFile(event.target.files?.[0], "camera");
             event.target.value = "";
           }}
         />
@@ -142,12 +227,21 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           disabled={pending}
           className="sr-only"
           onChange={(event) => {
-            void onFile(event.target.files?.[0]);
+            void onFile(event.target.files?.[0], "gallery");
             event.target.value = "";
           }}
         />
       </label>
-      {error ? <p className="text-sm font-bold text-loxam-occupied">{error}</p> : null}
+      {error ? (
+        <div>
+          <p className="text-sm font-bold text-loxam-occupied">{error}</p>
+          {diagnosticCode ? (
+            <p className="mt-1 text-xs font-bold uppercase tracking-wide text-loxam-muted">
+              Code: {diagnosticCode}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </form>
   );
 }

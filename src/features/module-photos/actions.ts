@@ -39,6 +39,16 @@ export async function savePhotoMetadataAction(input: {
     .single();
 
   if (error || !data) {
+    console.error("[photo-upload]", "METADATA_SAVE_FAILED", {
+      moduleId: input.moduleId,
+      storagePath: input.storagePath,
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      byteSize: input.byteSize,
+      actionCode: "UPLOAD_FAILED",
+      dbCode: error?.code ?? null,
+      dbMessage: error?.message ?? "no data",
+    });
     return {ok: false, code: "UPLOAD_FAILED"};
   }
 
