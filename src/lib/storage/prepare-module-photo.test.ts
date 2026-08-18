@@ -4,6 +4,7 @@ import {
   materializePhotoFile,
   normalizePhotoMimeType,
   PhotoUploadTimeoutError,
+  summarizePostgrestError,
   summarizeStorageError,
   withTimeout,
 } from "./prepare-module-photo";
@@ -70,5 +71,19 @@ describe("module photo upload preparation", () => {
     assert.equal(summary.code, "AccessDenied");
     assert.equal(summary.message?.includes("https://"), false);
     assert.equal(summary.message?.includes("secret"), false);
+  });
+
+  it("summarizes PostgREST errors without URLs or tokens", () => {
+    const summary = summarizePostgrestError({
+      code: "42501",
+      message: "new row violates row-level security policy https://example.supabase.co/rest/v1/module_photos?apikey=secret",
+      details: "Failing row contains (token=abc).",
+      hint: "Grant INSERT on public.module_photos to authenticated.",
+    });
+    assert.equal(summary.dbCode, "42501");
+    assert.equal(summary.dbHint, "Grant INSERT on public.module_photos to authenticated.");
+    assert.equal(summary.dbMessage?.includes("https://"), false);
+    assert.equal(summary.dbMessage?.includes("secret"), false);
+    assert.equal(summary.dbDetails?.includes("token="), false);
   });
 });

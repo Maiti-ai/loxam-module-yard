@@ -5,6 +5,7 @@ import {getCurrentProfile} from "@/features/auth";
 import {roleCan} from "@/features/roles";
 import type {ActionResult} from "@/lib/errors";
 import {MODULE_PHOTOS_BUCKET} from "@/lib/storage/module-photos";
+import {summarizePostgrestError} from "@/lib/storage/prepare-module-photo";
 import {createClient} from "@/lib/supabase/server";
 
 export async function savePhotoMetadataAction(input: {
@@ -39,17 +40,30 @@ export async function savePhotoMetadataAction(input: {
     .single();
 
   if (error || !data) {
+    const dbError = summarizePostgrestError(error);
     console.error("[photo-upload]", "METADATA_SAVE_FAILED", {
+      stage: "module_photos.insert",
       moduleId: input.moduleId,
       storagePath: input.storagePath,
       fileName: input.fileName,
       mimeType: input.mimeType,
       byteSize: input.byteSize,
+      uploadedBy: profile.id,
       actionCode: "UPLOAD_FAILED",
-      dbCode: error?.code ?? null,
-      dbMessage: error?.message ?? "no data",
+      dbCode: dbError.dbCode,
+      dbMessage: dbError.dbMessage,
+      dbDetails: dbError.dbDetails,
+      dbHint: dbError.dbHint,
+      noData: !data,
     });
-    return {ok: false, code: "UPLOAD_FAILED"};
+    return {
+      ok: false,
+      code: "UPLOAD_FAILED",
+      dbCode: dbError.dbCode ?? (!data ? "NO_ROW" : null),
+      dbMessage: dbError.dbMessage,
+      dbDetails: dbError.dbDetails,
+      dbHint: dbError.dbHint,
+    };
   }
 
   revalidatePath("/", "layout");
