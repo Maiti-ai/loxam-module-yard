@@ -58,7 +58,7 @@ export default async function MoveModulePage({
   }
 
   return (
-    <section className="mx-auto max-w-3xl px-4 py-8">
+    <section className="mx-auto w-full max-w-[2400px] px-3 py-6 sm:px-4">
       <MoveWizard module={loaded.data.yardModule} snapshot={loaded.data.snapshot} />
     </section>
   );

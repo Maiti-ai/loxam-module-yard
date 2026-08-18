@@ -22,7 +22,7 @@ export default async function YardPage() {
   }
 
   return (
-    <section className="mx-auto max-w-6xl px-4 py-8">
+    <section className="mx-auto w-full max-w-[2400px] px-3 py-6 sm:px-4">
       <h1 className="text-4xl font-black">{t("yard.title")}</h1>
       <p className="mt-3 max-w-2xl text-base text-loxam-muted">{t("yard.subtitle")}</p>
       <div className="mt-8">

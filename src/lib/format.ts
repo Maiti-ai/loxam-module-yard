@@ -1,4 +1,4 @@
-import type {StackLevel} from "@/types/database";
+import type {StackLevel} from "../types/database";
 
 export function formatDimensions(lengthM: number, widthM: number) {
   const length = Number(lengthM).toString().replace(/\.0$/, "");
@@ -11,21 +11,36 @@ export function formatCodeNumber(code: string) {
   return Number.isFinite(numeric) ? String(numeric) : code;
 }
 
-export function formatLevelCode(level: StackLevel, locale: string) {
-  if (level === "GROUND") {
-    return locale === "fr" ? "RDC" : "GV";
+/** Permanent P-row identifier from the Schelle plan, e.g. P2. */
+export function formatRowCode(code: string) {
+  const trimmed = code.trim().toUpperCase();
+  const prefixed = trimmed.match(/^P(\d+)$/);
+  if (prefixed) {
+    return `P${Number(prefixed[1])}`;
   }
+  if (/^\d+$/.test(trimmed)) {
+    return `P${Number(trimmed)}`;
+  }
+  return trimmed;
+}
+
+export function formatPositionCode(code: string) {
+  return formatCodeNumber(code);
+}
+
+export function formatLevelCode(level: StackLevel, locale?: string) {
+  void locale;
   if (level === "LEVEL_1") {
     return "1";
   }
-  return "2";
+  if (level === "LEVEL_2") {
+    return "2";
+  }
+  return "0";
 }
 
-export function formatLevelLabel(level: StackLevel, locale: string) {
-  if (level === "GROUND") {
-    return locale === "fr" ? "RDC" : "GV";
-  }
-  return locale === "fr" ? `Niveau ${formatLevelCode(level, locale)}` : `Level ${formatLevelCode(level, locale)}`;
+export function formatLevelLabel(level: StackLevel, locale?: string) {
+  return `Niveau ${formatLevelCode(level, locale)}`;
 }
 
 export function formatYardLocation(parts: {
@@ -35,8 +50,8 @@ export function formatYardLocation(parts: {
   level: StackLevel;
   locale: string;
 }) {
-  const level = formatLevelCode(parts.level, parts.locale);
-  return `${parts.blockCode} · ${formatCodeNumber(parts.rowCode)} · ${formatCodeNumber(parts.positionCode)} · ${level}`;
+  const level = formatLevelLabel(parts.level, parts.locale);
+  return `${parts.blockCode} · ${formatRowCode(parts.rowCode)} · ${formatPositionCode(parts.positionCode)} · ${level}`;
 }
 
 export function formatCompactLocation(parts: {
@@ -47,7 +62,7 @@ export function formatCompactLocation(parts: {
   locale: string;
 }) {
   const level = formatLevelLabel(parts.level, parts.locale);
-  return `${parts.blockCode} / R${formatCodeNumber(parts.rowCode)} / P${formatCodeNumber(parts.positionCode)} / ${level}`;
+  return `${parts.blockCode} / ${formatRowCode(parts.rowCode)} / ${formatPositionCode(parts.positionCode)} / ${level}`;
 }
 
 export function formatDateTime(value: string | null, locale: string) {
