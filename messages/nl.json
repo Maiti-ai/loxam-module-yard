@@ -91,7 +91,7 @@
     "subtitle": "Houd de tablet tegen de NFC-tag op de module.",
     "nfcReady": "NFC klaar",
     "nfcScanning": "Wachten op tag…",
-    "nfcBody": "Tik Start en houd de tablet tegen de tag. Payload = modulenummer, bv. 2000.",
+    "nfcBody": "Houd de tablet tegen de tag. Payload = modulenummer, bv. 2000.",
     "nfcUnsupportedTitle": "Web NFC niet beschikbaar",
     "nfcUnsupported": "Web NFC werkt hier niet. Gebruik Chrome op Android, of de demo-invoer hieronder. Er is geen gesimuleerde scan.",
     "nfcPermission": "NFC-toegang geweigerd. Sta NFC toe en probeer opnieuw.",

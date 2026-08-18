@@ -45,12 +45,9 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
   const [manual, setManual] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [stopped, setStopped] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const nfcSupported = useSyncExternalStore(nfcSubscribe, nfcSnapshot, nfcServerSnapshot);
-
-  useEffect(() => {
-    return () => abortRef.current?.abort();
-  }, []);
 
   function openModule(raw: string) {
     const value = normalizeModuleNumber(raw);
@@ -71,6 +68,7 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
     const abort = new AbortController();
     abortRef.current = abort;
     setError(null);
+    setStopped(false);
     setScanning(true);
 
     try {
@@ -79,7 +77,6 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
         const value = readNdefText(event);
         if (value) {
           abort.abort();
-          setScanning(false);
           openModule(value);
         }
       });
@@ -104,7 +101,26 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
   function stopNfc() {
     abortRef.current?.abort();
     setScanning(false);
+    setStopped(true);
   }
+
+  useEffect(() => {
+    if (!nfcSupported) {
+      return;
+    }
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        void startNfc();
+      }
+    });
+    return () => {
+      cancelled = true;
+      abortRef.current?.abort();
+    };
+    // Auto-start when the user opens the scan screen; do not retrigger on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nfcSupported]);
 
   return (
     <div className="space-y-8">
@@ -112,18 +128,21 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
         {nfcSupported ? (
           <>
             <p className="text-sm font-black uppercase text-loxam-red">
-              {scanning ? t("nfcScanning") : t("nfcReady")}
+              {scanning || (!error && !stopped) ? t("nfcScanning") : t("nfcReady")}
             </p>
             <p className="mt-3 text-base font-bold text-loxam-muted">{t("nfcBody")}</p>
-            <div className="mt-6">
-              {scanning ? (
+            {scanning ? (
+              <div className="mt-6">
                 <TouchButton variant="secondary" onClick={stopNfc}>
                   {t("stopNfc")}
                 </TouchButton>
-              ) : (
+              </div>
+            ) : null}
+            {!scanning && (error || stopped) ? (
+              <div className="mt-6">
                 <TouchButton onClick={startNfc}>{t("startNfc")}</TouchButton>
-              )}
-            </div>
+              </div>
+            ) : null}
           </>
         ) : (
           <div className="border-4 border-loxam-occupied bg-loxam-occupied-soft p-4">
