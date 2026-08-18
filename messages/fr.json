@@ -91,7 +91,7 @@
     "subtitle": "Approchez la tablette de la puce NFC du module.",
     "nfcReady": "NFC prêt",
     "nfcScanning": "En attente de puce…",
-    "nfcBody": "Touchez Démarrer et approchez la tablette de la puce. Contenu = numéro de module, ex. 2000.",
+    "nfcBody": "Approchez la tablette de la puce. Contenu = numéro de module, ex. 2000.",
     "nfcUnsupportedTitle": "Web NFC indisponible",
     "nfcUnsupported": "Web NFC ne fonctionne pas ici. Utilisez Chrome sur Android, ou la saisie démo ci-dessous. Aucun scan simulé.",
     "nfcPermission": "Accès NFC refusé. Autorisez le NFC et réessayez.",
