@@ -21,10 +21,22 @@ export function ModulePassport({
         emphasize ? "border-loxam-red" : "border-loxam-black"
       }`}
     >
-      <p className="text-xs font-bold tracking-[0.22em] text-loxam-muted uppercase">
-        {t("module.label")}
-      </p>
-      <h1 className="mt-1 text-5xl font-black tracking-tight">{module.moduleNumber}</h1>
+      <header className="flex items-start justify-between gap-3 sm:gap-6">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold tracking-[0.22em] text-loxam-muted uppercase">
+            {t("module.label")}
+          </p>
+          <h1 className="mt-1 text-5xl font-black tracking-tight">{module.moduleNumber}</h1>
+        </div>
+        <div className="max-w-[48%] text-right">
+          <p className="text-xs font-bold leading-tight tracking-[0.22em] text-loxam-muted uppercase">
+            {t("module.serialNumber")}
+          </p>
+          <p className="mt-1 text-xl font-black tracking-tight text-loxam-muted sm:text-2xl">
+            —
+          </p>
+        </div>
+      </header>
       <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
         <div>
           <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.type")}</dt>
