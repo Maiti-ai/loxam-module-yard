@@ -76,7 +76,6 @@ export function NFCScanner({demoNumbers}: {demoNumbers: string[]}) {
       reader.addEventListener("reading", (event) => {
         const value = readNdefText(event);
         if (value) {
-          abort.abort();
           openModule(value);
         }
       });
