@@ -107,6 +107,7 @@
   },
   "module": {
     "label": "Module",
+    "serialNumber": "Numéro de série",
     "type": "Type",
     "dimensions": "Dimensions",
     "location": "Emplacement",
