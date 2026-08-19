@@ -7,14 +7,16 @@ import {savePhotoMetadataAction} from "@/features/module-photos/actions";
 import {createClient} from "@/lib/supabase/client";
 import {MODULE_PHOTOS_BUCKET, modulePhotoObjectPath} from "@/lib/storage/module-photos";
 import {
-  classifyMetadataSaveThrow,
   STORAGE_UPLOAD_TIMEOUT_MS,
   bytesToMb,
   materializePhotoFile,
   normalizePhotoMimeType,
   PhotoUploadTimeoutError,
   summarizeStorageError,
+  summarizeThrownException,
   withTimeout,
+  type ClientStorageStatus,
+  type ClientUploadStage,
   type PhotoUploadFailureCode,
 } from "@/lib/storage/prepare-module-photo";
 
@@ -36,7 +38,9 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
   const [error, setError] = useState<string | null>(null);
   const [diagnosticCode, setDiagnosticCode] = useState<PhotoUploadFailureCode | null>(null);
   const [dbDiagnostic, setDbDiagnostic] = useState<{
+    storage: ClientStorageStatus;
     stage: string | null;
+    thrownName: string | null;
     dbCode: string | null;
     dbMessage: string | null;
     dbDetails: string | null;
@@ -83,8 +87,10 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
     setDiagnosticCode(null);
     setDbDiagnostic(null);
 
-    let failureCode: PhotoUploadFailureCode = "MATERIALIZE_FAILED";
+    let clientStage: ClientUploadStage = "FILE_MATERIALIZE";
+    let storageStatus: ClientStorageStatus = "NOT_STARTED";
     try {
+      clientStage = "FILE_MATERIALIZE";
       const uploadFile = await materializePhotoFile(file, mimeType);
       logPhotoUpload("MATERIALIZE_OK", {
         source,
@@ -108,8 +114,8 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         materializedByteSize: uploadFile.size,
       });
 
+      clientStage = "STORAGE_UPLOAD";
       const supabase = createClient();
-      failureCode = "STORAGE_UPLOAD_FAILED";
       const upload = await withTimeout(
         supabase.storage.from(MODULE_PHOTOS_BUCKET).upload(path, uploadFile, {
           contentType: mimeType,
@@ -119,6 +125,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
       );
 
       if (upload.error) {
+        storageStatus = "FAILED";
         const storageError = summarizeStorageError(upload.error);
         logPhotoUploadFailure("STORAGE_UPLOAD_FAILED", {
           source,
@@ -130,17 +137,30 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           materializedByteSize: uploadFile.size,
           storagePath: path,
           storageError,
+          storage: storageStatus,
+          stage: clientStage,
         });
         setDiagnosticCode("STORAGE_UPLOAD_FAILED");
+        setDbDiagnostic({
+          storage: storageStatus,
+          stage: clientStage,
+          thrownName: "NONE",
+          dbCode: "NONE",
+          dbMessage: storageError.message ?? storageError.code ?? null,
+          dbDetails: null,
+          dbHint: null,
+        });
         setError(t("errors.UPLOAD_FAILED"));
         return;
       }
 
+      storageStatus = "SUCCESS";
       logPhotoUpload("STORAGE_UPLOAD_OK", {
         source,
         moduleId,
         storagePath: path,
         materializedByteSize: uploadFile.size,
+        storage: storageStatus,
       });
       logPhotoUpload("METADATA_SAVE_START", {
         source,
@@ -149,9 +169,10 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         fileName: uploadFile.name,
         mimeType,
         byteSize: uploadFile.size,
+        storage: storageStatus,
       });
 
-      failureCode = "METADATA_SAVE_FAILED";
+      clientStage = "METADATA_ACTION";
       const saved = await savePhotoMetadataAction({
         moduleId,
         storagePath: path,
@@ -170,7 +191,8 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           mimeType,
           byteSize: uploadFile.size,
           actionCode: saved.code,
-          stage: saved.stage ?? null,
+          storage: storageStatus,
+          stage: saved.stage ?? "METADATA_ACTION",
           dbCode: saved.dbCode ?? null,
           dbMessage: saved.dbMessage ?? null,
           dbDetails: saved.dbDetails ?? null,
@@ -178,7 +200,9 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         });
         setDiagnosticCode("METADATA_SAVE_FAILED");
         setDbDiagnostic({
-          stage: saved.stage ?? "NONE",
+          storage: storageStatus,
+          stage: saved.stage ?? "METADATA_ACTION",
+          thrownName: "NONE",
           dbCode: saved.dbCode ? saved.dbCode : "NONE",
           dbMessage: saved.dbMessage ?? null,
           dbDetails: saved.dbDetails ?? null,
@@ -192,12 +216,24 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         source,
         moduleId,
         storagePath: path,
+        storage: storageStatus,
       });
+      clientStage = "UI_REFRESH";
       setCaption("");
       router.refresh();
     } catch (caught) {
+      const thrown = summarizeThrownException(caught);
       const code: PhotoUploadFailureCode =
-        caught instanceof PhotoUploadTimeoutError ? "STORAGE_UPLOAD_TIMEOUT" : failureCode;
+        caught instanceof PhotoUploadTimeoutError
+          ? "STORAGE_UPLOAD_TIMEOUT"
+          : clientStage === "FILE_MATERIALIZE"
+            ? "MATERIALIZE_FAILED"
+            : clientStage === "STORAGE_UPLOAD"
+              ? "STORAGE_UPLOAD_FAILED"
+              : "METADATA_SAVE_FAILED";
+      if (clientStage === "STORAGE_UPLOAD" && storageStatus !== "SUCCESS") {
+        storageStatus = "FAILED";
+      }
       logPhotoUploadFailure(code, {
         source,
         moduleId,
@@ -205,19 +241,22 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         originalMimeType,
         normalizedMimeType: mimeType,
         originalByteSize,
-        thrown: summarizeStorageError(caught),
+        storage: storageStatus,
+        stage: clientStage,
+        thrownName: thrown.thrownName,
+        thrownMessage: thrown.thrownMessage,
+        thrownStack: thrown.thrownStack,
       });
       setDiagnosticCode(code);
-      if (code === "METADATA_SAVE_FAILED") {
-        const classified = classifyMetadataSaveThrow(caught, "client.thrown");
-        setDbDiagnostic({
-          stage: classified.stage,
-          dbCode: classified.dbCode,
-          dbMessage: classified.dbMessage,
-          dbDetails: classified.dbDetails,
-          dbHint: classified.dbHint,
-        });
-      }
+      setDbDiagnostic({
+        storage: storageStatus,
+        stage: clientStage,
+        thrownName: thrown.thrownName,
+        dbCode: "NONE",
+        dbMessage: thrown.thrownMessage,
+        dbDetails: null,
+        dbHint: null,
+      });
       setError(t("errors.UPLOAD_FAILED"));
     } finally {
       pendingRef.current = false;
@@ -271,19 +310,25 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
               Code: {diagnosticCode}
             </p>
           ) : null}
-          {diagnosticCode === "METADATA_SAVE_FAILED" ? (
+          {dbDiagnostic ? (
             <>
               <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
-                Stage: {dbDiagnostic?.stage ?? "NONE"}
+                Storage: {dbDiagnostic.storage}
               </p>
               <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
-                DB: {dbDiagnostic?.dbCode ?? "NONE"}
+                Stage: {dbDiagnostic.stage ?? "NONE"}
               </p>
-              {dbDiagnostic?.dbMessage ? (
+              <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
+                Thrown: {dbDiagnostic.thrownName ?? "NONE"}
+              </p>
+              {dbDiagnostic.dbMessage ? (
                 <p className="mt-1 break-all text-xs text-loxam-muted">
                   Message: {dbDiagnostic.dbMessage}
                 </p>
               ) : null}
+              <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
+                DB: {dbDiagnostic.dbCode ?? "NONE"}
+              </p>
             </>
           ) : null}
           {dbDiagnostic?.dbDetails ? (
