@@ -197,7 +197,12 @@
     "retake": "Hernemen",
     "save": "Opslaan",
     "history": "Alle foto’s",
-    "by": "Door"
+    "by": "Door",
+    "delete": "Verwijderen",
+    "deleting": "Verwijderen…",
+    "deleteConfirmTitle": "Deze foto verwijderen?",
+    "deleteConfirmBody": "Deze actie kan niet ongedaan worden gemaakt.",
+    "deleteFailed": "Foto verwijderen is niet gelukt."
   },
   "history": {
     "title": "Historiek",
@@ -287,6 +292,7 @@
     "POSITION_FULL": "Cette position est complète. Les niveaux 0, 1 et 2 sont déjà occupés.",
     "MOVE_FAILED": "Verplaatsen is niet gelukt.",
     "UPLOAD_FAILED": "Uploaden is niet gelukt.",
+    "DELETE_FAILED": "Foto verwijderen is niet gelukt.",
     "SAVE_FAILED": "Opslaan is niet gelukt.",
     "LOAD_FAILED": "Gegevens laden is niet gelukt."
   },

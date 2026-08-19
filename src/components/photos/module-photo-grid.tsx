@@ -1,8 +1,10 @@
 "use client";
 
 import {useLocale, useTranslations} from "next-intl";
+import {useState} from "react";
 import {formatDateTime} from "@/lib/format";
 import type {ModulePhotoRecord} from "@/features/module-photos";
+import {PhotoDeleteButton} from "@/components/photos/photo-delete-button";
 
 export function ModulePhotoGrid({
   photos,
@@ -53,11 +55,19 @@ export function ModulePhotoGrid({
   );
 }
 
-export function PhotoHistoryList({photos}: {photos: ModulePhotoRecord[]}) {
+export function PhotoHistoryList({
+  photos,
+  canDelete = false,
+}: {
+  photos: ModulePhotoRecord[];
+  canDelete?: boolean;
+}) {
   const t = useTranslations();
   const locale = useLocale();
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
+  const visiblePhotos = photos.filter((photo) => !deletedIds.includes(photo.id));
 
-  if (photos.length === 0) {
+  if (visiblePhotos.length === 0) {
     return (
       <p className="border border-dashed border-loxam-line bg-white p-6 font-bold text-loxam-muted">
         {t("photos.empty")}
@@ -67,7 +77,7 @@ export function PhotoHistoryList({photos}: {photos: ModulePhotoRecord[]}) {
 
   return (
     <ul className="space-y-4">
-      {photos.map((photo) => (
+      {visiblePhotos.map((photo) => (
         <li key={photo.id} className="border border-loxam-line bg-white">
           {photo.signedUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -84,6 +94,18 @@ export function PhotoHistoryList({photos}: {photos: ModulePhotoRecord[]}) {
             </p>
             <p className="break-all text-xs text-loxam-muted">{photo.storagePath}</p>
             {photo.caption ? <p className="font-bold">{photo.caption}</p> : null}
+            {canDelete ? (
+              <div className="pt-3">
+                <PhotoDeleteButton
+                  photoId={photo.id}
+                  onDeleted={(photoId) => {
+                    setDeletedIds((current) =>
+                      current.includes(photoId) ? current : [...current, photoId],
+                    );
+                  }}
+                />
+              </div>
+            ) : null}
           </div>
         </li>
       ))}

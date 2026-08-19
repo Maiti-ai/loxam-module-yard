@@ -7,6 +7,7 @@ export const APP_ERROR_CODES = [
   "POSITION_FULL",
   "MOVE_FAILED",
   "UPLOAD_FAILED",
+  "DELETE_FAILED",
   "SAVE_FAILED",
   "LOAD_FAILED",
 ] as const;

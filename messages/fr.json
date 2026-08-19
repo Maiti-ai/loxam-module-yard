@@ -197,7 +197,12 @@
     "retake": "Reprendre",
     "save": "Enregistrer",
     "history": "Toutes les photos",
-    "by": "Par"
+    "by": "Par",
+    "delete": "Supprimer",
+    "deleting": "Suppression…",
+    "deleteConfirmTitle": "Supprimer cette photo ?",
+    "deleteConfirmBody": "Cette action est irréversible.",
+    "deleteFailed": "La suppression de la photo a échoué."
   },
   "history": {
     "title": "Historique",
@@ -287,6 +292,7 @@
     "POSITION_FULL": "Cette position est complète. Les niveaux 0, 1 et 2 sont déjà occupés.",
     "MOVE_FAILED": "Le déplacement a échoué.",
     "UPLOAD_FAILED": "Le téléversement a échoué.",
+    "DELETE_FAILED": "La suppression de la photo a échoué.",
     "SAVE_FAILED": "L’enregistrement a échoué.",
     "LOAD_FAILED": "Le chargement a échoué."
   },
