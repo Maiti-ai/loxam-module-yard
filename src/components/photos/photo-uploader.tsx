@@ -1,26 +1,40 @@
 "use client";
 
-import {useRef, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useTranslations} from "next-intl";
 import {useRouter} from "@/i18n/navigation";
 import {savePhotoMetadataAction} from "@/features/module-photos/actions";
 import {createClient} from "@/lib/supabase/client";
 import {MODULE_PHOTOS_BUCKET, modulePhotoObjectPath} from "@/lib/storage/module-photos";
+import {TouchButton} from "@/components/ui/touch-button";
 import {
   STORAGE_UPLOAD_TIMEOUT_MS,
   bytesToMb,
+  createLocalPhotoPreviewUrl,
   materializePhotoFile,
   normalizePhotoMimeType,
   PhotoUploadTimeoutError,
+  revokeLocalPhotoPreviewUrl,
   summarizeStorageError,
   summarizeThrownException,
   withTimeout,
   type ClientStorageStatus,
   type ClientUploadStage,
+  type ModulePhotoMimeType,
   type PhotoUploadFailureCode,
 } from "@/lib/storage/prepare-module-photo";
 
 type PhotoSource = "camera" | "gallery";
+
+type PendingPhoto = {
+  file: File;
+  mimeType: ModulePhotoMimeType;
+  previewUrl: string;
+  source: PhotoSource;
+  originalFileName: string;
+  originalMimeType: string;
+  originalByteSize: number;
+};
 
 function logPhotoUpload(event: string, details: Record<string, unknown>) {
   console.info("[photo-upload]", event, details);
@@ -35,6 +49,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
   const router = useRouter();
   const [caption, setCaption] = useState("");
   const [pending, setPending] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [diagnosticCode, setDiagnosticCode] = useState<PhotoUploadFailureCode | null>(null);
   const [dbDiagnostic, setDbDiagnostic] = useState<{
@@ -48,8 +63,22 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
     dbHint: string | null;
   } | null>(null);
   const pendingRef = useRef(false);
+  const previewUrlRef = useRef<string | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  async function onFile(file: File | undefined, source: PhotoSource) {
+  function replacePreviewUrl(nextUrl: string | null) {
+    revokeLocalPhotoPreviewUrl(previewUrlRef.current);
+    previewUrlRef.current = nextUrl;
+  }
+
+  useEffect(() => {
+    return () => {
+      revokeLocalPhotoPreviewUrl(previewUrlRef.current);
+      previewUrlRef.current = null;
+    };
+  }, []);
+
+  function onFile(file: File | undefined, source: PhotoSource) {
     if (!file || pendingRef.current) {
       return;
     }
@@ -82,12 +111,56 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
       return;
     }
 
+    const previewUrl = createLocalPhotoPreviewUrl(file);
+    replacePreviewUrl(previewUrl);
+    setError(null);
+    setDiagnosticCode(null);
+    setDbDiagnostic(null);
+    setPendingPhoto({
+      file,
+      mimeType,
+      previewUrl,
+      source,
+      originalFileName,
+      originalMimeType,
+      originalByteSize,
+    });
+    logPhotoUpload("PREVIEW_READY", {
+      source,
+      moduleId,
+      originalFileName,
+      originalByteSize,
+      normalizedMimeType: mimeType,
+    });
+  }
+
+  function onRetake() {
+    if (pendingRef.current) {
+      return;
+    }
+
+    const reopenCamera = pendingPhoto?.source === "camera";
+    replacePreviewUrl(null);
+    setPendingPhoto(null);
+    logPhotoUpload("PREVIEW_DISCARDED", {moduleId, reopenCamera});
+    if (reopenCamera) {
+      cameraInputRef.current?.click();
+    }
+  }
+
+  async function onSave() {
+    const selected = pendingPhoto;
+    if (!selected || pendingRef.current) {
+      return;
+    }
+
     pendingRef.current = true;
     setPending(true);
     setError(null);
     setDiagnosticCode(null);
     setDbDiagnostic(null);
 
+    const {file, mimeType, originalFileName, originalMimeType, originalByteSize, source} = selected;
     let clientStage: ClientUploadStage = "FILE_MATERIALIZE";
     let storageStatus: ClientStorageStatus = "NOT_STARTED";
     try {
@@ -226,6 +299,8 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         storage: storageStatus,
       });
       clientStage = "UI_REFRESH";
+      replacePreviewUrl(null);
+      setPendingPhoto(null);
       setCaption("");
       router.refresh();
     } catch (caught) {
@@ -283,33 +358,72 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           className="mt-2 min-h-14 w-full border-2 border-loxam-line px-3 text-base"
         />
       </label>
-      <label className="flex min-h-20 cursor-pointer items-center justify-center bg-loxam-red text-xl font-black uppercase text-white">
-        {pending ? t("photos.uploading") : t("photos.capture")}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          capture="environment"
-          disabled={pending}
-          className="sr-only"
-          onChange={(event) => {
-            void onFile(event.target.files?.[0], "camera");
-            event.target.value = "";
-          }}
-        />
-      </label>
-      <label className="flex min-h-16 cursor-pointer items-center justify-center border-2 border-loxam-black bg-white text-sm font-black uppercase">
-        {t("photos.gallery")}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          disabled={pending}
-          className="sr-only"
-          onChange={(event) => {
-            void onFile(event.target.files?.[0], "gallery");
-            event.target.value = "";
-          }}
-        />
-      </label>
+      <input
+        id="module-photo-camera"
+        ref={cameraInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        capture="environment"
+        disabled={pending}
+        className="sr-only"
+        onChange={(event) => {
+          void onFile(event.target.files?.[0], "camera");
+          event.target.value = "";
+        }}
+      />
+      <input
+        id="module-photo-gallery"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        disabled={pending}
+        className="sr-only"
+        onChange={(event) => {
+          void onFile(event.target.files?.[0], "gallery");
+          event.target.value = "";
+        }}
+      />
+      {pendingPhoto ? (
+        <div className="space-y-3">
+          <div className="overflow-hidden border-2 border-loxam-black bg-loxam-paper">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={pendingPhoto.previewUrl}
+              alt=""
+              className="mx-auto block h-auto max-h-[min(60vh,28rem)] w-full max-w-full object-contain"
+            />
+          </div>
+          <TouchButton
+            variant="secondary"
+            className="min-h-20 text-xl"
+            disabled={pending}
+            onClick={onRetake}
+          >
+            {t("photos.retake")}
+          </TouchButton>
+          <TouchButton className="min-h-20 text-xl" disabled={pending} onClick={() => void onSave()}>
+            {pending ? t("photos.uploading") : t("photos.save")}
+          </TouchButton>
+        </div>
+      ) : (
+        <>
+          <label
+            htmlFor="module-photo-camera"
+            className={`flex min-h-20 items-center justify-center bg-loxam-red text-xl font-black uppercase text-white ${
+              pending ? "pointer-events-none opacity-60" : "cursor-pointer"
+            }`}
+          >
+            {t("photos.capture")}
+          </label>
+          <label
+            htmlFor="module-photo-gallery"
+            className={`flex min-h-16 items-center justify-center border-2 border-loxam-black bg-white text-sm font-black uppercase ${
+              pending ? "pointer-events-none opacity-60" : "cursor-pointer"
+            }`}
+          >
+            {t("photos.gallery")}
+          </label>
+        </>
+      )}
       {error ? (
         <div>
           <p className="text-sm font-bold text-loxam-occupied">{error}</p>

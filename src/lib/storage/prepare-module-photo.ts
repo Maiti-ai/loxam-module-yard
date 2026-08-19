@@ -74,6 +74,17 @@ export async function materializePhotoFile(file: File, mimeType: ModulePhotoMime
   return new File([bytes], name, {type: mimeType, lastModified: Date.now()});
 }
 
+export function createLocalPhotoPreviewUrl(file: Blob): string {
+  return URL.createObjectURL(file);
+}
+
+export function revokeLocalPhotoPreviewUrl(url: string | null | undefined) {
+  if (typeof url !== "string" || !url.startsWith("blob:")) {
+    return;
+  }
+  URL.revokeObjectURL(url);
+}
+
 export async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
