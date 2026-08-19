@@ -34,6 +34,12 @@ export function roleCan(
   return (ROLE_PERMISSIONS[permission] as readonly AppRole[]).includes(role);
 }
 
+export function canDeleteModulePhotos(role: AppRole | null | undefined) {
+  // Temporary: same access as managing photos. Replace this helper with a
+  // dedicated role matrix later without changing the delete action flow.
+  return roleCan(role, "managePhotos");
+}
+
 export function isDriverRole(role: AppRole | null | undefined) {
   return role === "FORKLIFT_DRIVER" || role === "PRODUCTION";
 }
