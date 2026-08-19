@@ -1,4 +1,5 @@
 import {MODULE_PHOTO_MIME_TYPES} from "@/lib/storage/module-photos";
+import type {ActionErr, AppErrorCode} from "@/lib/errors";
 
 export type ModulePhotoMimeType = (typeof MODULE_PHOTO_MIME_TYPES)[number];
 
@@ -151,6 +152,8 @@ export function summarizePostgrestError(error: {
 }
 
 export type MetadataServerStage =
+  | "ACTION_ENTERED"
+  | "INPUT_PARSE"
   | "AUTH_SESSION"
   | "AUTH_ROLE"
   | "SUPABASE_CLIENT"
@@ -158,6 +161,154 @@ export type MetadataServerStage =
   | "INSERT_RETURNING"
   | "REVALIDATE_PATH"
   | "FINAL_RETURN";
+
+export type PhotoMetadataActionInput = {
+  moduleId: string;
+  storagePath: string;
+  fileName: string;
+  mimeType: string | null;
+  byteSize: number | null;
+  caption: string | null;
+};
+
+export type PhotoMetadataActionFlags = {
+  actionEntered: boolean;
+  supabaseClientCreated: boolean;
+  authLookupStarted: boolean;
+  authLookupSucceeded: boolean;
+  insertReached: boolean;
+  insertSucceeded: boolean;
+};
+
+function asJsonString(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim() ? redactSecrets(value) : fallback;
+}
+
+function asJsonStringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? redactSecrets(value) : null;
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function asRequiredString(value: unknown, field: string): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`PHOTO_METADATA_INPUT_${field}_NOT_STRING`);
+  }
+  return value;
+}
+
+function asStringOrNull(value: unknown, field: string): string | null {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value !== "string") {
+    throw new Error(`PHOTO_METADATA_INPUT_${field}_NOT_STRING`);
+  }
+  return value;
+}
+
+function asFiniteNumberOrNull(value: unknown, field: string): number | null {
+  if (value == null) {
+    return null;
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`PHOTO_METADATA_INPUT_${field}_NOT_NUMBER`);
+  }
+  return value;
+}
+
+export function parsePhotoMetadataActionInput(input: unknown): PhotoMetadataActionInput {
+  if (typeof File !== "undefined" && input instanceof File) {
+    throw new Error("PHOTO_METADATA_INPUT_HAS_FILE");
+  }
+  if (typeof Blob !== "undefined" && input instanceof Blob) {
+    throw new Error("PHOTO_METADATA_INPUT_HAS_BLOB");
+  }
+  if (!isPlainObject(input)) {
+    throw new Error("PHOTO_METADATA_INPUT_NOT_OBJECT");
+  }
+
+  if (typeof File !== "undefined" && input.file instanceof File) {
+    throw new Error("PHOTO_METADATA_INPUT_HAS_FILE");
+  }
+  if (typeof Blob !== "undefined" && input.blob instanceof Blob) {
+    throw new Error("PHOTO_METADATA_INPUT_HAS_BLOB");
+  }
+
+  return {
+    moduleId: asRequiredString(input.moduleId, "MODULE_ID"),
+    storagePath: asRequiredString(input.storagePath, "STORAGE_PATH"),
+    fileName: asRequiredString(input.fileName, "FILE_NAME"),
+    mimeType: asStringOrNull(input.mimeType, "MIME_TYPE"),
+    byteSize: asFiniteNumberOrNull(input.byteSize, "BYTE_SIZE"),
+    caption: asStringOrNull(input.caption, "CAPTION"),
+  };
+}
+
+export function toJsonSafeMetadataActionSuccess(id: string): {ok: true; id: string} {
+  return JSON.parse(JSON.stringify({ok: true, id: String(id)})) as {ok: true; id: string};
+}
+
+export function toJsonSafeMetadataActionFailure(fields: {
+  code?: string | null;
+  serverStage: string;
+  thrownName?: string | null;
+  dbCode?: string | null;
+  dbMessage?: string | null;
+  dbDetails?: string | null;
+  dbHint?: string | null;
+  insertReached?: boolean;
+  insertSucceeded?: boolean;
+}) {
+  const code: AppErrorCode =
+    fields.code === "UNAUTHENTICATED" || fields.code === "FORBIDDEN"
+      ? fields.code
+      : "UPLOAD_FAILED";
+  const plain = {
+    ok: false as const,
+    code,
+    stage: asJsonString(fields.serverStage, "NONE"),
+    serverStage: asJsonString(fields.serverStage, "NONE"),
+    thrownName: asJsonString(fields.thrownName, "NONE"),
+    dbCode: asJsonString(fields.dbCode, "NONE"),
+    dbMessage: asJsonStringOrNull(fields.dbMessage),
+    dbDetails: asJsonStringOrNull(fields.dbDetails),
+    dbHint: asJsonStringOrNull(fields.dbHint),
+    insertReached: fields.insertReached === true,
+    insertSucceeded: fields.insertSucceeded === true,
+  };
+  return JSON.parse(JSON.stringify(plain)) as ActionErr;
+}
+
+export function buildPhotoMetadataActionThrowLog(input: {
+  stage: string;
+  thrownName: string;
+  thrownMessage: string | null;
+  dbCode: string | null;
+  dbDetails: string | null;
+  dbHint: string | null;
+  flags: PhotoMetadataActionFlags;
+}) {
+  return JSON.parse(
+    JSON.stringify({
+      event: "PHOTO_METADATA_ACTION_THROW",
+      stage: asJsonString(input.stage, "NONE"),
+      thrownName: asJsonString(input.thrownName, "Error"),
+      thrownMessage: asJsonStringOrNull(input.thrownMessage),
+      dbCode: asJsonString(input.dbCode, "NONE"),
+      dbDetails: asJsonStringOrNull(input.dbDetails),
+      dbHint: asJsonStringOrNull(input.dbHint),
+      actionEntered: input.flags.actionEntered === true,
+      supabaseClientCreated: input.flags.supabaseClientCreated === true,
+      authLookupStarted: input.flags.authLookupStarted === true,
+      authLookupSucceeded: input.flags.authLookupSucceeded === true,
+      insertReached: input.flags.insertReached === true,
+      insertSucceeded: input.flags.insertSucceeded === true,
+    }),
+  ) as Record<string, string | boolean | null>;
+}
 
 export function classifyMetadataSaveThrow(error: unknown, stage: string) {
   const looksLikePostgrest =
