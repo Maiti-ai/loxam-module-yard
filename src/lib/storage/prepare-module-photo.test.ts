@@ -92,13 +92,34 @@ describe("module photo upload preparation", () => {
   it("classifies a thrown server-action error without leaking secrets", () => {
     const classified = classifyMetadataSaveThrow(
       new Error("revalidate failed https://example.supabase.co?apikey=secret"),
-      "revalidate",
+      "REVALIDATE_PATH",
     );
-    assert.equal(classified.stage, "revalidate");
+    assert.equal(classified.stage, "REVALIDATE_PATH");
+    assert.equal(classified.serverStage, "REVALIDATE_PATH");
+    assert.equal(classified.thrownName, "Error");
     assert.equal(classified.dbCode, "NONE");
     assert.equal(classified.dbMessage?.includes("https://"), false);
     assert.equal(classified.dbMessage?.includes("secret"), false);
     assert.equal(classified.dbMessage?.includes("revalidate failed"), true);
+  });
+
+  it("preserves thrown PostgREST fields without converting them first", () => {
+    const classified = classifyMetadataSaveThrow(
+      {
+        name: "PostgrestError",
+        code: "42501",
+        message: "new row violates row-level security policy",
+        details: "Failing row contains ().",
+        hint: "Check RLS policies.",
+      },
+      "MODULE_PHOTOS_INSERT",
+    );
+    assert.equal(classified.serverStage, "MODULE_PHOTOS_INSERT");
+    assert.equal(classified.thrownName, "PostgrestError");
+    assert.equal(classified.dbCode, "42501");
+    assert.equal(classified.dbMessage, "new row violates row-level security policy");
+    assert.equal(classified.dbDetails, "Failing row contains ().");
+    assert.equal(classified.dbHint, "Check RLS policies.");
   });
 
   it("summarizes a thrown client exception without leaking secrets", () => {

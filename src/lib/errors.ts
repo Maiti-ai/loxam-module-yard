@@ -19,10 +19,14 @@ export type ActionErr = {
   code: AppErrorCode;
   occupantNumber?: string | null;
   stage?: string | null;
+  serverStage?: string | null;
+  thrownName?: string | null;
   dbCode?: string | null;
   dbMessage?: string | null;
   dbDetails?: string | null;
   dbHint?: string | null;
+  insertReached?: boolean;
+  insertSucceeded?: boolean;
 };
 export type ActionResult<T = object> = ActionOk<T> | ActionErr;
 

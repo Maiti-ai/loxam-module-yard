@@ -150,17 +150,32 @@ export function summarizePostgrestError(error: {
   };
 }
 
+export type MetadataServerStage =
+  | "AUTH_SESSION"
+  | "AUTH_ROLE"
+  | "SUPABASE_CLIENT"
+  | "MODULE_PHOTOS_INSERT"
+  | "INSERT_RETURNING"
+  | "REVALIDATE_PATH"
+  | "FINAL_RETURN";
+
 export function classifyMetadataSaveThrow(error: unknown, stage: string) {
+  const looksLikePostgrest =
+    error &&
+    typeof error === "object" &&
+    ("code" in error || "details" in error || "hint" in error);
   const postgrest = summarizePostgrestError(
-    error && typeof error === "object"
+    looksLikePostgrest
       ? (error as {code?: string; message?: string; details?: string; hint?: string})
       : null,
   );
-  const thrown = summarizeStorageError(error);
+  const thrown = summarizeThrownException(error);
   return {
     stage,
+    serverStage: stage,
+    thrownName: thrown.thrownName,
     dbCode: postgrest.dbCode ?? "NONE",
-    dbMessage: postgrest.dbMessage ?? thrown.message ?? thrown.name ?? null,
+    dbMessage: postgrest.dbMessage ?? thrown.thrownMessage ?? thrown.thrownName ?? null,
     dbDetails: postgrest.dbDetails,
     dbHint: postgrest.dbHint,
   };

@@ -40,6 +40,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
   const [dbDiagnostic, setDbDiagnostic] = useState<{
     storage: ClientStorageStatus;
     stage: string | null;
+    serverStage: string | null;
     thrownName: string | null;
     dbCode: string | null;
     dbMessage: string | null;
@@ -144,6 +145,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         setDbDiagnostic({
           storage: storageStatus,
           stage: clientStage,
+          serverStage: "NONE",
           thrownName: "NONE",
           dbCode: "NONE",
           dbMessage: storageError.message ?? storageError.code ?? null,
@@ -192,17 +194,22 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           byteSize: uploadFile.size,
           actionCode: saved.code,
           storage: storageStatus,
-          stage: saved.stage ?? "METADATA_ACTION",
+          stage: clientStage,
+          serverStage: saved.serverStage ?? saved.stage ?? "NONE",
+          thrownName: saved.thrownName ?? "NONE",
           dbCode: saved.dbCode ?? null,
           dbMessage: saved.dbMessage ?? null,
           dbDetails: saved.dbDetails ?? null,
           dbHint: saved.dbHint ?? null,
+          insertReached: saved.insertReached ?? false,
+          insertSucceeded: saved.insertSucceeded ?? false,
         });
         setDiagnosticCode("METADATA_SAVE_FAILED");
         setDbDiagnostic({
           storage: storageStatus,
-          stage: saved.stage ?? "METADATA_ACTION",
-          thrownName: "NONE",
+          stage: clientStage,
+          serverStage: saved.serverStage ?? saved.stage ?? "NONE",
+          thrownName: saved.thrownName ?? "NONE",
           dbCode: saved.dbCode ? saved.dbCode : "NONE",
           dbMessage: saved.dbMessage ?? null,
           dbDetails: saved.dbDetails ?? null,
@@ -251,6 +258,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
       setDbDiagnostic({
         storage: storageStatus,
         stage: clientStage,
+        serverStage: "NONE",
         thrownName: thrown.thrownName,
         dbCode: "NONE",
         dbMessage: thrown.thrownMessage,
@@ -319,16 +327,16 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
                 Stage: {dbDiagnostic.stage ?? "NONE"}
               </p>
               <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
-                Thrown: {dbDiagnostic.thrownName ?? "NONE"}
+                Server: {dbDiagnostic.serverStage ?? "NONE"}
+              </p>
+              <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
+                DB: {dbDiagnostic.dbCode ?? "NONE"}
               </p>
               {dbDiagnostic.dbMessage ? (
                 <p className="mt-1 break-all text-xs text-loxam-muted">
                   Message: {dbDiagnostic.dbMessage}
                 </p>
               ) : null}
-              <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
-                DB: {dbDiagnostic.dbCode ?? "NONE"}
-              </p>
             </>
           ) : null}
           {dbDiagnostic?.dbDetails ? (
