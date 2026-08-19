@@ -18,6 +18,7 @@ export type ActionErr = {
   ok: false;
   code: AppErrorCode;
   occupantNumber?: string | null;
+  stage?: string | null;
   dbCode?: string | null;
   dbMessage?: string | null;
   dbDetails?: string | null;
