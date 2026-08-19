@@ -4,6 +4,8 @@ import {
   materializePhotoFile,
   normalizePhotoMimeType,
   PhotoUploadTimeoutError,
+  createLocalPhotoPreviewUrl,
+  revokeLocalPhotoPreviewUrl,
   summarizePostgrestError,
   summarizeStorageError,
   withTimeout,
@@ -45,6 +47,15 @@ describe("module photo upload preparation", () => {
     assert.equal(materialized.name, "image.jpg");
     assert.equal(materialized.size, original.size);
     assert.deepEqual(new Uint8Array(await materialized.arrayBuffer()), new Uint8Array([1, 2, 3, 4]));
+  });
+
+  it("creates a local blob preview URL and revokes it without uploading", () => {
+    const file = new File([new Uint8Array([1, 2, 3, 4])], "image.jpg", {type: "image/jpeg"});
+    const url = createLocalPhotoPreviewUrl(file);
+    assert.match(url, /^blob:/);
+    revokeLocalPhotoPreviewUrl(url);
+    revokeLocalPhotoPreviewUrl(null);
+    revokeLocalPhotoPreviewUrl("https://example.invalid/photo.jpg");
   });
 
   it("keeps jpeg/png/webp types as-is", () => {
