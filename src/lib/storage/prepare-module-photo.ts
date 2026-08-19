@@ -149,3 +149,19 @@ export function summarizePostgrestError(error: {
     dbHint: error?.hint ? redactSecrets(error.hint) : null,
   };
 }
+
+export function classifyMetadataSaveThrow(error: unknown, stage: string) {
+  const postgrest = summarizePostgrestError(
+    error && typeof error === "object"
+      ? (error as {code?: string; message?: string; details?: string; hint?: string})
+      : null,
+  );
+  const thrown = summarizeStorageError(error);
+  return {
+    stage,
+    dbCode: postgrest.dbCode ?? "NONE",
+    dbMessage: postgrest.dbMessage ?? thrown.message ?? thrown.name ?? null,
+    dbDetails: postgrest.dbDetails,
+    dbHint: postgrest.dbHint,
+  };
+}

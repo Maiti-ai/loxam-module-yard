@@ -7,6 +7,7 @@ import {
   summarizePostgrestError,
   summarizeStorageError,
   withTimeout,
+  classifyMetadataSaveThrow,
 } from "./prepare-module-photo";
 
 describe("module photo upload preparation", () => {
@@ -85,5 +86,17 @@ describe("module photo upload preparation", () => {
     assert.equal(summary.dbMessage?.includes("https://"), false);
     assert.equal(summary.dbMessage?.includes("secret"), false);
     assert.equal(summary.dbDetails?.includes("token="), false);
+  });
+
+  it("classifies a thrown server-action error without leaking secrets", () => {
+    const classified = classifyMetadataSaveThrow(
+      new Error("revalidate failed https://example.supabase.co?apikey=secret"),
+      "revalidate",
+    );
+    assert.equal(classified.stage, "revalidate");
+    assert.equal(classified.dbCode, "NONE");
+    assert.equal(classified.dbMessage?.includes("https://"), false);
+    assert.equal(classified.dbMessage?.includes("secret"), false);
+    assert.equal(classified.dbMessage?.includes("revalidate failed"), true);
   });
 });

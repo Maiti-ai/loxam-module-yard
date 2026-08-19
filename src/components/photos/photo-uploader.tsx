@@ -7,6 +7,7 @@ import {savePhotoMetadataAction} from "@/features/module-photos/actions";
 import {createClient} from "@/lib/supabase/client";
 import {MODULE_PHOTOS_BUCKET, modulePhotoObjectPath} from "@/lib/storage/module-photos";
 import {
+  classifyMetadataSaveThrow,
   STORAGE_UPLOAD_TIMEOUT_MS,
   bytesToMb,
   materializePhotoFile,
@@ -35,6 +36,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
   const [error, setError] = useState<string | null>(null);
   const [diagnosticCode, setDiagnosticCode] = useState<PhotoUploadFailureCode | null>(null);
   const [dbDiagnostic, setDbDiagnostic] = useState<{
+    stage: string | null;
     dbCode: string | null;
     dbMessage: string | null;
     dbDetails: string | null;
@@ -168,7 +170,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
           mimeType,
           byteSize: uploadFile.size,
           actionCode: saved.code,
-          stage: "module_photos.insert",
+          stage: saved.stage ?? null,
           dbCode: saved.dbCode ?? null,
           dbMessage: saved.dbMessage ?? null,
           dbDetails: saved.dbDetails ?? null,
@@ -176,6 +178,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         });
         setDiagnosticCode("METADATA_SAVE_FAILED");
         setDbDiagnostic({
+          stage: saved.stage ?? "NONE",
           dbCode: saved.dbCode ? saved.dbCode : "NONE",
           dbMessage: saved.dbMessage ?? null,
           dbDetails: saved.dbDetails ?? null,
@@ -206,11 +209,13 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
       });
       setDiagnosticCode(code);
       if (code === "METADATA_SAVE_FAILED") {
+        const classified = classifyMetadataSaveThrow(caught, "client.thrown");
         setDbDiagnostic({
-          dbCode: "NONE",
-          dbMessage: null,
-          dbDetails: null,
-          dbHint: null,
+          stage: classified.stage,
+          dbCode: classified.dbCode,
+          dbMessage: classified.dbMessage,
+          dbDetails: classified.dbDetails,
+          dbHint: classified.dbHint,
         });
       }
       setError(t("errors.UPLOAD_FAILED"));
@@ -267,12 +272,19 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
             </p>
           ) : null}
           {diagnosticCode === "METADATA_SAVE_FAILED" ? (
-            <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
-              DB: {dbDiagnostic?.dbCode ?? "NONE"}
-            </p>
-          ) : null}
-          {dbDiagnostic?.dbMessage ? (
-            <p className="mt-1 break-all text-xs text-loxam-muted">MSG: {dbDiagnostic.dbMessage}</p>
+            <>
+              <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
+                Stage: {dbDiagnostic?.stage ?? "NONE"}
+              </p>
+              <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
+                DB: {dbDiagnostic?.dbCode ?? "NONE"}
+              </p>
+              {dbDiagnostic?.dbMessage ? (
+                <p className="mt-1 break-all text-xs text-loxam-muted">
+                  Message: {dbDiagnostic.dbMessage}
+                </p>
+              ) : null}
+            </>
           ) : null}
           {dbDiagnostic?.dbDetails ? (
             <p className="mt-1 break-all text-xs text-loxam-muted">
