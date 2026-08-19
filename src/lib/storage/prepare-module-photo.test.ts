@@ -9,6 +9,10 @@ import {
   withTimeout,
   classifyMetadataSaveThrow,
   summarizeThrownException,
+  parsePhotoMetadataActionInput,
+  toJsonSafeMetadataActionFailure,
+  toJsonSafeMetadataActionSuccess,
+  buildPhotoMetadataActionThrowLog,
 } from "./prepare-module-photo";
 
 describe("module photo upload preparation", () => {
@@ -131,5 +135,84 @@ describe("module photo upload preparation", () => {
     assert.equal(summary.thrownMessage?.includes("secret"), false);
     assert.equal(summary.thrownMessage?.includes("Failed to fetch"), true);
     assert.equal(summary.thrownStack?.includes("secret"), false);
+  });
+
+  it("accepts the PhotoUploader server-action payload and rejects File/Blob fields", () => {
+    const parsed = parsePhotoMetadataActionInput({
+      moduleId: "11111111-1111-1111-1111-111111111111",
+      storagePath: "11111111-1111-1111-1111-111111111111/photo.jpg",
+      fileName: "photo.jpg",
+      mimeType: "image/jpeg",
+      byteSize: 12,
+      caption: null,
+    });
+    assert.equal(parsed.caption, null);
+    assert.equal(parsed.byteSize, 12);
+    assert.throws(
+      () => parsePhotoMetadataActionInput(new File([new Uint8Array([1])], "photo.jpg")),
+      /PHOTO_METADATA_INPUT_HAS_FILE/,
+    );
+    assert.throws(
+      () =>
+        parsePhotoMetadataActionInput({
+          moduleId: "id",
+          storagePath: "path",
+          fileName: "photo.jpg",
+          mimeType: "image/jpeg",
+          byteSize: 1,
+          caption: null,
+          file: new File([new Uint8Array([1])], "photo.jpg"),
+        }),
+      /PHOTO_METADATA_INPUT_HAS_FILE/,
+    );
+  });
+
+  it("returns only JSON-safe primitives from metadata action results", () => {
+    const failure = toJsonSafeMetadataActionFailure({
+      serverStage: "MODULE_PHOTOS_INSERT",
+      thrownName: "PostgrestError",
+      dbCode: "42501",
+      dbMessage: "new row violates row-level security policy https://example.supabase.co?apikey=secret",
+      dbDetails: "Failing row contains (token=abc).",
+      dbHint: "Check RLS policies.",
+      insertReached: true,
+      insertSucceeded: false,
+    });
+    assert.equal(failure.ok, false);
+    assert.equal(failure.code, "UPLOAD_FAILED");
+    assert.equal(failure.serverStage, "MODULE_PHOTOS_INSERT");
+    assert.equal(failure.dbCode, "42501");
+    assert.equal(failure.dbMessage?.includes("https://"), false);
+    assert.equal(failure.dbMessage?.includes("secret"), false);
+    assert.equal(failure.dbDetails?.includes("token="), false);
+    assert.equal(JSON.stringify(failure).includes("[object"), false);
+
+    const success = toJsonSafeMetadataActionSuccess("row-id");
+    assert.deepEqual(success, {ok: true, id: "row-id"});
+  });
+
+  it("builds a PHOTO_METADATA_ACTION_THROW log without secrets", () => {
+    const log = buildPhotoMetadataActionThrowLog({
+      stage: "AUTH_SESSION",
+      thrownName: "Error",
+      thrownMessage: "cookies failed https://example.supabase.co?apikey=secret",
+      dbCode: "NONE",
+      dbDetails: null,
+      dbHint: null,
+      flags: {
+        actionEntered: true,
+        supabaseClientCreated: false,
+        authLookupStarted: true,
+        authLookupSucceeded: false,
+        insertReached: false,
+        insertSucceeded: false,
+      },
+    });
+    assert.equal(log.event, "PHOTO_METADATA_ACTION_THROW");
+    assert.equal(log.stage, "AUTH_SESSION");
+    assert.equal(log.actionEntered, true);
+    assert.equal(log.insertReached, false);
+    assert.equal(String(log.thrownMessage).includes("https://"), false);
+    assert.equal(String(log.thrownMessage).includes("secret"), false);
   });
 });
