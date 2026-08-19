@@ -8,6 +8,7 @@ import {
   summarizeStorageError,
   withTimeout,
   classifyMetadataSaveThrow,
+  summarizeThrownException,
 } from "./prepare-module-photo";
 
 describe("module photo upload preparation", () => {
@@ -98,5 +99,16 @@ describe("module photo upload preparation", () => {
     assert.equal(classified.dbMessage?.includes("https://"), false);
     assert.equal(classified.dbMessage?.includes("secret"), false);
     assert.equal(classified.dbMessage?.includes("revalidate failed"), true);
+  });
+
+  it("summarizes a thrown client exception without leaking secrets", () => {
+    const error = new Error("Failed to fetch https://example.supabase.co/rest/v1?apikey=secret");
+    error.name = "TypeError";
+    const summary = summarizeThrownException(error);
+    assert.equal(summary.thrownName, "TypeError");
+    assert.equal(summary.thrownMessage?.includes("https://"), false);
+    assert.equal(summary.thrownMessage?.includes("secret"), false);
+    assert.equal(summary.thrownMessage?.includes("Failed to fetch"), true);
+    assert.equal(summary.thrownStack?.includes("secret"), false);
   });
 });

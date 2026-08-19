@@ -165,3 +165,30 @@ export function classifyMetadataSaveThrow(error: unknown, stage: string) {
     dbHint: postgrest.dbHint,
   };
 }
+
+export type ClientUploadStage =
+  | "FILE_MATERIALIZE"
+  | "STORAGE_UPLOAD"
+  | "METADATA_ACTION"
+  | "UI_REFRESH";
+
+export type ClientStorageStatus = "NOT_STARTED" | "SUCCESS" | "FAILED";
+
+export function summarizeThrownException(error: unknown): {
+  thrownName: string;
+  thrownMessage: string | null;
+  thrownStack: string | null;
+} {
+  const summary = summarizeStorageError(error);
+  const thrownName =
+    summary.name ?? (error instanceof Error && error.name ? error.name : "Error");
+  const thrownMessage = summary.message ?? null;
+  let thrownStack: string | null = null;
+  if (error instanceof Error && error.stack?.trim()) {
+    thrownStack = error.stack
+      .replace(/https?:\/\/[^\s]+/gi, "[url]")
+      .replace(/\b(bearer|apikey|token)=?\s*[^\s,;]+/gi, "[redacted]")
+      .slice(0, 800);
+  }
+  return {thrownName, thrownMessage, thrownStack};
+}
