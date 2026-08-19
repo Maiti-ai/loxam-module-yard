@@ -176,7 +176,7 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         });
         setDiagnosticCode("METADATA_SAVE_FAILED");
         setDbDiagnostic({
-          dbCode: saved.dbCode ?? null,
+          dbCode: saved.dbCode ? saved.dbCode : "NONE",
           dbMessage: saved.dbMessage ?? null,
           dbDetails: saved.dbDetails ?? null,
           dbHint: saved.dbHint ?? null,
@@ -205,6 +205,14 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
         thrown: summarizeStorageError(caught),
       });
       setDiagnosticCode(code);
+      if (code === "METADATA_SAVE_FAILED") {
+        setDbDiagnostic({
+          dbCode: "NONE",
+          dbMessage: null,
+          dbDetails: null,
+          dbHint: null,
+        });
+      }
       setError(t("errors.UPLOAD_FAILED"));
     } finally {
       pendingRef.current = false;
@@ -258,9 +266,9 @@ export function PhotoUploader({moduleId}: {moduleId: string}) {
               Code: {diagnosticCode}
             </p>
           ) : null}
-          {dbDiagnostic?.dbCode ? (
+          {diagnosticCode === "METADATA_SAVE_FAILED" ? (
             <p className="mt-1 break-all text-xs font-bold text-loxam-muted">
-              DB: {dbDiagnostic.dbCode}
+              DB: {dbDiagnostic?.dbCode ?? "NONE"}
             </p>
           ) : null}
           {dbDiagnostic?.dbMessage ? (
