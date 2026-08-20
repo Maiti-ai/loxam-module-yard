@@ -15,6 +15,8 @@
   --loxam-occupied-soft: #fdecef;
   --loxam-rented: #0b5cab;
   --loxam-rented-soft: #e7f1fa;
+  --loxam-reserved: #d97706;
+  --loxam-reserved-soft: #fef3c7;
 }
 
 @theme inline {
@@ -32,6 +34,8 @@
   --color-loxam-occupied-soft: var(--loxam-occupied-soft);
   --color-loxam-rented: var(--loxam-rented);
   --color-loxam-rented-soft: var(--loxam-rented-soft);
+  --color-loxam-reserved: var(--loxam-reserved);
+  --color-loxam-reserved-soft: var(--loxam-reserved-soft);
   --font-sans: var(--font-geist-sans);
 }
 

@@ -23,6 +23,10 @@ export type PhotoCategory =
 
 export type DamageReportStatus = "DRAFT" | "SUBMITTED";
 
+export type DispatchDossierStatus = "ACTIVE" | "READY_FOR_SHIPPING" | "SHIPPED" | "CANCELLED";
+
+export type DispatchSlotStatus = "EMPTY" | "ASSIGNED" | "PLACED";
+
 export type Database = {
   public: {
     Tables: {
@@ -503,6 +507,111 @@ export type Database = {
         };
         Relationships: [];
       };
+      dispatch_dossiers: {
+        Row: {
+          id: string;
+          dossier_number: string;
+          customer_name: string;
+          site_location: string;
+          total_modules: number;
+          status: DispatchDossierStatus;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          dossier_number: string;
+          customer_name: string;
+          site_location: string;
+          total_modules: number;
+          status?: DispatchDossierStatus;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          dossier_number?: string;
+          customer_name?: string;
+          site_location?: string;
+          total_modules?: number;
+          status?: DispatchDossierStatus;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      dispatch_reserved_positions: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          position_id: string;
+          position_order: number;
+          blocking: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          dossier_id: string;
+          position_id: string;
+          position_order: number;
+          blocking?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          dossier_id?: string;
+          position_id?: string;
+          position_order?: number;
+          blocking?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      dispatch_slots: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          reserved_position_id: string;
+          sequence_number: number;
+          level: StackLevel;
+          module_id: string | null;
+          status: DispatchSlotStatus;
+          assigned_at: string | null;
+          placed_at: string | null;
+          assigned_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          dossier_id: string;
+          reserved_position_id: string;
+          sequence_number: number;
+          level: StackLevel;
+          module_id?: string | null;
+          status?: DispatchSlotStatus;
+          assigned_at?: string | null;
+          placed_at?: string | null;
+          assigned_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          dossier_id?: string;
+          reserved_position_id?: string;
+          sequence_number?: number;
+          level?: StackLevel;
+          module_id?: string | null;
+          status?: DispatchSlotStatus;
+          assigned_at?: string | null;
+          placed_at?: string | null;
+          assigned_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       module_location_view: {
@@ -562,11 +671,36 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
+      dispatch_required_ground_positions: {
+        Args: {p_total_modules: number};
+        Returns: number;
+      };
+      create_dispatch_dossier: {
+        Args: {
+          p_dossier_number: string;
+          p_customer_name: string;
+          p_site_location: string;
+          p_total_modules: number;
+          p_position_ids: string[];
+          p_first_module_id: string;
+        };
+        Returns: Json;
+      };
+      assign_module_to_dispatch_dossier: {
+        Args: {p_dossier_id: string; p_module_id: string};
+        Returns: Json;
+      };
+      confirm_dispatch_placement: {
+        Args: {p_module_id: string};
+        Returns: Json;
+      };
     };
     Enums: {
       app_role: AppRole;
       stack_level: StackLevel;
       module_status: ModuleStatus;
+      dispatch_dossier_status: DispatchDossierStatus;
+      dispatch_slot_status: DispatchSlotStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

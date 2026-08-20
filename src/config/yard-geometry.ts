@@ -119,6 +119,7 @@ export const YARD_MAP_FR = {
   free: "LIBRE",
   occupied: "OCCUPÉ",
   rented: "LOUÉ",
+  reserved: "RÉSERVÉ",
 } as const;
 
 export type SchelleYardGeometry = {

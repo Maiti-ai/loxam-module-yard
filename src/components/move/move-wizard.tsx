@@ -61,6 +61,15 @@ export function MoveWizard({
     ) ?? null;
 
   async function selectPosition(item: YardPositionNode, blockCode: string, rowCode: string) {
+    if (item.reservation) {
+      setPosition(null);
+      setLevel(null);
+      setClickedPositionId(null);
+      setPositionFull(false);
+      setStep("position");
+      setError(t("errors.POSITION_RESERVED"));
+      return;
+    }
     if (pending) {
       return;
     }
@@ -96,6 +105,15 @@ export function MoveWizard({
         return;
       }
       target = resolved.position;
+    }
+    if (target.reservation) {
+      setPosition(null);
+      setLevel(null);
+      setClickedPositionId(null);
+      setPositionFull(false);
+      setStep("position");
+      setError(t("errors.POSITION_RESERVED"));
+      return;
     }
     const choice = destinationChoice(target.levels, stackOptions);
     if (!choice.ok) {

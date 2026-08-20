@@ -52,6 +52,9 @@ export function MovementHistory({
           <p className="mt-3 text-sm font-bold text-loxam-muted">
             {t("history.user")}: {movement.moverName || t("history.unknownUser")}
           </p>
+          {movement.notes ? (
+            <p className="mt-2 text-base font-bold">{movement.notes}</p>
+          ) : null}
         </li>
       ))}
     </ol>

@@ -14,6 +14,7 @@ const managementNav = [
   {href: "/inventory", key: "inventory"},
   {href: "/movements", key: "movements"},
   {href: "/airco", key: "airco"},
+  {href: "/dossiers", key: "dossiers"},
 ] as const;
 
 const driverNav = [
@@ -21,6 +22,7 @@ const driverNav = [
   {href: "/scan", key: "scan"},
   {href: "/yard", key: "yard"},
   {href: "/modules", key: "modules"},
+  {href: "/dossiers", key: "dossiers"},
 ] as const;
 
 export async function AppShell({

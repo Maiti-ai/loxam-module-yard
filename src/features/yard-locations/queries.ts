@@ -1,4 +1,5 @@
 import {isProductionBlock} from "@/config/yard";
+import {listActiveReservations} from "@/features/dispatch/queries";
 import {createClient} from "@/lib/supabase/server";
 import {yardCapacity} from "./capacity";
 import {displayBlocks} from "./display-blocks";
@@ -8,6 +9,7 @@ import type {
   YardBlockNode,
   YardLevelCell,
   YardLocation,
+  YardPositionNode,
   YardSnapshot,
 } from "./types";
 
@@ -153,12 +155,66 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
     }));
 
   const capacity = yardCapacity(displayBlocks({blocks, slotCount: 0, occupiedSlotCount: 0}));
+  const reservations = await listActiveReservations();
+  if (reservations.size > 0) {
+    for (const block of blocks) {
+      for (const row of block.rows) {
+        for (const position of row.positions) {
+          const reservation = reservations.get(position.id);
+          if (reservation) {
+            position.reservation = reservation;
+          }
+        }
+      }
+    }
+  }
 
   return {
     blocks,
     slotCount: capacity.total,
     occupiedSlotCount: capacity.occupied,
   };
+}
+
+export function findPositionInSnapshot(
+  snapshot: YardSnapshot,
+  positionId: string,
+): YardPositionNode | null {
+  for (const block of snapshot.blocks) {
+    for (const row of block.rows) {
+      const match = row.positions.find((position) => position.id === positionId);
+      if (match) {
+        return match;
+      }
+    }
+  }
+  return null;
+}
+
+export function findModuleLocationInSnapshot(
+  snapshot: YardSnapshot,
+  moduleId: string,
+): YardLocation | null {
+  for (const block of snapshot.blocks) {
+    for (const row of block.rows) {
+      for (const position of row.positions) {
+        const level = position.levels.find((item) => item.occupant?.moduleId === moduleId);
+        if (level) {
+          return {
+            slotId: level.slotId,
+            blockId: block.id,
+            blockCode: block.code,
+            rowId: row.id,
+            rowCode: row.code,
+            positionId: position.id,
+            positionCode: position.code,
+            level: level.level,
+          };
+        }
+      }
+    }
+  }
+  return null;
 }
 
 export function findLocationBySlot(

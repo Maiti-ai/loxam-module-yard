@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test src/features/yard-locations/*.test.ts src/lib/storage/*.test.ts",
+    "test": "tsx --test src/features/yard-locations/*.test.ts src/lib/storage/*.test.ts src/features/dispatch/*.test.ts",
     "verify:supabase": "node --env-file=.env.local scripts/verify-supabase.mjs"
   },
   "dependencies": {

@@ -159,6 +159,7 @@ export function registeredPositionNode(
     canonicalCode: entry.canonicalCode,
     maxLevels: entry.maxLevels,
     levels: liveReady?.levels ?? registryVacancy(entry),
+    reservation: liveReady?.reservation,
   };
 }
 

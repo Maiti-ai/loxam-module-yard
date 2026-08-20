@@ -43,6 +43,16 @@ export function formatLevelLabel(level: StackLevel, locale?: string) {
   return `Niveau ${formatLevelCode(level, locale)}`;
 }
 
+export function formatGroundPositionLabel(parts: {
+  blockCode: string;
+  rowCode: string;
+  positionCode: string;
+}) {
+  const numeric = Number(parts.positionCode);
+  const padded = Number.isFinite(numeric) ? String(numeric).padStart(2, "0") : parts.positionCode;
+  return `${parts.blockCode}-${formatRowCode(parts.rowCode)}-${padded}`;
+}
+
 export function formatYardLocation(parts: {
   blockCode: string;
   rowCode: string;

@@ -1,3 +1,4 @@
+import type {DispatchReservationSummary} from "@/features/dispatch/types";
 import type {
   ModuleStatus,
   ModuleTypeCode,
@@ -63,6 +64,7 @@ export type YardPositionNode = {
   canonicalCode?: string;
   maxLevels?: number;
   levels: YardLevelCell[];
+  reservation?: DispatchReservationSummary;
 };
 
 export type YardRowNode = {

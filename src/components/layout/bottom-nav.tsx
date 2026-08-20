@@ -9,6 +9,7 @@ const driverItems = [
   {href: "/scan", key: "scan"},
   {href: "/yard", key: "yard"},
   {href: "/modules", key: "modules"},
+  {href: "/dossiers", key: "dossiers"},
 ] as const;
 
 const officeItems = [
@@ -26,7 +27,7 @@ export function BottomNav({role}: {role?: AppRole | null}) {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-loxam-black pb-[env(safe-area-inset-bottom)] text-white lg:hidden">
-      <ul className={`grid ${items.length === 4 ? "grid-cols-4" : "grid-cols-5"}`}>
+      <ul className="grid grid-cols-5">
         {items.map((item) => {
           const active =
             item.href === "/"

@@ -17,6 +17,10 @@ export function YardLegend() {
         <span className="inline-block h-4 w-4 bg-loxam-rented" />
         {YARD_MAP_FR.rented}
       </span>
+      <span className="flex items-center gap-2">
+        <span className="inline-block h-4 w-4 bg-loxam-reserved" />
+        {YARD_MAP_FR.reserved}
+      </span>
     </div>
   );
 }

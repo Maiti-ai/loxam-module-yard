@@ -48,6 +48,27 @@ export function PositionDetailPanel({
         </p>
       </div>
 
+      {position.reservation ? (
+        <div className="border-4 border-loxam-reserved bg-loxam-reserved-soft p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-loxam-muted">
+            {t("dispatch.reserved")}
+          </p>
+          <p className="mt-1 text-2xl font-black">{position.reservation.dossierNumber}</p>
+          <p className="mt-2 text-sm font-bold">
+            {t("dispatch.customer")}: {position.reservation.customerName}
+          </p>
+          <p className="text-sm font-bold">
+            {t("dispatch.site")}: {position.reservation.siteLocation}
+          </p>
+          <p className="mt-2 text-lg font-black">
+            {t("dispatch.progress", {
+              placed: position.reservation.placedCount,
+              total: position.reservation.totalModules,
+            })}
+          </p>
+        </div>
+      ) : null}
+
       {stacked ? (
         <ul className="space-y-2">
           {displayLevelsForBlock(blockCode).map((level) => (
