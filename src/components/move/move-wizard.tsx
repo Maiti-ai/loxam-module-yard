@@ -32,15 +32,19 @@ type Step = "block" | "position" | "confirm" | "success";
 export function MoveWizard({
   module,
   snapshot,
+  lockBlockId = null,
+  allowedBlockCodes = null,
 }: {
   module: ModuleSummary;
   snapshot: YardSnapshot;
+  lockBlockId?: string | null;
+  allowedBlockCodes?: string[] | null;
 }) {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
-  const [step, setStep] = useState<Step>("block");
-  const [blockId, setBlockId] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>(lockBlockId ? "position" : "block");
+  const [blockId, setBlockId] = useState<string | null>(lockBlockId);
   const [position, setPosition] = useState<YardPositionNode | null>(null);
   const [level, setLevel] = useState<YardLevelCell | null>(null);
   const [pending, setPending] = useState(false);
@@ -208,8 +212,8 @@ export function MoveWizard({
           {t("module.label")} {module.moduleNumber}
         </p>
         <h1 className="mt-2 text-3xl font-black">
-          {step === "block" && t("move.chooseBlock")}
-          {step === "position" && t("move.choosePosition")}
+          {step === "block" && !lockBlockId && t("move.chooseBlock")}
+          {(step === "position" || (step === "block" && lockBlockId)) && t("move.choosePosition")}
           {step === "confirm" && t("move.confirmTitle")}
         </h1>
         {step !== "block" ? (
@@ -255,6 +259,8 @@ export function MoveWizard({
           selectedBlockId={blockId}
           selectedRowId={row?.id}
           selectedPositionId={step === "confirm" ? clickedPositionId : null}
+          allowedBlockCodes={allowedBlockCodes}
+          lockBlockId={lockBlockId}
           onSelectBlock={(id) => {
             setBlockId(id);
             setPositionFull(false);
@@ -337,12 +343,12 @@ export function MoveWizard({
           </div>
         ) : (
           <p className="border border-dashed border-loxam-line bg-white p-6 text-lg font-bold text-loxam-muted">
-            {step === "block" ? t("move.chooseBlock") : t("yard.tapPosition")}
+            {step === "block" && !lockBlockId ? t("move.chooseBlock") : t("yard.tapPosition")}
           </p>
         )}
       </div>
 
-      {step !== "block" && step !== "success" ? (
+      {step === "confirm" || (step === "position" && !lockBlockId) ? (
         <TouchButton
           variant="ghost"
           onClick={() => {
@@ -352,7 +358,9 @@ export function MoveWizard({
               setStep("position");
               return;
             }
-            setStep("block");
+            if (!lockBlockId) {
+              setStep("block");
+            }
           }}
         >
           {t("common.back")}

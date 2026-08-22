@@ -1,4 +1,10 @@
-import type {DispatchDossierStatus, DispatchSlotStatus, StackLevel} from "@/types/database";
+import type {
+  DispatchDossierStatus,
+  DispatchProductionStatus,
+  DispatchSlotStatus,
+  StackLevel,
+} from "@/types/database";
+import type {ModuleSummary} from "@/features/yard-locations/types";
 
 export type DispatchReservationSummary = {
   dossierId: string;
@@ -15,6 +21,9 @@ export type DispatchSlotView = {
   sequenceNumber: number;
   level: StackLevel;
   status: DispatchSlotStatus;
+  productionStatus: DispatchProductionStatus | null;
+  placedInProductionAt: string | null;
+  productionReadyAt: string | null;
   moduleId: string | null;
   moduleNumber: string | null;
   placedAt: string | null;
@@ -23,6 +32,7 @@ export type DispatchSlotView = {
   blockCode: string;
   rowCode: string;
   positionCode: string;
+  currentBlockCode: string | null;
 };
 
 export type DispatchDossierSummary = {
@@ -34,6 +44,8 @@ export type DispatchDossierSummary = {
   status: DispatchDossierStatus;
   assignedCount: number;
   placedCount: number;
+  inProductionCount: number;
+  readyCount: number;
   createdAt: string;
 };
 
@@ -58,6 +70,7 @@ export type DispatchAssignment = {
   sequenceNumber: number;
   level: StackLevel;
   status: DispatchSlotStatus;
+  productionStatus: DispatchProductionStatus | null;
   placedAt: string | null;
   positionId: string;
   blockCode: string;
@@ -65,4 +78,17 @@ export type DispatchAssignment = {
   positionCode: string;
   moduleId: string;
   moduleNumber: string;
+};
+
+export type DispatchModuleFlow =
+  | {kind: "none"}
+  | {kind: "to_production"; assignment: DispatchAssignment}
+  | {kind: "in_production"; assignment: DispatchAssignment}
+  | {kind: "ready_for_dispatch"; assignment: DispatchAssignment}
+  | {kind: "in_dispatch"; assignment: DispatchAssignment};
+
+export type DispatchSelectableModule = {
+  module: ModuleSummary;
+  selectable: boolean;
+  reason: "in_other_dossier" | "unavailable" | "in_dispatch_zone" | null;
 };

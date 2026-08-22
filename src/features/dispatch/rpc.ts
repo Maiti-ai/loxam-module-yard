@@ -10,6 +10,7 @@ export type DispatchRpcPayload = {
   total_modules?: number;
   placed_count?: number;
   status?: string;
+  production_status?: string;
   slot_id?: string;
   level?: string;
   unchanged?: boolean;
@@ -37,7 +38,14 @@ export function asDispatchErrorCode(value: string | undefined): AppErrorCode {
     case "INSUFFICIENT_SPACE":
     case "POSITION_RESERVED":
     case "MODULE_IN_DOSSIER":
+    case "MODULE_UNAVAILABLE":
     case "DISPATCH_FAILED":
+    case "DISPATCH_INCOMPLETE":
+    case "DISPATCH_WRONG_COUNT":
+    case "DISPATCH_ALREADY_ACTIVE":
+    case "DISPATCH_DESTINATION_MUST_BE_F":
+    case "DISPATCH_NOT_IN_F":
+    case "PRODUCTION_NOT_READY":
       return value;
     default:
       return "DISPATCH_FAILED";

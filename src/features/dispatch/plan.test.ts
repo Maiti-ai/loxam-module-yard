@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {describe, it} from "node:test";
 import {
+  bindModulesToPositions,
   buildDispatchSlotPlan,
   isPositionFullyReservable,
   requiredGroundPositions,
@@ -39,6 +40,31 @@ describe("dispatch ground-position math", () => {
     assert.equal(five.at(-1)?.positionOrder, 2);
     assert.equal(five.at(-1)?.level, "LEVEL_1");
     assert.equal(five.filter((slot) => slot.positionOrder === 2).length, 2);
+  });
+
+  it("binds module order onto reserved A stacks bottom-up", () => {
+    const bound = bindModulesToPositions(
+      ["2031", "2000", "2050", "2014", "2077", "2042"],
+      ["A-P04", "A-P05"],
+    );
+    assert.deepEqual(
+      bound.map((slot) => [slot.sequenceNumber, slot.moduleId, slot.positionId, slot.levelNumber]),
+      [
+        [1, "2031", "A-P04", 0],
+        [2, "2000", "A-P04", 1],
+        [3, "2050", "A-P04", 2],
+        [4, "2014", "A-P05", 0],
+        [5, "2077", "A-P05", 1],
+        [6, "2042", "A-P05", 2],
+      ],
+    );
+
+    const partial = bindModulesToPositions(["a", "b", "c", "d", "e"], ["p1", "p2"]);
+    assert.equal(partial.length, 5);
+    assert.equal(partial.at(-1)?.positionId, "p2");
+    assert.equal(partial.at(-1)?.levelNumber, 1);
+    assert.equal(bindModulesToPositions(["a", "b", "c"], ["only-one"]).length, 3);
+    assert.equal(bindModulesToPositions(["a", "b", "c", "d"], ["only-one"]).length, 0);
   });
 
   it("only allows fully empty unreserved A positions", () => {

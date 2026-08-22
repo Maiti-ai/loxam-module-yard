@@ -4,11 +4,11 @@ import {revalidatePath} from "next/cache";
 import {getCurrentProfile} from "@/features/auth";
 import {roleCan} from "@/features/roles";
 import {isProductionBlock} from "@/config/yard";
+import {getDispatchModuleFlow} from "@/features/dispatch/queries";
 import {firstFreeLevel} from "@/features/yard-locations/stacking";
 import {
   findBlockCodeForPosition,
   findLocationBySlot,
-  findModuleLocationInSnapshot,
   findPositionInSnapshot,
   getYardSnapshot,
 } from "@/features/yard-locations/queries";
@@ -55,7 +55,10 @@ function asErrorCode(value: string | undefined): AppErrorCode {
     value === "POSITION_FULL" ||
     value === "MOVE_FAILED" ||
     value === "DISPATCH_REQUIRED" ||
-    value === "POSITION_RESERVED"
+    value === "POSITION_RESERVED" ||
+    value === "DISPATCH_DESTINATION_MUST_BE_F" ||
+    value === "PRODUCTION_NOT_READY" ||
+    value === "DISPATCH_NOT_IN_F"
   ) {
     return value;
   }
@@ -64,6 +67,15 @@ function asErrorCode(value: string | undefined): AppErrorCode {
 
 function guardCodeFromError(error: {code?: string; message?: string} | null): AppErrorCode | null {
   const message = error?.message ?? "";
+  if (/DISPATCH_DESTINATION_MUST_BE_F/.test(message)) {
+    return "DISPATCH_DESTINATION_MUST_BE_F";
+  }
+  if (/PRODUCTION_NOT_READY/.test(message)) {
+    return "PRODUCTION_NOT_READY";
+  }
+  if (/DISPATCH_NOT_IN_F/.test(message)) {
+    return "DISPATCH_NOT_IN_F";
+  }
   if (/DISPATCH_REQUIRED/.test(message)) {
     return "DISPATCH_REQUIRED";
   }
@@ -236,18 +248,26 @@ export async function moveModuleAction(
   }
 
   const snapshot = await getYardSnapshot();
-  const current = findModuleLocationInSnapshot(snapshot, moduleId);
-  if (current && isProductionBlock(current.blockCode)) {
-    return {ok: false, code: "DISPATCH_REQUIRED"};
-  }
-
+  const flow = await getDispatchModuleFlow(moduleId);
   const resolved = await resolveLivePositionId(positionId);
   if (!resolved.ok) {
     return resolved;
   }
   const livePositionId = resolved.positionId;
   const target = findPositionInSnapshot(snapshot, livePositionId);
-  if (target?.reservation) {
+  const targetBlock = findBlockCodeForPosition(snapshot, livePositionId);
+
+  if (flow.kind === "to_production") {
+    if (!targetBlock || !isProductionBlock(targetBlock)) {
+      return {ok: false, code: "DISPATCH_DESTINATION_MUST_BE_F"};
+    }
+  } else if (flow.kind === "in_production") {
+    if (!targetBlock || !isProductionBlock(targetBlock)) {
+      return {ok: false, code: "PRODUCTION_NOT_READY"};
+    }
+  } else if (flow.kind === "ready_for_dispatch") {
+    return {ok: false, code: "DISPATCH_REQUIRED"};
+  } else if (target?.reservation) {
     return {ok: false, code: "POSITION_RESERVED"};
   }
 

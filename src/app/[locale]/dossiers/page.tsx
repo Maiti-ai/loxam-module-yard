@@ -3,11 +3,13 @@ import {Link} from "@/i18n/navigation";
 import {ErrorState} from "@/components/ui/page-state";
 import {requireUser} from "@/features/auth/guard";
 import {listDispatchDossiers} from "@/features/dispatch/queries";
+import {roleCan} from "@/features/roles";
 import {tryLoad} from "@/lib/try-load";
 
 export default async function DossiersPage() {
-  await requireUser();
+  const profile = await requireUser();
   const t = await getTranslations();
+  const canPlan = roleCan(profile.role, "planDispatch");
   const loaded = await tryLoad(listDispatchDossiers);
 
   if (!loaded.ok) {
@@ -25,6 +27,14 @@ export default async function DossiersPage() {
     <section className="mx-auto max-w-3xl px-4 py-8">
       <h1 className="text-4xl font-black">{t("dispatch.listTitle")}</h1>
       <p className="mt-3 text-base text-loxam-muted">{t("dispatch.listBody")}</p>
+      {canPlan ? (
+        <Link
+          href="/dossiers/new"
+          className="mt-6 flex min-h-16 items-center justify-center border-4 border-loxam-black bg-loxam-red px-5 text-lg font-black uppercase text-white"
+        >
+          {t("dispatch.createNew")}
+        </Link>
+      ) : null}
       {loaded.data.length === 0 ? (
         <p className="mt-8 border border-dashed border-loxam-line bg-white p-6 font-bold text-loxam-muted">
           {t("dispatch.empty")}
@@ -41,8 +51,14 @@ export default async function DossiersPage() {
               <p className="mt-2 text-xl font-black">{dossier.customerName}</p>
               <p className="text-lg font-bold text-loxam-muted">{dossier.siteLocation}</p>
               <p className="mt-3 text-lg font-black">
-                {t("dispatch.modulesProgress", {
-                  placed: dossier.placedCount,
+                {t("dispatch.productionProgress", {
+                  count: dossier.inProductionCount,
+                  total: dossier.totalModules,
+                })}
+              </p>
+              <p className="text-lg font-black">
+                {t("dispatch.dispatchProgress", {
+                  count: dossier.placedCount,
                   total: dossier.totalModules,
                 })}
               </p>

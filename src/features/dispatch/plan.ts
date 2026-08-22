@@ -38,6 +38,34 @@ export function buildDispatchSlotPlan(totalModules: number): DispatchSlotPlan[] 
   return slots;
 }
 
+export type BoundDispatchTarget = {
+  moduleId: string;
+  sequenceNumber: number;
+  positionId: string;
+  positionOrder: number;
+  level: StackLevel;
+  levelNumber: 0 | 1 | 2;
+};
+
+export function bindModulesToPositions(moduleIds: string[], positionIds: string[]): BoundDispatchTarget[] {
+  const plan = buildDispatchSlotPlan(moduleIds.length);
+  if (plan.length === 0) {
+    return [];
+  }
+  const required = requiredGroundPositions(moduleIds.length);
+  if (positionIds.length !== required) {
+    return [];
+  }
+  return plan.map((slot, index) => ({
+    moduleId: moduleIds[index] ?? "",
+    sequenceNumber: slot.sequenceNumber,
+    positionId: positionIds[slot.positionOrder - 1] ?? "",
+    positionOrder: slot.positionOrder,
+    level: slot.level,
+    levelNumber: slot.levelNumber,
+  }));
+}
+
 export function isPositionFullyReservable(input: {
   blockCode: string;
   reserved?: boolean;

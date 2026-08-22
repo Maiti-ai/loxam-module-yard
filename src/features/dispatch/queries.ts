@@ -1,9 +1,15 @@
 import {createClient} from "@/lib/supabase/server";
-import type {DispatchDossierStatus, DispatchSlotStatus, StackLevel} from "@/types/database";
+import type {
+  DispatchDossierStatus,
+  DispatchProductionStatus,
+  DispatchSlotStatus,
+  StackLevel,
+} from "@/types/database";
 import type {
   DispatchAssignment,
   DispatchDossierDetail,
   DispatchDossierSummary,
+  DispatchModuleFlow,
   DispatchReservationSummary,
   DispatchSlotView,
 } from "./types";
@@ -17,6 +23,7 @@ function asLevel(value: string): StackLevel {
 
 function asDossierStatus(value: string): DispatchDossierStatus {
   if (
+    value === "DRAFT" ||
     value === "READY_FOR_SHIPPING" ||
     value === "SHIPPED" ||
     value === "CANCELLED" ||
@@ -34,6 +41,18 @@ function asSlotStatus(value: string): DispatchSlotStatus {
   return "EMPTY";
 }
 
+function asProductionStatus(value: string | null | undefined): DispatchProductionStatus | null {
+  if (
+    value === "TO_PRODUCTION" ||
+    value === "IN_PRODUCTION" ||
+    value === "READY_FOR_DISPATCH" ||
+    value === "IN_DISPATCH_ZONE"
+  ) {
+    return value;
+  }
+  return null;
+}
+
 function toSummary(
   row: {
     id: string;
@@ -46,6 +65,8 @@ function toSummary(
   },
   assignedCount: number,
   placedCount: number,
+  inProductionCount: number,
+  readyCount: number,
 ): DispatchDossierSummary {
   return {
     id: row.id,
@@ -56,6 +77,8 @@ function toSummary(
     status: asDossierStatus(row.status),
     assignedCount,
     placedCount,
+    inProductionCount,
+    readyCount,
     createdAt: row.created_at,
   };
 }
@@ -112,23 +135,60 @@ export async function listActiveReservations(): Promise<
 async function countsForDossiers(dossierIds: string[]) {
   const assigned = new Map<string, number>();
   const placed = new Map<string, number>();
+  const inProduction = new Map<string, number>();
+  const ready = new Map<string, number>();
   if (dossierIds.length === 0) {
-    return {assigned, placed};
+    return {assigned, placed, inProduction, ready};
   }
   const supabase = await createClient();
   const {data} = await supabase
     .from("dispatch_slots")
-    .select("dossier_id, module_id, status")
+    .select("dossier_id, module_id, status, production_status")
     .in("dossier_id", dossierIds);
   for (const slot of data ?? []) {
     if (slot.module_id) {
       assigned.set(slot.dossier_id, (assigned.get(slot.dossier_id) ?? 0) + 1);
     }
-    if (slot.status === "PLACED") {
+    if (slot.status === "PLACED" || slot.production_status === "IN_DISPATCH_ZONE") {
       placed.set(slot.dossier_id, (placed.get(slot.dossier_id) ?? 0) + 1);
     }
+    if (
+      slot.production_status === "IN_PRODUCTION" ||
+      slot.production_status === "READY_FOR_DISPATCH" ||
+      slot.production_status === "IN_DISPATCH_ZONE"
+    ) {
+      inProduction.set(slot.dossier_id, (inProduction.get(slot.dossier_id) ?? 0) + 1);
+    }
+    if (slot.production_status === "READY_FOR_DISPATCH" || slot.production_status === "IN_DISPATCH_ZONE") {
+      ready.set(slot.dossier_id, (ready.get(slot.dossier_id) ?? 0) + 1);
+    }
   }
-  return {assigned, placed};
+  return {assigned, placed, inProduction, ready};
+}
+
+export async function listOccupiedDispatchModuleIds(exceptDossierId?: string): Promise<Set<string>> {
+  const supabase = await createClient();
+  const {data: dossiers} = await supabase
+    .from("dispatch_dossiers")
+    .select("id")
+    .in("status", ["DRAFT", "ACTIVE", "READY_FOR_SHIPPING"]);
+  const ids = (dossiers ?? [])
+    .map((row) => row.id)
+    .filter((id) => id !== exceptDossierId);
+  if (ids.length === 0) {
+    return new Set();
+  }
+  const {data: slots} = await supabase
+    .from("dispatch_slots")
+    .select("module_id, dossier_id")
+    .in("dossier_id", ids);
+  const occupied = new Set<string>();
+  for (const slot of slots ?? []) {
+    if (slot.module_id) {
+      occupied.add(slot.module_id);
+    }
+  }
+  return occupied;
 }
 
 export async function listDispatchDossiers(): Promise<DispatchDossierSummary[]> {
@@ -136,7 +196,7 @@ export async function listDispatchDossiers(): Promise<DispatchDossierSummary[]> 
   const {data, error} = await supabase
     .from("dispatch_dossiers")
     .select("id, dossier_number, customer_name, site_location, total_modules, status, created_at")
-    .in("status", ["ACTIVE", "READY_FOR_SHIPPING"])
+    .in("status", ["DRAFT", "ACTIVE", "READY_FOR_SHIPPING"])
     .order("created_at", {ascending: false});
 
   if (error || !data) {
@@ -145,15 +205,19 @@ export async function listDispatchDossiers(): Promise<DispatchDossierSummary[]> 
 
   const counts = await countsForDossiers(data.map((row) => row.id));
   return data.map((row) =>
-    toSummary(row, counts.assigned.get(row.id) ?? 0, counts.placed.get(row.id) ?? 0),
+    toSummary(
+      row,
+      counts.assigned.get(row.id) ?? 0,
+      counts.placed.get(row.id) ?? 0,
+      counts.inProduction.get(row.id) ?? 0,
+      counts.ready.get(row.id) ?? 0,
+    ),
   );
 }
 
 export async function listOpenDispatchDossiers(): Promise<DispatchDossierSummary[]> {
   const dossiers = await listDispatchDossiers();
-  return dossiers.filter(
-    (dossier) => dossier.status === "ACTIVE" && dossier.assignedCount < dossier.totalModules,
-  );
+  return dossiers.filter((dossier) => dossier.status === "ACTIVE");
 }
 
 export async function getDispatchDossier(id: string): Promise<DispatchDossierDetail | null> {
@@ -179,7 +243,9 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
       .order("position_order"),
     supabase
       .from("dispatch_slots")
-      .select("id, reserved_position_id, sequence_number, level, module_id, status, placed_at")
+      .select(
+        "id, reserved_position_id, sequence_number, level, module_id, status, placed_at, production_status, placed_in_production_at, production_ready_at",
+      )
       .eq("dossier_id", id)
       .order("sequence_number"),
   ]);
@@ -191,6 +257,14 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
     moduleIds.length > 0
       ? await supabase.from("modules").select("id, module_number").in("id", moduleIds)
       : {data: [] as Array<{id: string; module_number: string}>};
+
+  const locations =
+    moduleIds.length > 0
+      ? await supabase
+          .from("module_location_view")
+          .select("module_id, block_code")
+          .in("module_id", moduleIds)
+      : {data: [] as Array<{module_id: string | null; block_code: string | null}>};
 
   const positionsRes = await supabase.from("yard_positions").select("id, code, row_id");
   const rowsRes = await supabase.from("yard_rows").select("id, code, block_id");
@@ -217,6 +291,11 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
 
   const reservedById = new Map((reserved ?? []).map((row) => [row.id, row]));
   const moduleNumberById = new Map((modules ?? []).map((row) => [row.id, row.module_number]));
+  const currentBlockByModule = new Map(
+    (locations.data ?? [])
+      .filter((row) => row.module_id)
+      .map((row) => [row.module_id as string, row.block_code]),
+  );
 
   const counts = await countsForDossiers([id]);
   const positions = (reserved ?? []).map((row) => ({
@@ -227,74 +306,99 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
   }));
 
   const slotViews: DispatchSlotView[] = (slots ?? []).map((slot) => {
-    const reservedRow = reservedById.get(slot.reserved_position_id);
-    const loc = reservedRow ? locationOf(reservedRow.position_id) : {blockCode: "", rowCode: "", positionCode: ""};
+    const reservedRow = slot.reserved_position_id ? reservedById.get(slot.reserved_position_id) : undefined;
+    const loc = reservedRow
+      ? locationOf(reservedRow.position_id)
+      : {blockCode: "", rowCode: "", positionCode: ""};
     return {
       id: slot.id,
       sequenceNumber: slot.sequence_number,
       level: asLevel(slot.level),
       status: asSlotStatus(slot.status),
+      productionStatus: asProductionStatus(slot.production_status),
+      placedInProductionAt: slot.placed_in_production_at,
+      productionReadyAt: slot.production_ready_at,
       moduleId: slot.module_id,
       moduleNumber: slot.module_id ? (moduleNumberById.get(slot.module_id) ?? null) : null,
       placedAt: slot.placed_at,
       positionId: reservedRow?.position_id ?? "",
       positionOrder: reservedRow?.position_order ?? 0,
+      currentBlockCode: slot.module_id ? (currentBlockByModule.get(slot.module_id) ?? null) : null,
       ...loc,
     };
   });
 
   return {
-    ...toSummary(dossier, counts.assigned.get(id) ?? 0, counts.placed.get(id) ?? 0),
+    ...toSummary(
+      dossier,
+      counts.assigned.get(id) ?? 0,
+      counts.placed.get(id) ?? 0,
+      counts.inProduction.get(id) ?? 0,
+      counts.ready.get(id) ?? 0,
+    ),
     positions,
     slots: slotViews,
   };
 }
 
-export async function getPendingDispatchAssignment(
-  moduleId: string,
-): Promise<DispatchAssignment | null> {
+async function assignmentFromSlot(input: {
+  moduleId: string;
+  slot: {
+    dossier_id: string;
+    reserved_position_id: string | null;
+    sequence_number: number;
+    level: string;
+    status: string;
+    production_status: string | null;
+    placed_at: string | null;
+  };
+}): Promise<DispatchAssignment | null> {
   const supabase = await createClient();
-  const {data: slot, error} = await supabase
-    .from("dispatch_slots")
-    .select("id, dossier_id, reserved_position_id, sequence_number, level, status, placed_at, module_id")
-    .eq("module_id", moduleId)
-    .maybeSingle();
-
-  if (error || !slot || slot.status === "PLACED") {
-    return null;
-  }
-
   const {data: dossier} = await supabase
     .from("dispatch_dossiers")
-    .select("id, dossier_number, customer_name, site_location, total_modules")
-    .eq("id", slot.dossier_id)
-    .maybeSingle();
-  const {data: reserved} = await supabase
-    .from("dispatch_reserved_positions")
-    .select("position_id, position_order")
-    .eq("id", slot.reserved_position_id)
+    .select("id, dossier_number, customer_name, site_location, total_modules, status")
+    .eq("id", input.slot.dossier_id)
     .maybeSingle();
   const {data: moduleRow} = await supabase
     .from("modules")
     .select("module_number")
-    .eq("id", moduleId)
+    .eq("id", input.moduleId)
     .maybeSingle();
-
-  if (!dossier || !reserved) {
+  if (!dossier || !moduleRow) {
+    return null;
+  }
+  if (dossier.status !== "ACTIVE" && dossier.status !== "READY_FOR_SHIPPING") {
     return null;
   }
 
-  const {data: position} = await supabase
-    .from("yard_positions")
-    .select("id, code, row_id")
-    .eq("id", reserved.position_id)
-    .maybeSingle();
-  const {data: row} = position
-    ? await supabase.from("yard_rows").select("code, block_id").eq("id", position.row_id).maybeSingle()
-    : {data: null};
-  const {data: block} = row
-    ? await supabase.from("yard_blocks").select("code").eq("id", row.block_id).maybeSingle()
-    : {data: null};
+  let positionId = "";
+  let blockCode = "A";
+  let rowCode = "";
+  let positionCode = "";
+  if (input.slot.reserved_position_id) {
+    const {data: reserved} = await supabase
+      .from("dispatch_reserved_positions")
+      .select("position_id")
+      .eq("id", input.slot.reserved_position_id)
+      .maybeSingle();
+    if (reserved) {
+      positionId = reserved.position_id;
+      const {data: position} = await supabase
+        .from("yard_positions")
+        .select("id, code, row_id")
+        .eq("id", reserved.position_id)
+        .maybeSingle();
+      const {data: row} = position
+        ? await supabase.from("yard_rows").select("code, block_id").eq("id", position.row_id).maybeSingle()
+        : {data: null};
+      const {data: block} = row
+        ? await supabase.from("yard_blocks").select("code").eq("id", row.block_id).maybeSingle()
+        : {data: null};
+      blockCode = block?.code ?? "A";
+      rowCode = row?.code ?? "";
+      positionCode = position?.code ?? "";
+    }
+  }
 
   return {
     dossierId: dossier.id,
@@ -302,17 +406,62 @@ export async function getPendingDispatchAssignment(
     customerName: dossier.customer_name,
     siteLocation: dossier.site_location,
     totalModules: dossier.total_modules,
-    sequenceNumber: slot.sequence_number,
-    level: asLevel(slot.level),
-    status: asSlotStatus(slot.status),
-    placedAt: slot.placed_at,
-    positionId: reserved.position_id,
-    blockCode: block?.code ?? "A",
-    rowCode: row?.code ?? "",
-    positionCode: position?.code ?? "",
-    moduleId,
-    moduleNumber: moduleRow?.module_number ?? "",
+    sequenceNumber: input.slot.sequence_number,
+    level: asLevel(input.slot.level),
+    status: asSlotStatus(input.slot.status),
+    productionStatus: asProductionStatus(input.slot.production_status),
+    placedAt: input.slot.placed_at,
+    positionId,
+    blockCode,
+    rowCode,
+    positionCode,
+    moduleId: input.moduleId,
+    moduleNumber: moduleRow.module_number,
   };
+}
+
+export async function getDispatchModuleFlow(moduleId: string): Promise<DispatchModuleFlow> {
+  const supabase = await createClient();
+  const {data: slot, error} = await supabase
+    .from("dispatch_slots")
+    .select(
+      "id, dossier_id, reserved_position_id, sequence_number, level, status, placed_at, module_id, production_status",
+    )
+    .eq("module_id", moduleId)
+    .maybeSingle();
+
+  if (error || !slot) {
+    return {kind: "none"};
+  }
+
+  const assignment = await assignmentFromSlot({moduleId, slot});
+  if (!assignment) {
+    return {kind: "none"};
+  }
+
+  if (assignment.productionStatus === "TO_PRODUCTION") {
+    return {kind: "to_production", assignment};
+  }
+  if (assignment.productionStatus === "IN_PRODUCTION") {
+    return {kind: "in_production", assignment};
+  }
+  if (assignment.productionStatus === "READY_FOR_DISPATCH") {
+    return {kind: "ready_for_dispatch", assignment};
+  }
+  if (assignment.productionStatus === "IN_DISPATCH_ZONE") {
+    return {kind: "in_dispatch", assignment};
+  }
+  return {kind: "none"};
+}
+
+export async function getPendingDispatchAssignment(
+  moduleId: string,
+): Promise<DispatchAssignment | null> {
+  const flow = await getDispatchModuleFlow(moduleId);
+  if (flow.kind === "ready_for_dispatch") {
+    return flow.assignment;
+  }
+  return null;
 }
 
 export async function findDossierByNumber(dossierNumber: string) {

@@ -13,6 +13,8 @@ export const ROLE_PERMISSIONS = {
   manageSettings: ["ADMIN"],
   manageModules: ["ADMIN"],
   manageRentals: ["ADMIN", "OFFICE"],
+  planDispatch: ["ADMIN", "OFFICE"],
+  markDispatchReady: ["ADMIN", "OFFICE", "PRODUCTION"],
   moveModules: ["ADMIN", "FORKLIFT_DRIVER", "OFFICE", "PRODUCTION"],
   managePhotos: ["ADMIN", "OFFICE", "FORKLIFT_DRIVER", "PRODUCTION"],
   manageAirco: ["ADMIN", "OFFICE", "FORKLIFT_DRIVER"],
