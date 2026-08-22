@@ -9,6 +9,10 @@ export type DispatchRpcPayload = {
   sequence_number?: number;
   total_modules?: number;
   placed_count?: number;
+  shipped_count?: number;
+  returned_count?: number;
+  on_rent_count?: number;
+  placed_remaining?: number;
   status?: string;
   production_status?: string;
   slot_id?: string;
@@ -48,6 +52,12 @@ export function asDispatchErrorCode(value: string | undefined): AppErrorCode {
     case "DISPATCH_ALREADY_ACTIVE":
     case "DISPATCH_DESTINATION_MUST_BE_F":
     case "DISPATCH_NOT_IN_F":
+    case "DISPATCH_NOT_IN_A":
+    case "DISPATCH_WRONG_SLOT":
+    case "DISPATCH_NOT_READY_TO_SHIP":
+    case "DISPATCH_NOT_ON_RENT":
+    case "DISPATCH_ALREADY_ON_YARD":
+    case "DISPATCH_RETURN_ZONE_REQUIRED":
     case "DISPATCH_TARGET_OCCUPIED":
     case "PRODUCTION_NOT_READY":
       return value;

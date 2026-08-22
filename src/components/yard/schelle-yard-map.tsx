@@ -22,9 +22,11 @@ export {displayBlocks};
 const YardMapUi = createContext<{
   highlightedIds: Set<string>;
   allowedBlockCodes: Set<string> | null;
+  allowedRowCodes: Set<string> | null;
 }>({
   highlightedIds: new Set(),
   allowedBlockCodes: null,
+  allowedRowCodes: null,
 });
 
 function rowKey(code: string) {
@@ -248,6 +250,7 @@ export function SchelleYardMap({
   selectedPositionId,
   highlightedPositionIds,
   allowedBlockCodes,
+  allowedRowCodes,
   lockBlockId,
   onSelectBlock,
   onSelectRow,
@@ -259,6 +262,7 @@ export function SchelleYardMap({
   selectedPositionId?: string | null;
   highlightedPositionIds?: string[] | null;
   allowedBlockCodes?: string[] | null;
+  allowedRowCodes?: string[] | null;
   lockBlockId?: string | null;
   onSelectBlock: (blockId: string) => void;
   onSelectRow?: (blockId: string, rowId: string) => void;
@@ -271,6 +275,9 @@ export function SchelleYardMap({
     highlightedIds: new Set(highlightedPositionIds ?? []),
     allowedBlockCodes: allowedBlockCodes
       ? new Set(allowedBlockCodes.map((code) => code.trim().toUpperCase()))
+      : null,
+    allowedRowCodes: allowedRowCodes
+      ? new Set(allowedRowCodes.map((code) => code.trim().toUpperCase()))
       : null,
   };
 
@@ -447,6 +454,9 @@ function BlockSlotGrid({
 
   function selectSlot(row: YardRowNode, position: YardPositionNode) {
     if (mapUi.allowedBlockCodes && !mapUi.allowedBlockCodes.has(block.code.trim().toUpperCase())) {
+      return;
+    }
+    if (mapUi.allowedRowCodes && !mapUi.allowedRowCodes.has(row.code.trim().toUpperCase())) {
       return;
     }
     onSelectBlock(block.id);

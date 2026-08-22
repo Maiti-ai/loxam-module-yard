@@ -1,6 +1,8 @@
 import {getTranslations} from "next-intl/server";
 import {MoveWizard} from "@/components/move/move-wizard";
 import {PlacementInstruction} from "@/components/dispatch/placement-instruction";
+import {ReturnInstruction} from "@/components/dispatch/return-instruction";
+import {ShipInstruction} from "@/components/dispatch/ship-instruction";
 import {ToProductionMove} from "@/components/dispatch/to-production-move";
 import {ErrorState} from "@/components/ui/page-state";
 import {requireUser} from "@/features/auth/guard";
@@ -72,6 +74,10 @@ export default async function MoveModulePage({
         <ToProductionMove module={yardModule} snapshot={snapshot} assignment={flow.assignment} />
       ) : flow.kind === "ready_for_dispatch" ? (
         <PlacementInstruction module={yardModule} assignment={flow.assignment} snapshot={snapshot} />
+      ) : flow.kind === "ready_to_ship" ? (
+        <ShipInstruction module={yardModule} assignment={flow.assignment} />
+      ) : flow.kind === "on_rent" ? (
+        <ReturnInstruction module={yardModule} assignment={flow.assignment} snapshot={snapshot} />
       ) : (
         <MoveWizard module={yardModule} snapshot={snapshot} />
       )}

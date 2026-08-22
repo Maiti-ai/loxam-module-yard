@@ -192,3 +192,82 @@ export async function confirmDispatchPlacementAction(
     ready: payload.status === "READY_FOR_SHIPPING",
   };
 }
+
+export async function shipDispatchModuleAction(
+  moduleId: string,
+): Promise<ActionResult<{shippedCount: number; totalModules: number; status: string}>> {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    return authResult();
+  }
+  if (!roleCan(profile.role, "moveModules")) {
+    return forbiddenResult();
+  }
+
+  const supabase = await createClient();
+  const rpc = await supabase.rpc("ship_dispatch_module", {p_module_id: moduleId});
+  if (rpc.error) {
+    return {ok: false, code: "DISPATCH_FAILED"};
+  }
+  const payload = asDispatchRpc(rpc.data);
+  if (!payload?.ok) {
+    return {ok: false, code: asDispatchErrorCode(payload?.error_code)};
+  }
+
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    shippedCount: payload.shipped_count ?? 0,
+    totalModules: payload.total_modules ?? 0,
+    status: payload.status ?? "SHIPPED",
+  };
+}
+
+export async function returnDispatchModuleAction(
+  moduleId: string,
+  positionId: string,
+): Promise<
+  ActionResult<{
+    returnedCount: number;
+    onRentCount: number;
+    totalModules: number;
+    status: string;
+    locationLabel: string | null;
+  }>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) {
+    return authResult();
+  }
+  if (!roleCan(profile.role, "moveModules")) {
+    return forbiddenResult();
+  }
+
+  const supabase = await createClient();
+  const rpc = await supabase.rpc("return_dispatch_module", {
+    p_module_id: moduleId,
+    p_position_id: positionId,
+  });
+  if (rpc.error) {
+    return {ok: false, code: "DISPATCH_FAILED"};
+  }
+  const payload = asDispatchRpc(rpc.data);
+  if (!payload?.ok) {
+    return {ok: false, code: asDispatchErrorCode(payload?.error_code)};
+  }
+
+  revalidatePath("/", "layout");
+  return {
+    ok: true,
+    returnedCount: payload.returned_count ?? 0,
+    onRentCount: payload.on_rent_count ?? 0,
+    totalModules: payload.total_modules ?? 0,
+    status: payload.status ?? "PARTIALLY_RETURNED",
+    locationLabel: dispatchTargetLabel({
+      blockCode: payload.block_code,
+      rowCode: payload.row_code,
+      positionCode: payload.position_code,
+      level: payload.level,
+    }),
+  };
+}

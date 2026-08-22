@@ -3,6 +3,7 @@ import {describe, it} from "node:test";
 import {
   dispatchFlowKindFromLocation,
   dispatchTargetLabel,
+  isReturnArrivalsRow,
   productionStatusFromLocation,
 } from "./location-status";
 
@@ -13,6 +14,8 @@ describe("dispatch location-derived production status", () => {
     assert.equal(productionStatusFromLocation("A"), "IN_DISPATCH_ZONE");
     assert.equal(productionStatusFromLocation("F", "PLACED"), "IN_DISPATCH_ZONE");
     assert.equal(productionStatusFromLocation(null), "TO_PRODUCTION");
+    assert.equal(productionStatusFromLocation(null, "SHIPPED"), null);
+    assert.equal(productionStatusFromLocation("D", "RETURNED"), null);
   });
 
   it("formats the reserved A target without falling back to another level", () => {
@@ -27,10 +30,20 @@ describe("dispatch location-derived production status", () => {
     );
   });
 
-  it("sends a dossier module in F straight to the reserved A slot", () => {
+  it("routes dossier modules through F placement, ship, and on-rent return", () => {
     assert.equal(dispatchFlowKindFromLocation("C"), "to_production");
     assert.equal(dispatchFlowKindFromLocation("F"), "ready_for_dispatch");
-    assert.equal(dispatchFlowKindFromLocation("A"), "none");
-    assert.equal(dispatchFlowKindFromLocation("F", "PLACED"), "none");
+    assert.equal(dispatchFlowKindFromLocation("A"), "ready_to_ship");
+    assert.equal(dispatchFlowKindFromLocation("A", "PLACED"), "ready_to_ship");
+    assert.equal(dispatchFlowKindFromLocation(null, "SHIPPED"), "on_rent");
+    assert.equal(dispatchFlowKindFromLocation("D", "RETURNED"), "returned");
+  });
+
+  it("recognizes only D P3/P4 as Retour/Arrivées", () => {
+    assert.equal(isReturnArrivalsRow("D", "P3"), true);
+    assert.equal(isReturnArrivalsRow("D", "P4"), true);
+    assert.equal(isReturnArrivalsRow("D", "P1"), false);
+    assert.equal(isReturnArrivalsRow("D", "P5"), false);
+    assert.equal(isReturnArrivalsRow("A", "P3"), false);
   });
 });

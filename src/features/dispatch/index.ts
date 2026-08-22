@@ -3,6 +3,8 @@ export {
   activateDispatchDossierAction,
   cancelDispatchDossierAction,
   confirmDispatchPlacementAction,
+  shipDispatchModuleAction,
+  returnDispatchModuleAction,
 } from "./actions";
 export {
   listDispatchDossiers,
@@ -17,6 +19,11 @@ export {
   bindModulesToPositions,
   DISPATCH_BLOCK_CODE,
 } from "./plan";
+export {
+  RETURN_ARRIVALS_BLOCK_CODE,
+  RETURN_ARRIVALS_ROW_CODES,
+  isReturnArrivalsRow,
+} from "./location-status";
 export type {
   DispatchAssignment,
   DispatchDossierDetail,

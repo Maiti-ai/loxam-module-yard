@@ -117,6 +117,18 @@ export default async function DossierDetailPage({
             total: dossier.totalModules,
           })}
         </p>
+        <p className="text-lg font-black">
+          {t("dispatch.shipProgress", {
+            shipped: dossier.shippedCount,
+            total: dossier.totalModules,
+          })}
+        </p>
+        <p className="text-lg font-black">
+          {t("dispatch.returnProgressShort", {
+            returned: dossier.returnedCount,
+            total: dossier.totalModules,
+          })}
+        </p>
       </div>
 
       <section>

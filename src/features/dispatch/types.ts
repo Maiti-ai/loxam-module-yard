@@ -24,6 +24,12 @@ export type DispatchSlotView = {
   moduleId: string | null;
   moduleNumber: string | null;
   placedAt: string | null;
+  shippedAt: string | null;
+  returnedAt: string | null;
+  returnBlockCode: string | null;
+  returnRowCode: string | null;
+  returnPositionCode: string | null;
+  returnLevel: StackLevel | null;
   positionId: string;
   positionOrder: number;
   blockCode: string;
@@ -41,6 +47,8 @@ export type DispatchDossierSummary = {
   assignedCount: number;
   placedCount: number;
   inProductionCount: number;
+  shippedCount: number;
+  returnedCount: number;
   createdAt: string;
 };
 
@@ -67,6 +75,8 @@ export type DispatchAssignment = {
   status: DispatchSlotStatus;
   productionStatus: DispatchProductionStatus | null;
   placedAt: string | null;
+  shippedAt: string | null;
+  returnedAt: string | null;
   positionId: string;
   blockCode: string;
   rowCode: string;
@@ -78,4 +88,7 @@ export type DispatchAssignment = {
 export type DispatchModuleFlow =
   | {kind: "none"}
   | {kind: "to_production"; assignment: DispatchAssignment}
-  | {kind: "ready_for_dispatch"; assignment: DispatchAssignment};
+  | {kind: "ready_for_dispatch"; assignment: DispatchAssignment}
+  | {kind: "ready_to_ship"; assignment: DispatchAssignment}
+  | {kind: "on_rent"; assignment: DispatchAssignment}
+  | {kind: "returned"; assignment: DispatchAssignment};

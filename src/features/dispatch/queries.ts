@@ -26,7 +26,10 @@ function asDossierStatus(value: string): DispatchDossierStatus {
   if (
     value === "DRAFT" ||
     value === "READY_FOR_SHIPPING" ||
+    value === "PARTIALLY_SHIPPED" ||
     value === "SHIPPED" ||
+    value === "PARTIALLY_RETURNED" ||
+    value === "RETURNED" ||
     value === "CANCELLED" ||
     value === "ACTIVE"
   ) {
@@ -36,7 +39,13 @@ function asDossierStatus(value: string): DispatchDossierStatus {
 }
 
 function asSlotStatus(value: string): DispatchSlotStatus {
-  if (value === "ASSIGNED" || value === "PLACED" || value === "EMPTY") {
+  if (
+    value === "ASSIGNED" ||
+    value === "PLACED" ||
+    value === "EMPTY" ||
+    value === "SHIPPED" ||
+    value === "RETURNED"
+  ) {
     return value;
   }
   return "EMPTY";
@@ -67,6 +76,8 @@ function toSummary(
   assignedCount: number,
   placedCount: number,
   inProductionCount: number,
+  shippedCount: number,
+  returnedCount: number,
 ): DispatchDossierSummary {
   return {
     id: row.id,
@@ -78,6 +89,8 @@ function toSummary(
     assignedCount,
     placedCount,
     inProductionCount,
+    shippedCount,
+    returnedCount,
     createdAt: row.created_at,
   };
 }
@@ -135,8 +148,10 @@ async function countsForDossiers(dossierIds: string[]) {
   const assigned = new Map<string, number>();
   const placed = new Map<string, number>();
   const inProduction = new Map<string, number>();
+  const shipped = new Map<string, number>();
+  const returned = new Map<string, number>();
   if (dossierIds.length === 0) {
-    return {assigned, placed, inProduction};
+    return {assigned, placed, inProduction, shipped, returned};
   }
   const supabase = await createClient();
   const {data} = await supabase
@@ -159,6 +174,12 @@ async function countsForDossiers(dossierIds: string[]) {
     if (slot.module_id) {
       assigned.set(slot.dossier_id, (assigned.get(slot.dossier_id) ?? 0) + 1);
     }
+    if (slot.status === "SHIPPED") {
+      shipped.set(slot.dossier_id, (shipped.get(slot.dossier_id) ?? 0) + 1);
+    }
+    if (slot.status === "RETURNED") {
+      returned.set(slot.dossier_id, (returned.get(slot.dossier_id) ?? 0) + 1);
+    }
     const derived = productionStatusFromLocation(
       slot.module_id ? blockByModule.get(slot.module_id) : null,
       slot.status,
@@ -170,7 +191,7 @@ async function countsForDossiers(dossierIds: string[]) {
       inProduction.set(slot.dossier_id, (inProduction.get(slot.dossier_id) ?? 0) + 1);
     }
   }
-  return {assigned, placed, inProduction};
+  return {assigned, placed, inProduction, shipped, returned};
 }
 
 export async function listOccupiedDispatchModuleIds(exceptDossierId?: string): Promise<Set<string>> {
@@ -178,7 +199,15 @@ export async function listOccupiedDispatchModuleIds(exceptDossierId?: string): P
   const {data: dossiers} = await supabase
     .from("dispatch_dossiers")
     .select("id")
-    .in("status", ["DRAFT", "ACTIVE", "READY_FOR_SHIPPING"]);
+    .in("status", [
+      "DRAFT",
+      "ACTIVE",
+      "READY_FOR_SHIPPING",
+      "PARTIALLY_SHIPPED",
+      "SHIPPED",
+      "PARTIALLY_RETURNED",
+      "RETURNED",
+    ]);
   const ids = (dossiers ?? [])
     .map((row) => row.id)
     .filter((id) => id !== exceptDossierId);
@@ -203,7 +232,15 @@ export async function listDispatchDossiers(): Promise<DispatchDossierSummary[]> 
   const {data, error} = await supabase
     .from("dispatch_dossiers")
     .select("id, dossier_number, customer_name, site_location, total_modules, status, created_at")
-    .in("status", ["DRAFT", "ACTIVE", "READY_FOR_SHIPPING"])
+    .in("status", [
+      "DRAFT",
+      "ACTIVE",
+      "READY_FOR_SHIPPING",
+      "PARTIALLY_SHIPPED",
+      "SHIPPED",
+      "PARTIALLY_RETURNED",
+      "RETURNED",
+    ])
     .order("created_at", {ascending: false});
 
   if (error || !data) {
@@ -217,6 +254,8 @@ export async function listDispatchDossiers(): Promise<DispatchDossierSummary[]> 
       counts.assigned.get(row.id) ?? 0,
       counts.placed.get(row.id) ?? 0,
       counts.inProduction.get(row.id) ?? 0,
+      counts.shipped.get(row.id) ?? 0,
+      counts.returned.get(row.id) ?? 0,
     ),
   );
 }
@@ -245,7 +284,7 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
     supabase
       .from("dispatch_slots")
       .select(
-        "id, reserved_position_id, sequence_number, level, module_id, status, placed_at, production_status",
+        "id, reserved_position_id, sequence_number, level, module_id, status, placed_at, shipped_at, returned_at, return_slot_id, production_status",
       )
       .eq("dossier_id", id)
       .order("sequence_number"),
@@ -294,6 +333,31 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
   const reservedById = new Map((reserved ?? []).map((row) => [row.id, row]));
   const moduleNumberById = new Map((modules ?? []).map((row) => [row.id, row.module_number]));
 
+  const returnSlotIds = Array.from(
+    new Set(
+      (slots ?? [])
+        .map((slot) => slot.return_slot_id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+  const returnLocationBySlotId = new Map<
+    string,
+    {blockCode: string; rowCode: string; positionCode: string; level: StackLevel}
+  >();
+  if (returnSlotIds.length > 0) {
+    const {data: returnSlots} = await supabase
+      .from("yard_slots")
+      .select("id, level, position_id")
+      .in("id", returnSlotIds);
+    for (const row of returnSlots ?? []) {
+      const loc = locationOf(row.position_id);
+      returnLocationBySlotId.set(row.id, {
+        ...loc,
+        level: asLevel(row.level),
+      });
+    }
+  }
+
   const counts = await countsForDossiers([id]);
   const positions = (reserved ?? []).map((row) => ({
     id: row.id,
@@ -307,6 +371,7 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
     const loc = reservedRow
       ? locationOf(reservedRow.position_id)
       : {blockCode: "", rowCode: "", positionCode: ""};
+    const returnLoc = slot.return_slot_id ? returnLocationBySlotId.get(slot.return_slot_id) : null;
     return {
       id: slot.id,
       sequenceNumber: slot.sequence_number,
@@ -319,6 +384,12 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
       moduleId: slot.module_id,
       moduleNumber: slot.module_id ? (moduleNumberById.get(slot.module_id) ?? null) : null,
       placedAt: slot.placed_at,
+      shippedAt: slot.shipped_at,
+      returnedAt: slot.returned_at,
+      returnBlockCode: returnLoc?.blockCode ?? null,
+      returnRowCode: returnLoc?.rowCode ?? null,
+      returnPositionCode: returnLoc?.positionCode ?? null,
+      returnLevel: returnLoc?.level ?? null,
       positionId: reservedRow?.position_id ?? "",
       positionOrder: reservedRow?.position_order ?? 0,
       ...loc,
@@ -331,6 +402,8 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
       counts.assigned.get(id) ?? 0,
       counts.placed.get(id) ?? 0,
       counts.inProduction.get(id) ?? 0,
+      counts.shipped.get(id) ?? 0,
+      counts.returned.get(id) ?? 0,
     ),
     positions,
     slots: slotViews,
@@ -347,6 +420,8 @@ async function assignmentFromSlot(input: {
     status: string;
     production_status: string | null;
     placed_at: string | null;
+    shipped_at: string | null;
+    returned_at: string | null;
   };
 }): Promise<DispatchAssignment | null> {
   const supabase = await createClient();
@@ -363,7 +438,7 @@ async function assignmentFromSlot(input: {
   if (!dossier || !moduleRow) {
     return null;
   }
-  if (dossier.status !== "ACTIVE" && dossier.status !== "READY_FOR_SHIPPING") {
+  if (dossier.status === "DRAFT" || dossier.status === "CANCELLED") {
     return null;
   }
 
@@ -407,6 +482,8 @@ async function assignmentFromSlot(input: {
     status: asSlotStatus(input.slot.status),
     productionStatus: asProductionStatus(input.slot.production_status),
     placedAt: input.slot.placed_at,
+    shippedAt: input.slot.shipped_at,
+    returnedAt: input.slot.returned_at,
     positionId,
     blockCode,
     rowCode,
@@ -421,7 +498,7 @@ export async function getDispatchModuleFlow(moduleId: string): Promise<DispatchM
   const {data: slot, error} = await supabase
     .from("dispatch_slots")
     .select(
-      "id, dossier_id, reserved_position_id, sequence_number, level, status, placed_at, module_id, production_status",
+      "id, dossier_id, reserved_position_id, sequence_number, level, status, placed_at, shipped_at, returned_at, module_id, production_status",
     )
     .eq("module_id", moduleId)
     .maybeSingle();

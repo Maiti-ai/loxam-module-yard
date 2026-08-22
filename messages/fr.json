@@ -323,6 +323,9 @@
     "progress": "{placed} / {total} en zone d’expédition",
     "productionProgress": "Production : {count} / {total} en zone de production F",
     "dispatchProgress": "Zone d’expédition : {count} / {total} dans le bloc A",
+    "shipProgress": "Expédiés : {shipped} / {total}",
+    "returnProgress": "Retour : {returned} / {total} · En location : {onRent}",
+    "returnProgressShort": "Retour : {returned} / {total}",
     "productionOverview": "Aperçu production",
     "markReady": "Production terminée",
     "markingReady": "Marquage…",
@@ -332,16 +335,39 @@
     "reserved": "Réservé",
     "modules": "Modules",
     "unassigned": "Pas encore attribué",
+    "ship": "Expédier",
+    "shipping": "Expédition…",
+    "confirmShip": "Confirmer l’expédition",
+    "shipConfirm": "Expédier le module {module} vers le dossier {dossier} – {customer} – {site} ?",
+    "shippedOk": "expédié",
+    "shippedAt": "Expédié le",
+    "return": "Retour",
+    "returning": "Enregistrement du retour…",
+    "confirmReturn": "Confirmer le retour",
+    "returnedOk": "retour",
+    "returnedAt": "Retour le",
+    "returnLocation": "Position de retour",
+    "returnZone": "D — Retours / Arrivées",
+    "onSiteNoYard": "Sur chantier / pas de position yard",
     "moduleBlocked": {
       "in_other_dossier": "Déjà lié à un autre dossier",
       "unavailable": "Non disponible",
       "in_dispatch_zone": "Déjà expédié / dans le bloc A"
     },
+    "lifecycle": {
+      "inPreparation": "En préparation",
+      "readyToShip": "Prêt pour expédition",
+      "shipped": "En location",
+      "returned": "Retour / Arrivé"
+    },
     "status": {
       "DRAFT": "Brouillon",
       "ACTIVE": "Actif",
       "READY_FOR_SHIPPING": "Prêt pour expédition",
-      "SHIPPED": "Expédié",
+      "PARTIALLY_SHIPPED": "Partiellement expédié",
+      "SHIPPED": "En location",
+      "PARTIALLY_RETURNED": "Retour en cours",
+      "RETURNED": "Retour complet",
       "CANCELLED": "Annulé"
     },
     "productionStatus": {
@@ -379,6 +405,12 @@
     "DISPATCH_DESTINATION_MUST_BE_F": "Ce module ne peut aller que vers la zone de production F.",
     "DISPATCH_NOT_IN_F": "Ce module n’est pas dans la zone de production F.",
     "DISPATCH_TARGET_OCCUPIED": "La position réservée {target} n’est pas disponible. Contactez le responsable.",
+    "DISPATCH_NOT_IN_A": "Ce module n’est pas sur sa position A.",
+    "DISPATCH_WRONG_SLOT": "Ce module n’est pas sur l’emplacement A réservé.",
+    "DISPATCH_NOT_READY_TO_SHIP": "Ce module n’est pas encore prêt à être expédié.",
+    "DISPATCH_NOT_ON_RENT": "Ce module n’est pas en location.",
+    "DISPATCH_ALREADY_ON_YARD": "Ce module est déjà sur le yard.",
+    "DISPATCH_RETURN_ZONE_REQUIRED": "Le retour n’est autorisé que dans D Retours/Arrivées.",
     "PRODUCTION_NOT_READY": "La production n’est pas encore terminée. Ce module ne peut pas encore aller au bloc A."
   },
   "empty": {

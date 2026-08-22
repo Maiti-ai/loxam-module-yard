@@ -27,10 +27,13 @@ export type DispatchDossierStatus =
   | "DRAFT"
   | "ACTIVE"
   | "READY_FOR_SHIPPING"
+  | "PARTIALLY_SHIPPED"
   | "SHIPPED"
+  | "PARTIALLY_RETURNED"
+  | "RETURNED"
   | "CANCELLED";
 
-export type DispatchSlotStatus = "EMPTY" | "ASSIGNED" | "PLACED";
+export type DispatchSlotStatus = "EMPTY" | "ASSIGNED" | "PLACED" | "SHIPPED" | "RETURNED";
 
 export type DispatchProductionStatus =
   | "TO_PRODUCTION"
@@ -597,6 +600,11 @@ export type Database = {
           production_status: DispatchProductionStatus | null;
           placed_in_production_at: string | null;
           production_ready_at: string | null;
+          shipped_at: string | null;
+          shipped_by: string | null;
+          returned_at: string | null;
+          returned_by: string | null;
+          return_slot_id: string | null;
         };
         Insert: {
           id?: string;
@@ -613,6 +621,11 @@ export type Database = {
           production_status?: DispatchProductionStatus | null;
           placed_in_production_at?: string | null;
           production_ready_at?: string | null;
+          shipped_at?: string | null;
+          shipped_by?: string | null;
+          returned_at?: string | null;
+          returned_by?: string | null;
+          return_slot_id?: string | null;
         };
         Update: {
           id?: string;
@@ -629,6 +642,11 @@ export type Database = {
           production_status?: DispatchProductionStatus | null;
           placed_in_production_at?: string | null;
           production_ready_at?: string | null;
+          shipped_at?: string | null;
+          shipped_by?: string | null;
+          returned_at?: string | null;
+          returned_by?: string | null;
+          return_slot_id?: string | null;
         };
         Relationships: [];
       };
@@ -718,6 +736,14 @@ export type Database = {
       };
       confirm_dispatch_placement: {
         Args: {p_module_id: string};
+        Returns: Json;
+      };
+      ship_dispatch_module: {
+        Args: {p_module_id: string};
+        Returns: Json;
+      };
+      return_dispatch_module: {
+        Args: {p_module_id: string; p_position_id: string};
         Returns: Json;
       };
       dispatch_module_block_code: {
