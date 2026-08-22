@@ -67,10 +67,30 @@ async function saveDispatchDossier(
   });
 
   if (rpc.error) {
-    return {ok: false, code: "DISPATCH_FAILED"};
+    console.error("DISPATCH_CREATE_RPC_ERROR", {
+      event: "DISPATCH_CREATE_RPC_ERROR",
+      activate: input.activate,
+      dbCode: rpc.error.code ?? null,
+      dbMessage: rpc.error.message ?? null,
+      dbDetails: rpc.error.details ?? null,
+      dbHint: rpc.error.hint ?? null,
+    });
+    return {
+      ok: false,
+      code: "DISPATCH_FAILED",
+      dbCode: rpc.error.code ?? null,
+      dbMessage: rpc.error.message ?? null,
+      dbDetails: rpc.error.details ?? null,
+      dbHint: rpc.error.hint ?? null,
+    };
   }
   const payload = asDispatchRpc(rpc.data);
   if (!payload?.ok || !payload.dossier_id) {
+    console.error("DISPATCH_CREATE_RPC_PAYLOAD", {
+      event: "DISPATCH_CREATE_RPC_PAYLOAD",
+      activate: input.activate,
+      payload,
+    });
     return {ok: false, code: asDispatchErrorCode(payload?.error_code)};
   }
 

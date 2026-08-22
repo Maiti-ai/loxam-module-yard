@@ -128,7 +128,10 @@ export function CreateDossierWizard({
       : await saveDispatchDossierDraftAction(planInput());
     setPending(false);
     if (!result.ok) {
-      setError(t(`errors.${result.code}`));
+      const backend = [result.dbCode, result.dbMessage, result.dbHint]
+        .filter((part): part is string => Boolean(part))
+        .join(" — ");
+      setError(backend ? `${t(`errors.${result.code}`)} ${backend}` : t(`errors.${result.code}`));
       router.refresh();
       return null;
     }
