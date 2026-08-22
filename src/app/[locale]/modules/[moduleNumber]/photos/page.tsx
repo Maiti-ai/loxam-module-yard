@@ -6,7 +6,7 @@ import {ErrorState} from "@/components/ui/page-state";
 import {requireUser} from "@/features/auth/guard";
 import {getModuleByNumber} from "@/features/modules/queries";
 import {listModulePhotos} from "@/features/module-photos/queries";
-import {roleCan} from "@/features/roles";
+import {canDeleteModulePhotos, roleCan} from "@/features/roles";
 import {tryLoad} from "@/lib/try-load";
 
 export default async function ModulePhotosPage({
@@ -50,6 +50,7 @@ export default async function ModulePhotosPage({
 
   const {yardModule, photos} = loaded.data;
   const canPhotos = roleCan(profile.role, "managePhotos");
+  const canDelete = canDeleteModulePhotos(profile.role);
 
   return (
     <section className="mx-auto max-w-xl space-y-5 px-4 py-8">
@@ -61,7 +62,7 @@ export default async function ModulePhotosPage({
       </h1>
       <h2 className="text-xl font-black">{t("photos.history")}</h2>
       {canPhotos ? <PhotoUploader moduleId={yardModule.id} /> : null}
-      <PhotoHistoryList photos={photos} />
+      <PhotoHistoryList photos={photos} canDelete={canDelete} />
     </section>
   );
 }
