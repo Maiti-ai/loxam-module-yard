@@ -23,7 +23,7 @@ describe("dispatch location-derived production status", () => {
         positionCode: "04",
         level: "LEVEL_1",
       }),
-      "A-P04-04 Niveau 1",
+      "A-P4-04 Niveau 1",
     );
   });
 
