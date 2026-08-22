@@ -147,30 +147,6 @@ export async function cancelDispatchDossierAction(
   return {ok: true, status: payload.status ?? "CANCELLED"};
 }
 
-export async function markDispatchProductionReadyAction(
-  moduleId: string,
-): Promise<ActionResult<{productionStatus: string}>> {
-  const profile = await getCurrentProfile();
-  if (!profile) {
-    return authResult();
-  }
-  if (!roleCan(profile.role, "markDispatchReady")) {
-    return forbiddenResult();
-  }
-
-  const supabase = await createClient();
-  const rpc = await supabase.rpc("mark_dispatch_production_ready", {p_module_id: moduleId});
-  if (rpc.error) {
-    return {ok: false, code: "DISPATCH_FAILED"};
-  }
-  const payload = asDispatchRpc(rpc.data);
-  if (!payload?.ok) {
-    return {ok: false, code: asDispatchErrorCode(payload?.error_code)};
-  }
-  revalidatePath("/", "layout");
-  return {ok: true, productionStatus: payload.production_status ?? "READY_FOR_DISPATCH"};
-}
-
 export async function confirmDispatchPlacementAction(
   moduleId: string,
 ): Promise<ActionResult<{placedCount: number; totalModules: number; ready: boolean}>> {

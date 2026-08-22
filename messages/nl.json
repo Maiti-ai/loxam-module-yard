@@ -316,7 +316,7 @@
     "stillInProductionBody": "Deze module mag nog niet naar blok A. Wacht tot productie klaar is gemarkeerd.",
     "targetSlot": "Doelpositie",
     "progress": "{placed} / {total} in verzendzone",
-    "productionProgress": "Productie: {count} / {total} in productie of klaar",
+    "productionProgress": "Productie: {count} / {total} in productiezone F",
     "dispatchProgress": "Verzendzone: {count} / {total} in blok A",
     "productionOverview": "Productieoverzicht",
     "markReady": "Productie klaar",

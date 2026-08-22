@@ -2,7 +2,6 @@ export {
   saveDispatchDossierDraftAction,
   activateDispatchDossierAction,
   cancelDispatchDossierAction,
-  markDispatchProductionReadyAction,
   confirmDispatchPlacementAction,
 } from "./actions";
 export {

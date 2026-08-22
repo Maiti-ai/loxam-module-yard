@@ -316,7 +316,7 @@
     "stillInProductionBody": "Ce module ne peut pas encore aller au bloc A. Attendez que la production soit marquée comme terminée.",
     "targetSlot": "Position cible",
     "progress": "{placed} / {total} en zone d’expédition",
-    "productionProgress": "Production : {count} / {total} en production ou prêts",
+    "productionProgress": "Production : {count} / {total} en zone de production F",
     "dispatchProgress": "Zone d’expédition : {count} / {total} dans le bloc A",
     "productionOverview": "Aperçu production",
     "markReady": "Production terminée",

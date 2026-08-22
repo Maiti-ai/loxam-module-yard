@@ -19,7 +19,6 @@ export default async function DossierDetailPage({
   const t = await getTranslations();
   const {id} = await params;
   const canPlan = roleCan(profile.role, "planDispatch");
-  const canMarkReady = roleCan(profile.role, "markDispatchReady");
 
   const loaded = await tryLoad(async () => {
     const dossier = await getDispatchDossier(id);
@@ -123,7 +122,7 @@ export default async function DossierDetailPage({
       <section>
         <h2 className="text-lg font-black">{t("dispatch.productionOverview")}</h2>
         <div className="mt-4">
-          <DossierProductionOverview dossier={dossier} canMarkReady={canMarkReady} canCancel={canPlan} />
+          <DossierProductionOverview dossier={dossier} canCancel={canPlan} />
         </div>
       </section>
     </section>

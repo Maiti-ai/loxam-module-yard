@@ -13,6 +13,7 @@ import type {
   DispatchReservationSummary,
   DispatchSlotView,
 } from "./types";
+import {dispatchFlowKindFromLocation, productionStatusFromLocation} from "./location-status";
 
 function asLevel(value: string): StackLevel {
   if (value === "LEVEL_1" || value === "LEVEL_2" || value === "GROUND") {
@@ -140,20 +141,32 @@ async function countsForDossiers(dossierIds: string[]) {
   const supabase = await createClient();
   const {data} = await supabase
     .from("dispatch_slots")
-    .select("dossier_id, module_id, status, production_status")
+    .select("dossier_id, module_id, status")
     .in("dossier_id", dossierIds);
+  const moduleIds = Array.from(
+    new Set((data ?? []).map((slot) => slot.module_id).filter((value): value is string => Boolean(value))),
+  );
+  const {data: locations} =
+    moduleIds.length > 0
+      ? await supabase.from("module_location_view").select("module_id, block_code").in("module_id", moduleIds)
+      : {data: [] as Array<{module_id: string | null; block_code: string | null}>};
+  const blockByModule = new Map(
+    (locations ?? [])
+      .filter((row): row is {module_id: string; block_code: string | null} => Boolean(row.module_id))
+      .map((row) => [row.module_id, row.block_code]),
+  );
   for (const slot of data ?? []) {
     if (slot.module_id) {
       assigned.set(slot.dossier_id, (assigned.get(slot.dossier_id) ?? 0) + 1);
     }
-    if (slot.status === "PLACED" || slot.production_status === "IN_DISPATCH_ZONE") {
+    const derived = productionStatusFromLocation(
+      slot.module_id ? blockByModule.get(slot.module_id) : null,
+      slot.status,
+    );
+    if (derived === "IN_DISPATCH_ZONE") {
       placed.set(slot.dossier_id, (placed.get(slot.dossier_id) ?? 0) + 1);
     }
-    if (
-      slot.production_status === "IN_PRODUCTION" ||
-      slot.production_status === "READY_FOR_DISPATCH" ||
-      slot.production_status === "IN_DISPATCH_ZONE"
-    ) {
+    if (derived === "IN_PRODUCTION") {
       inProduction.set(slot.dossier_id, (inProduction.get(slot.dossier_id) ?? 0) + 1);
     }
   }
@@ -245,6 +258,15 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
     moduleIds.length > 0
       ? await supabase.from("modules").select("id, module_number").in("id", moduleIds)
       : {data: [] as Array<{id: string; module_number: string}>};
+  const {data: moduleLocations} =
+    moduleIds.length > 0
+      ? await supabase.from("module_location_view").select("module_id, block_code").in("module_id", moduleIds)
+      : {data: [] as Array<{module_id: string | null; block_code: string | null}>};
+  const blockByModuleId = new Map(
+    (moduleLocations ?? [])
+      .filter((row): row is {module_id: string; block_code: string | null} => Boolean(row.module_id))
+      .map((row) => [row.module_id, row.block_code]),
+  );
 
   const positionsRes = await supabase.from("yard_positions").select("id, code, row_id");
   const rowsRes = await supabase.from("yard_rows").select("id, code, block_id");
@@ -290,7 +312,10 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
       sequenceNumber: slot.sequence_number,
       level: asLevel(slot.level),
       status: asSlotStatus(slot.status),
-      productionStatus: asProductionStatus(slot.production_status),
+      productionStatus: productionStatusFromLocation(
+        slot.module_id ? blockByModuleId.get(slot.module_id) : null,
+        slot.status,
+      ),
       moduleId: slot.module_id,
       moduleNumber: slot.module_id ? (moduleNumberById.get(slot.module_id) ?? null) : null,
       placedAt: slot.placed_at,
@@ -410,14 +435,14 @@ export async function getDispatchModuleFlow(moduleId: string): Promise<DispatchM
     return {kind: "none"};
   }
 
-  if (assignment.productionStatus === "TO_PRODUCTION") {
-    return {kind: "to_production", assignment};
+  const {data: location} = await supabase
+    .from("module_location_view")
+    .select("block_code")
+    .eq("module_id", moduleId)
+    .maybeSingle();
+  const kind = dispatchFlowKindFromLocation(location?.block_code, slot.status);
+  if (kind === "none") {
+    return {kind: "none"};
   }
-  if (assignment.productionStatus === "IN_PRODUCTION") {
-    return {kind: "in_production", assignment};
-  }
-  if (assignment.productionStatus === "READY_FOR_DISPATCH") {
-    return {kind: "ready_for_dispatch", assignment};
-  }
-  return {kind: "none"};
+  return {kind, assignment};
 }

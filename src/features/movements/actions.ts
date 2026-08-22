@@ -261,10 +261,6 @@ export async function moveModuleAction(
     if (!targetBlock || !isProductionBlock(targetBlock)) {
       return {ok: false, code: "DISPATCH_DESTINATION_MUST_BE_F"};
     }
-  } else if (flow.kind === "in_production") {
-    if (!targetBlock || !isProductionBlock(targetBlock)) {
-      return {ok: false, code: "PRODUCTION_NOT_READY"};
-    }
   } else if (flow.kind === "ready_for_dispatch") {
     return {ok: false, code: "DISPATCH_REQUIRED"};
   } else if (target?.reservation) {

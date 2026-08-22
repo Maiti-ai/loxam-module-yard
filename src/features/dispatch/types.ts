@@ -78,5 +78,4 @@ export type DispatchAssignment = {
 export type DispatchModuleFlow =
   | {kind: "none"}
   | {kind: "to_production"; assignment: DispatchAssignment}
-  | {kind: "in_production"; assignment: DispatchAssignment}
   | {kind: "ready_for_dispatch"; assignment: DispatchAssignment};
