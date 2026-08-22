@@ -8,6 +8,7 @@ import {SchelleYardMap} from "@/components/yard/schelle-yard-map";
 import {LevelStack} from "@/components/yard/level-stack";
 import {confirmDispatchPlacementAction} from "@/features/dispatch/actions";
 import {findBlockByCode} from "@/features/dispatch/availability";
+import {dispatchTargetLabel} from "@/features/dispatch/location-status";
 import {DISPATCH_BLOCK_CODE} from "@/features/dispatch/plan";
 import type {DispatchAssignment} from "@/features/dispatch/types";
 import {resolveMaxStackLevels} from "@/features/yard-locations/stacking";
@@ -50,7 +51,18 @@ export function PlacementInstruction({
     const result = await confirmDispatchPlacementAction(module.id);
     setPending(false);
     if (!result.ok) {
-      setError(t(`errors.${result.code}`));
+      setError(
+        result.code === "DISPATCH_TARGET_OCCUPIED"
+          ? t("errors.DISPATCH_TARGET_OCCUPIED", {
+              target: result.targetLabel ?? dispatchTargetLabel({
+                blockCode: assignment.blockCode,
+                rowCode: assignment.rowCode,
+                positionCode: assignment.positionCode,
+                level: assignment.level,
+              }),
+            })
+          : t(`errors.${result.code}`),
+      );
       return;
     }
     setDone({

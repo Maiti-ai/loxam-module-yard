@@ -13,6 +13,9 @@ export type DispatchRpcPayload = {
   production_status?: string;
   slot_id?: string;
   level?: string;
+  block_code?: string;
+  row_code?: string;
+  position_code?: string;
   unchanged?: boolean;
 };
 
@@ -45,6 +48,7 @@ export function asDispatchErrorCode(value: string | undefined): AppErrorCode {
     case "DISPATCH_ALREADY_ACTIVE":
     case "DISPATCH_DESTINATION_MUST_BE_F":
     case "DISPATCH_NOT_IN_F":
+    case "DISPATCH_TARGET_OCCUPIED":
     case "PRODUCTION_NOT_READY":
       return value;
     default:

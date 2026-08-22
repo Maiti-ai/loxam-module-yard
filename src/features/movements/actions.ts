@@ -262,6 +262,7 @@ export async function moveModuleAction(
       return {ok: false, code: "DISPATCH_DESTINATION_MUST_BE_F"};
     }
   } else if (flow.kind === "ready_for_dispatch") {
+    // Dossier F → A uses confirm_dispatch_placement only. Never auto-stack.
     return {ok: false, code: "DISPATCH_REQUIRED"};
   } else if (target?.reservation) {
     return {ok: false, code: "POSITION_RESERVED"};

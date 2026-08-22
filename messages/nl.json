@@ -372,6 +372,7 @@
     "DISPATCH_ALREADY_ACTIVE": "Dit dossier is al actief en kan niet meer zo gewijzigd worden.",
     "DISPATCH_DESTINATION_MUST_BE_F": "Deze module mag alleen naar productiezone F.",
     "DISPATCH_NOT_IN_F": "Deze module staat niet in productiezone F.",
+    "DISPATCH_TARGET_OCCUPIED": "De gereserveerde positie {target} is niet beschikbaar. Contacteer de verantwoordelijke.",
     "PRODUCTION_NOT_READY": "Productie is nog niet klaar. Deze module mag nog niet naar blok A."
   },
   "empty": {

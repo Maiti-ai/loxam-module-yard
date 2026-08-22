@@ -6,6 +6,7 @@ import {roleCan} from "@/features/roles";
 import {asDispatchErrorCode, asDispatchRpc} from "@/features/dispatch/rpc";
 import {requiredGroundPositions} from "@/features/dispatch/plan";
 import {getDispatchDossier} from "@/features/dispatch/queries";
+import {dispatchTargetLabel} from "@/features/dispatch/location-status";
 import type {ActionResult} from "@/lib/errors";
 import {createClient} from "@/lib/supabase/server";
 import type {DispatchDossierDetail} from "./types";
@@ -167,7 +168,20 @@ export async function confirmDispatchPlacementAction(
   }
   const payload = asDispatchRpc(rpc.data);
   if (!payload?.ok) {
-    return {ok: false, code: asDispatchErrorCode(payload?.error_code)};
+    const code = asDispatchErrorCode(payload?.error_code);
+    if (code === "DISPATCH_TARGET_OCCUPIED") {
+      return {
+        ok: false,
+        code,
+        targetLabel: dispatchTargetLabel({
+          blockCode: payload?.block_code,
+          rowCode: payload?.row_code,
+          positionCode: payload?.position_code,
+          level: payload?.level,
+        }),
+      };
+    }
+    return {ok: false, code};
   }
 
   revalidatePath("/", "layout");

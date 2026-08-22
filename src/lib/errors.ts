@@ -19,6 +19,7 @@ export const APP_ERROR_CODES = [
   "DISPATCH_ALREADY_ACTIVE",
   "DISPATCH_DESTINATION_MUST_BE_F",
   "DISPATCH_NOT_IN_F",
+  "DISPATCH_TARGET_OCCUPIED",
   "PRODUCTION_NOT_READY",
   "UPLOAD_FAILED",
   "SAVE_FAILED",
@@ -32,6 +33,7 @@ export type ActionErr = {
   ok: false;
   code: AppErrorCode;
   occupantNumber?: string | null;
+  targetLabel?: string | null;
   stage?: string | null;
   serverStage?: string | null;
   thrownName?: string | null;

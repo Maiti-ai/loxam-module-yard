@@ -1,4 +1,23 @@
-import type {DispatchProductionStatus} from "@/types/database";
+import {formatGroundPositionLabel, formatLevelLabel} from "@/lib/format";
+import type {DispatchProductionStatus, StackLevel} from "@/types/database";
+
+export function dispatchTargetLabel(input: {
+  blockCode?: string | null;
+  rowCode?: string | null;
+  positionCode?: string | null;
+  level?: string | null;
+}) {
+  const level: StackLevel =
+    input.level === "LEVEL_1" || input.level === "LEVEL_2" || input.level === "GROUND"
+      ? input.level
+      : "GROUND";
+  const cell = formatGroundPositionLabel({
+    blockCode: input.blockCode ?? "A",
+    rowCode: input.rowCode ?? "",
+    positionCode: input.positionCode ?? "",
+  });
+  return `${cell} ${formatLevelLabel(level)}`;
+}
 
 export function productionStatusFromLocation(
   blockCode: string | null | undefined,
