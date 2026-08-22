@@ -66,7 +66,6 @@ function toSummary(
   assignedCount: number,
   placedCount: number,
   inProductionCount: number,
-  readyCount: number,
 ): DispatchDossierSummary {
   return {
     id: row.id,
@@ -78,7 +77,6 @@ function toSummary(
     assignedCount,
     placedCount,
     inProductionCount,
-    readyCount,
     createdAt: row.created_at,
   };
 }
@@ -136,9 +134,8 @@ async function countsForDossiers(dossierIds: string[]) {
   const assigned = new Map<string, number>();
   const placed = new Map<string, number>();
   const inProduction = new Map<string, number>();
-  const ready = new Map<string, number>();
   if (dossierIds.length === 0) {
-    return {assigned, placed, inProduction, ready};
+    return {assigned, placed, inProduction};
   }
   const supabase = await createClient();
   const {data} = await supabase
@@ -159,11 +156,8 @@ async function countsForDossiers(dossierIds: string[]) {
     ) {
       inProduction.set(slot.dossier_id, (inProduction.get(slot.dossier_id) ?? 0) + 1);
     }
-    if (slot.production_status === "READY_FOR_DISPATCH" || slot.production_status === "IN_DISPATCH_ZONE") {
-      ready.set(slot.dossier_id, (ready.get(slot.dossier_id) ?? 0) + 1);
-    }
   }
-  return {assigned, placed, inProduction, ready};
+  return {assigned, placed, inProduction};
 }
 
 export async function listOccupiedDispatchModuleIds(exceptDossierId?: string): Promise<Set<string>> {
@@ -210,14 +204,8 @@ export async function listDispatchDossiers(): Promise<DispatchDossierSummary[]> 
       counts.assigned.get(row.id) ?? 0,
       counts.placed.get(row.id) ?? 0,
       counts.inProduction.get(row.id) ?? 0,
-      counts.ready.get(row.id) ?? 0,
     ),
   );
-}
-
-export async function listOpenDispatchDossiers(): Promise<DispatchDossierSummary[]> {
-  const dossiers = await listDispatchDossiers();
-  return dossiers.filter((dossier) => dossier.status === "ACTIVE");
 }
 
 export async function getDispatchDossier(id: string): Promise<DispatchDossierDetail | null> {
@@ -244,7 +232,7 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
     supabase
       .from("dispatch_slots")
       .select(
-        "id, reserved_position_id, sequence_number, level, module_id, status, placed_at, production_status, placed_in_production_at, production_ready_at",
+        "id, reserved_position_id, sequence_number, level, module_id, status, placed_at, production_status",
       )
       .eq("dossier_id", id)
       .order("sequence_number"),
@@ -257,14 +245,6 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
     moduleIds.length > 0
       ? await supabase.from("modules").select("id, module_number").in("id", moduleIds)
       : {data: [] as Array<{id: string; module_number: string}>};
-
-  const locations =
-    moduleIds.length > 0
-      ? await supabase
-          .from("module_location_view")
-          .select("module_id, block_code")
-          .in("module_id", moduleIds)
-      : {data: [] as Array<{module_id: string | null; block_code: string | null}>};
 
   const positionsRes = await supabase.from("yard_positions").select("id, code, row_id");
   const rowsRes = await supabase.from("yard_rows").select("id, code, block_id");
@@ -291,11 +271,6 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
 
   const reservedById = new Map((reserved ?? []).map((row) => [row.id, row]));
   const moduleNumberById = new Map((modules ?? []).map((row) => [row.id, row.module_number]));
-  const currentBlockByModule = new Map(
-    (locations.data ?? [])
-      .filter((row) => row.module_id)
-      .map((row) => [row.module_id as string, row.block_code]),
-  );
 
   const counts = await countsForDossiers([id]);
   const positions = (reserved ?? []).map((row) => ({
@@ -316,14 +291,11 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
       level: asLevel(slot.level),
       status: asSlotStatus(slot.status),
       productionStatus: asProductionStatus(slot.production_status),
-      placedInProductionAt: slot.placed_in_production_at,
-      productionReadyAt: slot.production_ready_at,
       moduleId: slot.module_id,
       moduleNumber: slot.module_id ? (moduleNumberById.get(slot.module_id) ?? null) : null,
       placedAt: slot.placed_at,
       positionId: reservedRow?.position_id ?? "",
       positionOrder: reservedRow?.position_order ?? 0,
-      currentBlockCode: slot.module_id ? (currentBlockByModule.get(slot.module_id) ?? null) : null,
       ...loc,
     };
   });
@@ -334,7 +306,6 @@ export async function getDispatchDossier(id: string): Promise<DispatchDossierDet
       counts.assigned.get(id) ?? 0,
       counts.placed.get(id) ?? 0,
       counts.inProduction.get(id) ?? 0,
-      counts.ready.get(id) ?? 0,
     ),
     positions,
     slots: slotViews,
@@ -448,28 +419,5 @@ export async function getDispatchModuleFlow(moduleId: string): Promise<DispatchM
   if (assignment.productionStatus === "READY_FOR_DISPATCH") {
     return {kind: "ready_for_dispatch", assignment};
   }
-  if (assignment.productionStatus === "IN_DISPATCH_ZONE") {
-    return {kind: "in_dispatch", assignment};
-  }
   return {kind: "none"};
-}
-
-export async function getPendingDispatchAssignment(
-  moduleId: string,
-): Promise<DispatchAssignment | null> {
-  const flow = await getDispatchModuleFlow(moduleId);
-  if (flow.kind === "ready_for_dispatch") {
-    return flow.assignment;
-  }
-  return null;
-}
-
-export async function findDossierByNumber(dossierNumber: string) {
-  const supabase = await createClient();
-  const {data} = await supabase
-    .from("dispatch_dossiers")
-    .select("id, dossier_number")
-    .ilike("dossier_number", dossierNumber.trim())
-    .maybeSingle();
-  return data;
 }

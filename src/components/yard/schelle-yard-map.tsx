@@ -103,8 +103,8 @@ function YardPositionCell({
   const title = reservation
     ? `${label}\n${YARD_MAP_FR.reserved}\n${reservation.dossierNumber}`
     : label;
-  const ring = selected ? "#c41e3a" : highlighted ? "#d97706" : reservation ? "#d97706" : "transparent";
-  const ringWidth = selected || highlighted || reservation ? 3.4 : 0;
+  const ring = selected ? "#c41e3a" : highlighted ? "#d97706" : "transparent";
+  const ringWidth = selected || highlighted ? 3.4 : 0;
 
   return (
     <g>

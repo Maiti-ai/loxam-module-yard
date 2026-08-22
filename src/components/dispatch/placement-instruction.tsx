@@ -106,9 +106,9 @@ export function PlacementInstruction({
         <p className="text-sm font-black uppercase tracking-[0.18em] text-loxam-muted">
           {t("dispatch.placeOn")}
         </p>
-        <p className="mt-3 text-7xl font-black tracking-tight">{assignment.blockCode}</p>
-        <p className="mt-2 text-6xl font-black">{target}</p>
-        <p className="mt-4 text-5xl font-black uppercase">{formatLevelLabel(assignment.level)}</p>
+        <p className="mt-3 text-6xl font-black tracking-tight">{assignment.blockCode}</p>
+        <p className="mt-2 text-5xl font-black">{target}</p>
+        <p className="mt-4 text-4xl font-black uppercase">{formatLevelLabel(assignment.level)}</p>
       </div>
       {blockA ? (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">

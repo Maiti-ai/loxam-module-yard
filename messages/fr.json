@@ -279,8 +279,6 @@
     "subtitle": "Code type, dimensions et plan technique. Les fichiers arriveront plus tard."
   },
   "dispatch": {
-    "exitTitle": "Module hors production",
-    "exitBody": "Ce module est dans le bloc F. Il doit être lié à un dossier. L’app choisit ensuite la position A exacte.",
     "createNew": "Créer un nouveau dossier",
     "dossier": "Dossier",
     "dossierNumber": "Numéro de dossier",
@@ -317,9 +315,7 @@
     "stillInProduction": "Encore en production",
     "stillInProductionBody": "Ce module ne peut pas encore aller au bloc A. Attendez que la production soit marquée comme terminée.",
     "targetSlot": "Position cible",
-    "moduleOf": "Module {sequence} sur {total}",
     "progress": "{placed} / {total} en zone d’expédition",
-    "modulesProgress": "{placed} / {total} modules",
     "productionProgress": "Production : {count} / {total} en production ou prêts",
     "dispatchProgress": "Zone d’expédition : {count} / {total} dans le bloc A",
     "productionOverview": "Aperçu production",
@@ -329,7 +325,6 @@
     "listBody": "Créer les dossiers à l’avance, envoyer les modules en production et fixer les positions A.",
     "empty": "Pas encore de dossiers.",
     "reserved": "Réservé",
-    "reservedPositions": "Positions A réservées",
     "modules": "Modules",
     "unassigned": "Pas encore attribué",
     "moduleBlocked": {

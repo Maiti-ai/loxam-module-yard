@@ -7,13 +7,10 @@ export {
 } from "./actions";
 export {
   listDispatchDossiers,
-  listOpenDispatchDossiers,
   getDispatchDossier,
   getDispatchModuleFlow,
-  getPendingDispatchAssignment,
   listActiveReservations,
   listOccupiedDispatchModuleIds,
-  findDossierByNumber,
 } from "./queries";
 export {
   requiredGroundPositions,

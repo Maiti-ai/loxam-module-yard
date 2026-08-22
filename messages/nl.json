@@ -279,8 +279,6 @@
     "subtitle": "Typecode, afmetingen en type-tekening. Bestanden volgen later."
   },
   "dispatch": {
-    "exitTitle": "Module uit productie",
-    "exitBody": "Deze module staat in blok F. Koppel ze verplicht aan een dossier. De app bepaalt daarna de exacte A-positie.",
     "createNew": "Nieuw dossier aanmaken",
     "dossier": "Dossier",
     "dossierNumber": "Dossiernummer",
@@ -317,9 +315,7 @@
     "stillInProduction": "Nog in productie",
     "stillInProductionBody": "Deze module mag nog niet naar blok A. Wacht tot productie klaar is gemarkeerd.",
     "targetSlot": "Doelpositie",
-    "moduleOf": "Module {sequence} van {total}",
     "progress": "{placed} / {total} in verzendzone",
-    "modulesProgress": "{placed} / {total} modules",
     "productionProgress": "Productie: {count} / {total} in productie of klaar",
     "dispatchProgress": "Verzendzone: {count} / {total} in blok A",
     "productionOverview": "Productieoverzicht",
@@ -329,7 +325,6 @@
     "listBody": "Dossiers vooraf aanmaken, modules naar productie sturen en verzendposities in blok A vastleggen.",
     "empty": "Nog geen dossiers.",
     "reserved": "Gereserveerd",
-    "reservedPositions": "Gereserveerde A-posities",
     "modules": "Modules",
     "unassigned": "Nog niet toegewezen",
     "moduleBlocked": {
