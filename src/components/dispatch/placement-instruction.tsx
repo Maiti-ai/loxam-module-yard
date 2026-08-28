@@ -128,6 +128,9 @@ export function PlacementInstruction({
             snapshot={snapshot}
             selectedBlockId={blockA.id}
             selectedPositionId={assignment.positionId}
+            selectedLevel={assignment.level}
+            highlightLevel={assignment.level}
+            levelSelectable={false}
             highlightedPositionIds={[assignment.positionId]}
             allowedBlockCodes={[DISPATCH_BLOCK_CODE]}
             lockBlockId={blockA.id}

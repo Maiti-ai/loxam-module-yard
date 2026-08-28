@@ -15,6 +15,10 @@ export type DispatchReservationSummary = {
   status: DispatchDossierStatus;
 };
 
+export type DispatchLevelReservationSummary = DispatchReservationSummary & {
+  moduleNumber: string | null;
+};
+
 export type DispatchSlotView = {
   id: string;
   sequenceNumber: number;

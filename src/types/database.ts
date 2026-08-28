@@ -743,7 +743,11 @@ export type Database = {
         Returns: Json;
       };
       return_dispatch_module: {
-        Args: {p_module_id: string; p_position_id: string};
+        Args: {
+          p_module_id: string;
+          p_position_id: string;
+          p_preferred_level?: StackLevel | null;
+        };
         Returns: Json;
       };
       dispatch_module_block_code: {

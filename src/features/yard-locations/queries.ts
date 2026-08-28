@@ -1,5 +1,5 @@
 import {isProductionBlock} from "@/config/yard";
-import {listActiveReservations} from "@/features/dispatch/queries";
+import {listActiveReservations, listDispatchLevelReservations} from "@/features/dispatch/queries";
 import {createClient} from "@/lib/supabase/server";
 import {yardCapacity} from "./capacity";
 import {displayBlocks} from "./display-blocks";
@@ -155,14 +155,23 @@ export async function getYardSnapshot(): Promise<YardSnapshot> {
     }));
 
   const capacity = yardCapacity(displayBlocks({blocks, slotCount: 0, occupiedSlotCount: 0}));
-  const reservations = await listActiveReservations();
-  if (reservations.size > 0) {
+  const [reservations, levelReservations] = await Promise.all([
+    listActiveReservations(),
+    listDispatchLevelReservations(),
+  ]);
+  if (reservations.size > 0 || levelReservations.size > 0) {
     for (const block of blocks) {
       for (const row of block.rows) {
         for (const position of row.positions) {
           const reservation = reservations.get(position.id);
           if (reservation) {
             position.reservation = reservation;
+          }
+          for (const levelCell of position.levels) {
+            const levelReservation = levelReservations.get(`${position.id}:${levelCell.level}`);
+            if (levelReservation) {
+              levelCell.reservation = levelReservation;
+            }
           }
         }
       }

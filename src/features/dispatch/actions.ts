@@ -9,6 +9,7 @@ import {getDispatchDossier} from "@/features/dispatch/queries";
 import {dispatchTargetLabel} from "@/features/dispatch/location-status";
 import type {ActionResult} from "@/lib/errors";
 import {createClient} from "@/lib/supabase/server";
+import type {StackLevel} from "@/types/database";
 import type {DispatchDossierDetail} from "./types";
 
 function authResult() {
@@ -226,6 +227,7 @@ export async function shipDispatchModuleAction(
 export async function returnDispatchModuleAction(
   moduleId: string,
   positionId: string,
+  preferredLevel?: StackLevel | null,
 ): Promise<
   ActionResult<{
     returnedCount: number;
@@ -247,6 +249,7 @@ export async function returnDispatchModuleAction(
   const rpc = await supabase.rpc("return_dispatch_module", {
     p_module_id: moduleId,
     p_position_id: positionId,
+    p_preferred_level: preferredLevel ?? null,
   });
   if (rpc.error) {
     return {ok: false, code: "DISPATCH_FAILED"};

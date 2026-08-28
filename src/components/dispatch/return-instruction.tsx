@@ -15,8 +15,7 @@ import {
 } from "@/features/dispatch/location-status";
 import type {DispatchAssignment} from "@/features/dispatch/types";
 import {
-  destinationChoice,
-  firstFreeCell,
+  levelDestinationChoice,
   resolveMaxStackLevels,
 } from "@/features/yard-locations/stacking";
 import {formatCompactLocation, formatLevelLabel} from "@/lib/format";
@@ -26,6 +25,7 @@ import type {
   YardPositionNode,
   YardSnapshot,
 } from "@/features/yard-locations/types";
+import type {StackLevel} from "@/types/database";
 
 export function ReturnInstruction({
   module,
@@ -52,7 +52,12 @@ export function ReturnInstruction({
 
   const blockD = findBlockByCode(snapshot, RETURN_ARRIVALS_BLOCK_CODE);
 
-  function selectPosition(item: YardPositionNode, blockCode: string, rowCode: string) {
+  function selectPosition(
+    item: YardPositionNode,
+    blockCode: string,
+    rowCode: string,
+    preferredLevel?: StackLevel,
+  ) {
     if (!isReturnArrivalsRow(blockCode, rowCode)) {
       setPosition(null);
       setLevel(null);
@@ -64,18 +69,32 @@ export function ReturnInstruction({
       blockCode,
       maxStackLevels: resolveMaxStackLevels({blockCode}),
     };
-    const choice = destinationChoice(item.levels, stackOptions);
+    const maxLevels = resolveMaxStackLevels(stackOptions);
+    if (maxLevels > 1 && !preferredLevel) {
+      return;
+    }
+    const choice = preferredLevel
+      ? levelDestinationChoice(item.levels, preferredLevel, stackOptions)
+      : levelDestinationChoice(item.levels, "GROUND", stackOptions);
     if (!choice.ok) {
       setPosition(null);
       setLevel(null);
-      setError(choice.reason === "full" ? t("errors.POSITION_FULL") : t("errors.SLOT_MISSING"));
+      setError(
+        choice.reason === "occupied"
+          ? t("errors.SLOT_OCCUPIED")
+          : choice.reason === "floating"
+            ? t("errors.POSITION_FULL")
+            : choice.reason === "full"
+              ? t("errors.POSITION_FULL")
+              : t("errors.SLOT_MISSING"),
+      );
       return;
     }
-    const assigned = firstFreeCell(item.levels, stackOptions);
+    const assigned = item.levels.find((cell) => cell.level === choice.level) ?? null;
     if (!assigned) {
       setPosition(null);
       setLevel(null);
-      setError(t("errors.POSITION_FULL"));
+      setError(t("errors.SLOT_MISSING"));
       return;
     }
     setError(null);
@@ -84,12 +103,12 @@ export function ReturnInstruction({
   }
 
   async function confirm() {
-    if (!position || pending) {
+    if (!position || !level || pending) {
       return;
     }
     setPending(true);
     setError(null);
-    const result = await returnDispatchModuleAction(module.id, position.id);
+    const result = await returnDispatchModuleAction(module.id, position.id, level.level);
     setPending(false);
     if (!result.ok) {
       setError(t(`errors.${result.code}`));
@@ -154,18 +173,19 @@ export function ReturnInstruction({
             snapshot={snapshot}
             selectedBlockId={blockD.id}
             selectedPositionId={position?.id ?? null}
+            selectedLevel={level?.level ?? null}
             allowedBlockCodes={[RETURN_ARRIVALS_BLOCK_CODE]}
             allowedRowCodes={[...RETURN_ARRIVALS_ROW_CODES]}
             lockBlockId={blockD.id}
             onSelectBlock={() => undefined}
-            onSelectPosition={(_blockId, item) => {
+            onSelectPosition={(_blockId, item, tappedLevel) => {
               const row = blockD.rows.find((entry) =>
                 entry.positions.some((pos) => pos.id === item.id),
               );
               if (!row) {
                 return;
               }
-              selectPosition(item, blockD.code, row.code);
+              selectPosition(item, blockD.code, row.code, tappedLevel);
             }}
           />
           {position && level ? (
