@@ -11,8 +11,6 @@
 -- and policies are not changed.
 
 do $$
-declare
-  v_triggers_disabled boolean := false;
 begin
   create temporary table _fictitious_seed_modules (
     id uuid primary key,
@@ -68,21 +66,11 @@ begin
     ('3846382', 'Said', 'Schelle', 'DRAFT')
   );
 
-  -- Direct storage.objects deletes are blocked by storage.protect_delete().
-  -- Temporarily disable that statement trigger, then restore it. The trigger
-  -- definition is unchanged.
-  execute 'alter table storage.objects disable trigger protect_objects_delete';
-  begin
-    delete from storage.objects o
-    using _fictitious_seed_modules fm
-    where o.bucket_id = 'module-photos'
-      and split_part(o.name, '/', 1) = fm.id::text;
-  exception
-    when others then
-      execute 'alter table storage.objects enable trigger protect_objects_delete';
-      raise;
-  end;
-  execute 'alter table storage.objects enable trigger protect_objects_delete';
+  -- Photo bytes cannot be removed from SQL: storage.protect_delete() blocks
+  -- direct storage.objects deletes, and deleting metadata-only would orphan
+  -- S3 objects. These seed modules have no public.module_photos rows, so the
+  -- app never lists those files. Leftover objects in bucket module-photos
+  -- (if any) do not occupy yard slots or affect module/dossier flows.
 
   if to_regclass('public.damage_report_photos') is not null
      and to_regclass('public.damage_reports') is not null then
@@ -104,7 +92,6 @@ begin
   -- finishes. Trigger definitions are unchanged.
   execute 'alter table public.module_locations disable trigger module_locations_record_movement';
   execute 'alter table public.module_movements disable trigger module_movements_immutable';
-  v_triggers_disabled := true;
 
   begin
     delete from public.module_locations
