@@ -227,7 +227,7 @@ npx supabase gen types typescript --linked > src/types/database.ts
 
 `20260813140200_seed_fictitious_dev_data.sql` historically inserted fictitious development modules `2000`–`2009` plus matching airco and movement rows. That file is kept intact for remote migration history.
 
-`20260919120000_cleanup_fictitious_dev_modules.sql` removes those fixture modules (and only records that fingerprint to that seed) so they do not remain in production or after a fresh migrate/reset.
+`20260919235648_cleanup_fictitious_dev_modules.sql` removes those fixture modules (and only records that fingerprint to that seed) so they do not remain in production or after a fresh migrate/reset.
 
 Kept from that historical seed:
 
