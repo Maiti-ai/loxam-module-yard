@@ -1,4 +1,4 @@
-import type {StackLevel} from "@/types/database";
+import type {StackLevel} from "../types/database";
 
 export function formatDimensions(lengthM: number, widthM: number) {
   const length = Number(lengthM).toString().replace(/\.0$/, "");
@@ -28,23 +28,19 @@ export function formatPositionCode(code: string) {
   return formatCodeNumber(code);
 }
 
-export function formatLevelCode(level: StackLevel, locale: string) {
-  if (level === "GROUND") {
-    return locale === "fr" ? "RDC" : "GV";
-  }
+export function formatLevelCode(level: StackLevel, locale?: string) {
+  void locale;
   if (level === "LEVEL_1") {
     return "1";
   }
-  return "2";
+  if (level === "LEVEL_2") {
+    return "2";
+  }
+  return "0";
 }
 
-export function formatLevelLabel(level: StackLevel, locale: string) {
-  if (level === "GROUND") {
-    return locale === "fr" ? "RDC" : "GV";
-  }
-  return locale === "fr"
-    ? `Niveau ${formatLevelCode(level, locale)}`
-    : `Level ${formatLevelCode(level, locale)}`;
+export function formatLevelLabel(level: StackLevel, locale?: string) {
+  return `Niveau ${formatLevelCode(level, locale)}`;
 }
 
 export function formatYardLocation(parts: {
@@ -54,7 +50,7 @@ export function formatYardLocation(parts: {
   level: StackLevel;
   locale: string;
 }) {
-  const level = formatLevelCode(parts.level, parts.locale);
+  const level = formatLevelLabel(parts.level, parts.locale);
   return `${parts.blockCode} · ${formatRowCode(parts.rowCode)} · ${formatPositionCode(parts.positionCode)} · ${level}`;
 }
 

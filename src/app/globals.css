@@ -53,6 +53,24 @@ textarea {
   touch-action: manipulation;
 }
 
+.yard-pos-hit {
+  cursor: pointer;
+  fill: rgba(255, 255, 255, 0.02);
+  touch-action: manipulation;
+}
+
+.yard-pos-hit:hover {
+  fill: rgba(196, 30, 58, 0.14);
+}
+
+.yard-pos-hit:active {
+  fill: rgba(196, 30, 58, 0.28);
+}
+
+.yard-pos-hit.is-selected {
+  fill: rgba(196, 30, 58, 0.22);
+}
+
 @media (min-width: 768px) and (max-width: 1366px) {
   :root {
     --loxam-touch: 4.5rem;

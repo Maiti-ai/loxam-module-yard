@@ -60,6 +60,8 @@ export type YardPositionNode = {
   id: string;
   code: string;
   sortOrder: number;
+  canonicalCode?: string;
+  maxLevels?: number;
   levels: YardLevelCell[];
 };
 

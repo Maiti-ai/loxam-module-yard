@@ -1,6 +1,7 @@
 "use client";
 
 import {useTranslations} from "next-intl";
+import {blockCapacity, formatOccupiedTotal} from "@/features/yard-locations/capacity";
 import type {YardBlockNode} from "@/features/yard-locations/types";
 
 export function YardBlockCard({
@@ -13,21 +14,7 @@ export function YardBlockCard({
   selected?: boolean;
 }) {
   const t = useTranslations("move");
-  const occupied = block.rows.reduce(
-    (count, row) =>
-      count +
-      row.positions.reduce(
-        (inner, position) =>
-          inner + position.levels.filter((level) => level.occupant).length,
-        0,
-      ),
-    0,
-  );
-  const total = block.rows.reduce(
-    (count, row) =>
-      count + row.positions.reduce((inner, position) => inner + position.levels.length, 0),
-    0,
-  );
+  const capacity = blockCapacity(block);
 
   return (
     <button
@@ -45,7 +32,7 @@ export function YardBlockCard({
         <p className="mt-1 text-sm font-bold text-loxam-muted">{block.name}</p>
       </div>
       <p className="mt-4 text-sm font-black uppercase">
-        {occupied}/{total}
+        {formatOccupiedTotal(capacity)}
         {block.productionZone ? ` · ${t("productionZone")}` : ""}
       </p>
     </button>

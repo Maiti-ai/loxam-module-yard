@@ -9,7 +9,7 @@
  *
  * C  rear storage, full width. P1–P4 as east–west bands (P1 at the rear).
  * D  west, five horizontal rows L→R: 10+10 maritime, 10+10 retours, 6 wash.
- *    Visual P-codes P1–P5 match those five rows. Extra slots are overlay-only.
+ *    Visual P-codes P1–P5 match those five rows.
  * F  west, below D, same outer size as D. P1–P3 × 4 drawn as 4×3 horizontal rows.
  * B  east of D, top edge aligned with D. P1–P9 bands, 6 positions R→L.
  * A  under B; bottom aligned with F. P1–P7 bands, 5 positions R→L.
@@ -397,4 +397,30 @@ export function layoutSpecForBlock(code: string): BlockLayoutSpec | null {
 
 export function positionsCountForRow(spec: BlockLayoutSpec, pCode: string) {
   return spec.positionsByRow?.[pCode] ?? spec.positionsPerRow;
+}
+
+export type PhysicalYardCell = {
+  blockCode: string;
+  rowCode: string;
+  positionNumber: number;
+  positionCode: string;
+};
+
+/** Authoritative operational grid. Must stay in sync with the DB position registry. */
+export function schellePhysicalLayout(): PhysicalYardCell[] {
+  const cells: PhysicalYardCell[] = [];
+  for (const [blockCode, spec] of Object.entries(SCHELLE_BLOCK_SPEC)) {
+    for (const rowCode of spec.pRows) {
+      const count = positionsCountForRow(spec, rowCode);
+      for (let positionNumber = 1; positionNumber <= count; positionNumber += 1) {
+        cells.push({
+          blockCode,
+          rowCode,
+          positionNumber,
+          positionCode: String(positionNumber).padStart(2, "0"),
+        });
+      }
+    }
+  }
+  return cells;
 }
