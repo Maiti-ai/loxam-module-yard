@@ -14,9 +14,8 @@ import {
   needsRegistryResolve,
 } from "@/features/yard-locations/resolve-position";
 import {
-  destinationChoice,
-  firstFreeCell,
   hasInconsistentStack,
+  levelDestinationChoice,
   resolveMaxStackLevels,
 } from "@/features/yard-locations/stacking";
 import {formatCompactLocation, formatLevelLabel, formatPositionCode, formatRowCode} from "@/lib/format";
@@ -26,21 +25,26 @@ import type {
   YardPositionNode,
   YardSnapshot,
 } from "@/features/yard-locations/types";
+import type {StackLevel} from "@/types/database";
 
 type Step = "block" | "position" | "confirm" | "success";
 
 export function MoveWizard({
   module,
   snapshot,
+  lockBlockId = null,
+  allowedBlockCodes = null,
 }: {
   module: ModuleSummary;
   snapshot: YardSnapshot;
+  lockBlockId?: string | null;
+  allowedBlockCodes?: string[] | null;
 }) {
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
-  const [step, setStep] = useState<Step>("block");
-  const [blockId, setBlockId] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>(lockBlockId ? "position" : "block");
+  const [blockId, setBlockId] = useState<string | null>(lockBlockId);
   const [position, setPosition] = useState<YardPositionNode | null>(null);
   const [level, setLevel] = useState<YardLevelCell | null>(null);
   const [pending, setPending] = useState(false);
@@ -49,6 +53,7 @@ export function MoveWizard({
   const [reassigned, setReassigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [clickedPositionId, setClickedPositionId] = useState<string | null>(null);
+  const [clickedLevel, setClickedLevel] = useState<StackLevel | null>(null);
   const [toLocation, setToLocation] = useState(module.location);
 
   const blocks = displayBlocks(snapshot);
@@ -60,7 +65,22 @@ export function MoveWizard({
       ),
     ) ?? null;
 
-  async function selectPosition(item: YardPositionNode, blockCode: string, rowCode: string) {
+  async function selectPosition(
+    item: YardPositionNode,
+    blockCode: string,
+    rowCode: string,
+    preferredLevel?: StackLevel,
+  ) {
+    if (item.reservation) {
+      setPosition(null);
+      setLevel(null);
+      setClickedPositionId(null);
+      setClickedLevel(null);
+      setPositionFull(false);
+      setStep("position");
+      setError(t("errors.POSITION_RESERVED"));
+      return;
+    }
     if (pending) {
       return;
     }
@@ -72,6 +92,7 @@ export function MoveWizard({
       setPosition(null);
       setLevel(null);
       setClickedPositionId(null);
+      setClickedLevel(null);
       setPositionFull(false);
       setStep("position");
       setError(t("errors.SLOT_MISSING"));
@@ -90,6 +111,7 @@ export function MoveWizard({
         setPosition(null);
         setLevel(null);
         setClickedPositionId(null);
+      setClickedLevel(null);
         setPositionFull(false);
         setStep("position");
         setError(t(`errors.${resolved.code}`));
@@ -97,34 +119,58 @@ export function MoveWizard({
       }
       target = resolved.position;
     }
-    const choice = destinationChoice(target.levels, stackOptions);
+    if (target.reservation) {
+      setPosition(null);
+      setLevel(null);
+      setClickedPositionId(null);
+      setClickedLevel(null);
+      setPositionFull(false);
+      setStep("position");
+      setError(t("errors.POSITION_RESERVED"));
+      return;
+    }
+    const maxLevels = resolveMaxStackLevels(stackOptions);
+    if (maxLevels > 1 && !preferredLevel) {
+      return;
+    }
+    const choice = preferredLevel
+      ? levelDestinationChoice(target.levels, preferredLevel, stackOptions)
+      : levelDestinationChoice(target.levels, "GROUND", stackOptions);
     if (!choice.ok) {
       setPosition(null);
       setLevel(null);
       setClickedPositionId(null);
+      setClickedPositionId(null);
+      setClickedLevel(null);
       setStep("position");
-      if (choice.reason === "full") {
+      if (choice.reason === "full" || choice.reason === "occupied") {
         setPositionFull(true);
-        setError(null);
+        setError(choice.reason === "occupied" ? t("errors.SLOT_OCCUPIED") : null);
+      } else if (choice.reason === "floating") {
+        setPositionFull(false);
+        setError(t("errors.POSITION_FULL"));
       } else {
         setPositionFull(false);
         setError(t("errors.SLOT_MISSING"));
       }
       return;
     }
-    const assigned = firstFreeCell(target.levels, stackOptions);
+    const assigned = target.levels.find((cell) => cell.level === choice.level) ?? null;
     if (!assigned) {
       setPosition(null);
       setLevel(null);
       setClickedPositionId(null);
-      setPositionFull(true);
-      setError(null);
+      setClickedPositionId(null);
+      setClickedLevel(null);
+      setPositionFull(false);
+      setError(t("errors.SLOT_MISSING"));
       setStep("position");
       return;
     }
     setPositionFull(false);
     setError(null);
     setClickedPositionId(item.id);
+    setClickedLevel(choice.level);
     setPosition(target);
     setLevel(assigned);
     setStep("confirm");
@@ -146,6 +192,7 @@ export function MoveWizard({
         setLevel(null);
         setPosition(null);
         setClickedPositionId(null);
+      setClickedLevel(null);
         setStep("position");
         router.refresh();
         return;
@@ -190,8 +237,8 @@ export function MoveWizard({
           {t("module.label")} {module.moduleNumber}
         </p>
         <h1 className="mt-2 text-3xl font-black">
-          {step === "block" && t("move.chooseBlock")}
-          {step === "position" && t("move.choosePosition")}
+          {step === "block" && !lockBlockId && t("move.chooseBlock")}
+          {(step === "position" || (step === "block" && lockBlockId)) && t("move.choosePosition")}
           {step === "confirm" && t("move.confirmTitle")}
         </h1>
         {step !== "block" ? (
@@ -237,6 +284,9 @@ export function MoveWizard({
           selectedBlockId={blockId}
           selectedRowId={row?.id}
           selectedPositionId={step === "confirm" ? clickedPositionId : null}
+          selectedLevel={step === "confirm" ? clickedLevel : null}
+          allowedBlockCodes={allowedBlockCodes}
+          lockBlockId={lockBlockId}
           onSelectBlock={(id) => {
             setBlockId(id);
             setPositionFull(false);
@@ -245,17 +295,18 @@ export function MoveWizard({
               setPosition(null);
               setLevel(null);
               setClickedPositionId(null);
+      setClickedLevel(null);
               setStep("position");
             } else {
               setStep("position");
             }
           }}
-          onSelectPosition={(nextBlockId, nextPosition) => {
+          onSelectPosition={(nextBlockId, nextPosition, level) => {
             const nextBlock = blocks.find((item) => item.id === nextBlockId);
             const nextRow = nextBlock?.rows.find((entry) =>
               entry.positions.some((cell) => cell.id === nextPosition.id),
             );
-            void selectPosition(nextPosition, nextBlock?.code ?? "", nextRow?.code ?? "");
+            void selectPosition(nextPosition, nextBlock?.code ?? "", nextRow?.code ?? "", level);
           }}
         />
 
@@ -285,12 +336,9 @@ export function MoveWizard({
             {resolveMaxStackLevels({blockCode: block.code}) > 1 ? (
               <>
                 <div className="border-4 border-loxam-free bg-loxam-free-soft p-4">
-                  <p className="text-xs font-bold uppercase text-loxam-muted">{t("move.autoLevelTitle")}</p>
+                  <p className="text-xs font-bold uppercase text-loxam-muted">{t("module.level")}</p>
                   <p className="mt-1 text-3xl font-black uppercase">
                     {formatLevelLabel(level.level, locale)}
-                  </p>
-                  <p className="mt-2 text-sm font-bold">
-                    {t("move.autoLevel", {level: formatLevelLabel(level.level, locale)})}
                   </p>
                 </div>
                 {hasInconsistentStack(position.levels, {blockCode: block.code}) ? (
@@ -319,12 +367,12 @@ export function MoveWizard({
           </div>
         ) : (
           <p className="border border-dashed border-loxam-line bg-white p-6 text-lg font-bold text-loxam-muted">
-            {step === "block" ? t("move.chooseBlock") : t("yard.tapPosition")}
+            {step === "block" && !lockBlockId ? t("move.chooseBlock") : t("yard.tapPosition")}
           </p>
         )}
       </div>
 
-      {step !== "block" && step !== "success" ? (
+      {step === "confirm" || (step === "position" && !lockBlockId) ? (
         <TouchButton
           variant="ghost"
           onClick={() => {
@@ -334,7 +382,9 @@ export function MoveWizard({
               setStep("position");
               return;
             }
-            setStep("block");
+            if (!lockBlockId) {
+              setStep("block");
+            }
           }}
         >
           {t("common.back")}

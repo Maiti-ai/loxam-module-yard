@@ -23,6 +23,24 @@ export type PhotoCategory =
 
 export type DamageReportStatus = "DRAFT" | "SUBMITTED";
 
+export type DispatchDossierStatus =
+  | "DRAFT"
+  | "ACTIVE"
+  | "READY_FOR_SHIPPING"
+  | "PARTIALLY_SHIPPED"
+  | "SHIPPED"
+  | "PARTIALLY_RETURNED"
+  | "RETURNED"
+  | "CANCELLED";
+
+export type DispatchSlotStatus = "EMPTY" | "ASSIGNED" | "PLACED" | "SHIPPED" | "RETURNED";
+
+export type DispatchProductionStatus =
+  | "TO_PRODUCTION"
+  | "IN_PRODUCTION"
+  | "READY_FOR_DISPATCH"
+  | "IN_DISPATCH_ZONE";
+
 export type Database = {
   public: {
     Tables: {
@@ -503,6 +521,135 @@ export type Database = {
         };
         Relationships: [];
       };
+      dispatch_dossiers: {
+        Row: {
+          id: string;
+          dossier_number: string;
+          customer_name: string;
+          site_location: string;
+          total_modules: number;
+          status: DispatchDossierStatus;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          dossier_number: string;
+          customer_name: string;
+          site_location: string;
+          total_modules: number;
+          status?: DispatchDossierStatus;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          dossier_number?: string;
+          customer_name?: string;
+          site_location?: string;
+          total_modules?: number;
+          status?: DispatchDossierStatus;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      dispatch_reserved_positions: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          position_id: string;
+          position_order: number;
+          blocking: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          dossier_id: string;
+          position_id: string;
+          position_order: number;
+          blocking?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          dossier_id?: string;
+          position_id?: string;
+          position_order?: number;
+          blocking?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      dispatch_slots: {
+        Row: {
+          id: string;
+          dossier_id: string;
+          reserved_position_id: string | null;
+          sequence_number: number;
+          level: StackLevel;
+          module_id: string | null;
+          status: DispatchSlotStatus;
+          assigned_at: string | null;
+          placed_at: string | null;
+          assigned_by: string | null;
+          created_at: string;
+          production_status: DispatchProductionStatus | null;
+          placed_in_production_at: string | null;
+          production_ready_at: string | null;
+          shipped_at: string | null;
+          shipped_by: string | null;
+          returned_at: string | null;
+          returned_by: string | null;
+          return_slot_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          dossier_id: string;
+          reserved_position_id?: string | null;
+          sequence_number: number;
+          level: StackLevel;
+          module_id?: string | null;
+          status?: DispatchSlotStatus;
+          assigned_at?: string | null;
+          placed_at?: string | null;
+          assigned_by?: string | null;
+          created_at?: string;
+          production_status?: DispatchProductionStatus | null;
+          placed_in_production_at?: string | null;
+          production_ready_at?: string | null;
+          shipped_at?: string | null;
+          shipped_by?: string | null;
+          returned_at?: string | null;
+          returned_by?: string | null;
+          return_slot_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          dossier_id?: string;
+          reserved_position_id?: string | null;
+          sequence_number?: number;
+          level?: StackLevel;
+          module_id?: string | null;
+          status?: DispatchSlotStatus;
+          assigned_at?: string | null;
+          placed_at?: string | null;
+          assigned_by?: string | null;
+          created_at?: string;
+          production_status?: DispatchProductionStatus | null;
+          placed_in_production_at?: string | null;
+          production_ready_at?: string | null;
+          shipped_at?: string | null;
+          shipped_by?: string | null;
+          returned_at?: string | null;
+          returned_by?: string | null;
+          return_slot_id?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       module_location_view: {
@@ -562,11 +709,59 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
+      dispatch_required_ground_positions: {
+        Args: {p_total_modules: number};
+        Returns: number;
+      };
+      create_dispatch_dossier: {
+        Args: {
+          p_dossier_number: string;
+          p_customer_name: string;
+          p_site_location: string;
+          p_total_modules: number;
+          p_position_ids: string[];
+          p_module_ids: string[];
+          p_dossier_id?: string | null;
+          p_activate?: boolean;
+        };
+        Returns: Json;
+      };
+      cancel_dispatch_dossier: {
+        Args: {p_dossier_id: string};
+        Returns: Json;
+      };
+      mark_dispatch_production_ready: {
+        Args: {p_module_id: string};
+        Returns: Json;
+      };
+      confirm_dispatch_placement: {
+        Args: {p_module_id: string};
+        Returns: Json;
+      };
+      ship_dispatch_module: {
+        Args: {p_module_id: string};
+        Returns: Json;
+      };
+      return_dispatch_module: {
+        Args: {
+          p_module_id: string;
+          p_position_id: string;
+          p_preferred_level?: StackLevel | null;
+        };
+        Returns: Json;
+      };
+      dispatch_module_block_code: {
+        Args: {p_module_id: string};
+        Returns: string;
+      };
     };
     Enums: {
       app_role: AppRole;
       stack_level: StackLevel;
       module_status: ModuleStatus;
+      dispatch_dossier_status: DispatchDossierStatus;
+      dispatch_slot_status: DispatchSlotStatus;
+      dispatch_production_status: DispatchProductionStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

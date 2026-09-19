@@ -1,0 +1,610 @@
+import {createClient} from "@/lib/supabase/server";
+import type {
+  DispatchDossierStatus,
+  DispatchProductionStatus,
+  DispatchSlotStatus,
+  StackLevel,
+} from "@/types/database";
+import type {
+  DispatchAssignment,
+  DispatchDossierDetail,
+  DispatchDossierSummary,
+  DispatchLevelReservationSummary,
+  DispatchModuleFlow,
+  DispatchReservationSummary,
+  DispatchSlotView,
+} from "./types";
+import {dispatchFlowKindFromLocation, productionStatusFromLocation} from "./location-status";
+
+const ACTIVE_SLOT_STATUSES = ["ASSIGNED", "PLACED", "SHIPPED"] as const;
+
+function asLevel(value: string): StackLevel {
+  if (value === "LEVEL_1" || value === "LEVEL_2" || value === "GROUND") {
+    return value;
+  }
+  return "GROUND";
+}
+
+function asDossierStatus(value: string): DispatchDossierStatus {
+  if (
+    value === "DRAFT" ||
+    value === "READY_FOR_SHIPPING" ||
+    value === "PARTIALLY_SHIPPED" ||
+    value === "SHIPPED" ||
+    value === "PARTIALLY_RETURNED" ||
+    value === "RETURNED" ||
+    value === "CANCELLED" ||
+    value === "ACTIVE"
+  ) {
+    return value;
+  }
+  return "ACTIVE";
+}
+
+function asSlotStatus(value: string): DispatchSlotStatus {
+  if (
+    value === "ASSIGNED" ||
+    value === "PLACED" ||
+    value === "EMPTY" ||
+    value === "SHIPPED" ||
+    value === "RETURNED"
+  ) {
+    return value;
+  }
+  return "EMPTY";
+}
+
+function asProductionStatus(value: string | null | undefined): DispatchProductionStatus | null {
+  if (
+    value === "TO_PRODUCTION" ||
+    value === "IN_PRODUCTION" ||
+    value === "READY_FOR_DISPATCH" ||
+    value === "IN_DISPATCH_ZONE"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function toSummary(
+  row: {
+    id: string;
+    dossier_number: string;
+    customer_name: string;
+    site_location: string;
+    total_modules: number;
+    status: string;
+    created_at: string;
+  },
+  assignedCount: number,
+  placedCount: number,
+  inProductionCount: number,
+  shippedCount: number,
+  returnedCount: number,
+): DispatchDossierSummary {
+  return {
+    id: row.id,
+    dossierNumber: row.dossier_number,
+    customerName: row.customer_name,
+    siteLocation: row.site_location,
+    totalModules: row.total_modules,
+    status: asDossierStatus(row.status),
+    assignedCount,
+    placedCount,
+    inProductionCount,
+    shippedCount,
+    returnedCount,
+    createdAt: row.created_at,
+  };
+}
+
+export async function listActiveReservations(): Promise<
+  Map<string, DispatchReservationSummary>
+> {
+  const supabase = await createClient();
+  const {data, error} = await supabase
+    .from("dispatch_reserved_positions")
+    .select("position_id, dossier_id")
+    .eq("blocking", true);
+
+  if (error || !data || data.length === 0) {
+    return new Map();
+  }
+
+  const dossierIds = Array.from(new Set(data.map((row) => row.dossier_id)));
+  const [{data: dossiers}, {data: slots}] = await Promise.all([
+    supabase
+      .from("dispatch_dossiers")
+      .select("id, dossier_number, customer_name, site_location, total_modules, status")
+      .in("id", dossierIds),
+    supabase.from("dispatch_slots").select("dossier_id, status").in("dossier_id", dossierIds),
+  ]);
+
+  const placedByDossier = new Map<string, number>();
+  for (const slot of slots ?? []) {
+    if (slot.status === "PLACED") {
+      placedByDossier.set(slot.dossier_id, (placedByDossier.get(slot.dossier_id) ?? 0) + 1);
+    }
+  }
+
+  const dossierById = new Map((dossiers ?? []).map((row) => [row.id, row]));
+  const map = new Map<string, DispatchReservationSummary>();
+  for (const row of data) {
+    const dossier = dossierById.get(row.dossier_id);
+    if (!dossier) {
+      continue;
+    }
+    map.set(row.position_id, {
+      dossierId: dossier.id,
+      dossierNumber: dossier.dossier_number,
+      customerName: dossier.customer_name,
+      siteLocation: dossier.site_location,
+      placedCount: placedByDossier.get(dossier.id) ?? 0,
+      totalModules: dossier.total_modules,
+      status: asDossierStatus(dossier.status),
+    });
+  }
+  return map;
+}
+
+export async function listDispatchLevelReservations(): Promise<
+  Map<string, DispatchLevelReservationSummary>
+> {
+  const supabase = await createClient();
+  const {data: slots, error} = await supabase
+    .from("dispatch_slots")
+    .select("level, module_id, dossier_id, reserved_position_id, status")
+    .in("status", ["ASSIGNED", "PLACED", "EMPTY"])
+    .not("reserved_position_id", "is", null);
+
+  if (error || !slots || slots.length === 0) {
+    return new Map();
+  }
+
+  const dossierIds = Array.from(new Set(slots.map((row) => row.dossier_id)));
+  const reservedIds = Array.from(
+    new Set(
+      slots
+        .map((row) => row.reserved_position_id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+  const moduleIds = Array.from(
+    new Set(slots.map((row) => row.module_id).filter((value): value is string => Boolean(value))),
+  );
+
+  const [{data: dossiers}, {data: reserved}, {data: modules}] = await Promise.all([
+    supabase
+      .from("dispatch_dossiers")
+      .select("id, dossier_number, customer_name, site_location, total_modules, status")
+      .in("id", dossierIds)
+      .in("status", ["ACTIVE", "READY_FOR_SHIPPING", "PARTIALLY_SHIPPED"]),
+    supabase.from("dispatch_reserved_positions").select("id, position_id").in("id", reservedIds),
+    moduleIds.length > 0
+      ? supabase.from("modules").select("id, module_number").in("id", moduleIds)
+      : {data: [] as Array<{id: string; module_number: string}>},
+  ]);
+
+  const dossierById = new Map((dossiers ?? []).map((row) => [row.id, row]));
+  const positionByReservedId = new Map((reserved ?? []).map((row) => [row.id, row.position_id]));
+  const moduleNumberById = new Map((modules ?? []).map((row) => [row.id, row.module_number]));
+  const placedByDossier = new Map<string, number>();
+  for (const slot of slots) {
+    if (slot.status === "PLACED") {
+      placedByDossier.set(slot.dossier_id, (placedByDossier.get(slot.dossier_id) ?? 0) + 1);
+    }
+  }
+
+  const map = new Map<string, DispatchLevelReservationSummary>();
+  for (const slot of slots) {
+    const dossier = dossierById.get(slot.dossier_id);
+    const positionId = slot.reserved_position_id
+      ? positionByReservedId.get(slot.reserved_position_id)
+      : undefined;
+    if (!dossier || !positionId) {
+      continue;
+    }
+    const level = asLevel(slot.level);
+    map.set(`${positionId}:${level}`, {
+      dossierId: dossier.id,
+      dossierNumber: dossier.dossier_number,
+      customerName: dossier.customer_name,
+      siteLocation: dossier.site_location,
+      placedCount: placedByDossier.get(dossier.id) ?? 0,
+      totalModules: dossier.total_modules,
+      status: asDossierStatus(dossier.status),
+      moduleNumber: slot.module_id ? (moduleNumberById.get(slot.module_id) ?? null) : null,
+    });
+  }
+  return map;
+}
+
+async function countsForDossiers(dossierIds: string[]) {
+  const assigned = new Map<string, number>();
+  const placed = new Map<string, number>();
+  const inProduction = new Map<string, number>();
+  const shipped = new Map<string, number>();
+  const returned = new Map<string, number>();
+  if (dossierIds.length === 0) {
+    return {assigned, placed, inProduction, shipped, returned};
+  }
+  const supabase = await createClient();
+  const {data} = await supabase
+    .from("dispatch_slots")
+    .select("dossier_id, module_id, status")
+    .in("dossier_id", dossierIds);
+  const moduleIds = Array.from(
+    new Set((data ?? []).map((slot) => slot.module_id).filter((value): value is string => Boolean(value))),
+  );
+  const {data: locations} =
+    moduleIds.length > 0
+      ? await supabase.from("module_location_view").select("module_id, block_code").in("module_id", moduleIds)
+      : {data: [] as Array<{module_id: string | null; block_code: string | null}>};
+  const blockByModule = new Map(
+    (locations ?? [])
+      .filter((row): row is {module_id: string; block_code: string | null} => Boolean(row.module_id))
+      .map((row) => [row.module_id, row.block_code]),
+  );
+  for (const slot of data ?? []) {
+    if (slot.module_id) {
+      assigned.set(slot.dossier_id, (assigned.get(slot.dossier_id) ?? 0) + 1);
+    }
+    if (slot.status === "SHIPPED") {
+      shipped.set(slot.dossier_id, (shipped.get(slot.dossier_id) ?? 0) + 1);
+    }
+    if (slot.status === "RETURNED") {
+      returned.set(slot.dossier_id, (returned.get(slot.dossier_id) ?? 0) + 1);
+    }
+    const derived = productionStatusFromLocation(
+      slot.module_id ? blockByModule.get(slot.module_id) : null,
+      slot.status,
+    );
+    if (derived === "IN_DISPATCH_ZONE") {
+      placed.set(slot.dossier_id, (placed.get(slot.dossier_id) ?? 0) + 1);
+    }
+    if (derived === "IN_PRODUCTION") {
+      inProduction.set(slot.dossier_id, (inProduction.get(slot.dossier_id) ?? 0) + 1);
+    }
+  }
+  return {assigned, placed, inProduction, shipped, returned};
+}
+
+export async function listOccupiedDispatchModuleIds(exceptDossierId?: string): Promise<Set<string>> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("dispatch_slots")
+    .select("module_id, dossier_id")
+    .in("status", [...ACTIVE_SLOT_STATUSES])
+    .not("module_id", "is", null);
+
+  if (exceptDossierId) {
+    query = query.neq("dossier_id", exceptDossierId);
+  }
+
+  const {data: slots} = await query;
+  const occupied = new Set<string>();
+  for (const slot of slots ?? []) {
+    if (slot.module_id) {
+      occupied.add(slot.module_id);
+    }
+  }
+  return occupied;
+}
+
+export async function listDispatchDossiers(): Promise<DispatchDossierSummary[]> {
+  const supabase = await createClient();
+  const {data, error} = await supabase
+    .from("dispatch_dossiers")
+    .select("id, dossier_number, customer_name, site_location, total_modules, status, created_at")
+    .in("status", [
+      "DRAFT",
+      "ACTIVE",
+      "READY_FOR_SHIPPING",
+      "PARTIALLY_SHIPPED",
+      "SHIPPED",
+      "PARTIALLY_RETURNED",
+      "RETURNED",
+    ])
+    .order("created_at", {ascending: false});
+
+  if (error || !data) {
+    return [];
+  }
+
+  const counts = await countsForDossiers(data.map((row) => row.id));
+  return data.map((row) =>
+    toSummary(
+      row,
+      counts.assigned.get(row.id) ?? 0,
+      counts.placed.get(row.id) ?? 0,
+      counts.inProduction.get(row.id) ?? 0,
+      counts.shipped.get(row.id) ?? 0,
+      counts.returned.get(row.id) ?? 0,
+    ),
+  );
+}
+
+export async function getDispatchDossier(id: string): Promise<DispatchDossierDetail | null> {
+  const supabase = await createClient();
+  const {data: dossier, error} = await supabase
+    .from("dispatch_dossiers")
+    .select("id, dossier_number, customer_name, site_location, total_modules, status, created_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error("LOAD_FAILED");
+  }
+  if (!dossier) {
+    return null;
+  }
+
+  const [{data: reserved}, {data: slots}] = await Promise.all([
+    supabase
+      .from("dispatch_reserved_positions")
+      .select("id, position_id, position_order")
+      .eq("dossier_id", id)
+      .order("position_order"),
+    supabase
+      .from("dispatch_slots")
+      .select(
+        "id, reserved_position_id, sequence_number, level, module_id, status, placed_at, shipped_at, returned_at, return_slot_id, production_status",
+      )
+      .eq("dossier_id", id)
+      .order("sequence_number"),
+  ]);
+
+  const moduleIds = Array.from(
+    new Set((slots ?? []).map((slot) => slot.module_id).filter((value): value is string => Boolean(value))),
+  );
+  const {data: modules} =
+    moduleIds.length > 0
+      ? await supabase.from("modules").select("id, module_number").in("id", moduleIds)
+      : {data: [] as Array<{id: string; module_number: string}>};
+  const {data: moduleLocations} =
+    moduleIds.length > 0
+      ? await supabase.from("module_location_view").select("module_id, block_code").in("module_id", moduleIds)
+      : {data: [] as Array<{module_id: string | null; block_code: string | null}>};
+  const blockByModuleId = new Map(
+    (moduleLocations ?? [])
+      .filter((row): row is {module_id: string; block_code: string | null} => Boolean(row.module_id))
+      .map((row) => [row.module_id, row.block_code]),
+  );
+
+  const positionsRes = await supabase.from("yard_positions").select("id, code, row_id");
+  const rowsRes = await supabase.from("yard_rows").select("id, code, block_id");
+  const blocksRes = await supabase.from("yard_blocks").select("id, code");
+
+  const blockById = new Map((blocksRes.data ?? []).map((row) => [row.id, row.code]));
+  const rowById = new Map(
+    (rowsRes.data ?? []).map((row) => [row.id, {code: row.code, blockId: row.block_id}]),
+  );
+  const positionById = new Map(
+    (positionsRes.data ?? []).map((row) => [row.id, {code: row.code, rowId: row.row_id}]),
+  );
+
+  function locationOf(positionId: string) {
+    const position = positionById.get(positionId);
+    const row = position ? rowById.get(position.rowId) : undefined;
+    const blockCode = row ? (blockById.get(row.blockId) ?? "") : "";
+    return {
+      blockCode,
+      rowCode: row?.code ?? "",
+      positionCode: position?.code ?? "",
+    };
+  }
+
+  const reservedById = new Map((reserved ?? []).map((row) => [row.id, row]));
+  const moduleNumberById = new Map((modules ?? []).map((row) => [row.id, row.module_number]));
+
+  const returnSlotIds = Array.from(
+    new Set(
+      (slots ?? [])
+        .map((slot) => slot.return_slot_id)
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+  const returnLocationBySlotId = new Map<
+    string,
+    {blockCode: string; rowCode: string; positionCode: string; level: StackLevel}
+  >();
+  if (returnSlotIds.length > 0) {
+    const {data: returnSlots} = await supabase
+      .from("yard_slots")
+      .select("id, level, position_id")
+      .in("id", returnSlotIds);
+    for (const row of returnSlots ?? []) {
+      const loc = locationOf(row.position_id);
+      returnLocationBySlotId.set(row.id, {
+        ...loc,
+        level: asLevel(row.level),
+      });
+    }
+  }
+
+  const counts = await countsForDossiers([id]);
+  const positions = (reserved ?? []).map((row) => ({
+    id: row.id,
+    positionId: row.position_id,
+    positionOrder: row.position_order,
+    ...locationOf(row.position_id),
+  }));
+
+  const slotViews: DispatchSlotView[] = (slots ?? []).map((slot) => {
+    const reservedRow = slot.reserved_position_id ? reservedById.get(slot.reserved_position_id) : undefined;
+    const loc = reservedRow
+      ? locationOf(reservedRow.position_id)
+      : {blockCode: "", rowCode: "", positionCode: ""};
+    const returnLoc = slot.return_slot_id ? returnLocationBySlotId.get(slot.return_slot_id) : null;
+    return {
+      id: slot.id,
+      sequenceNumber: slot.sequence_number,
+      level: asLevel(slot.level),
+      status: asSlotStatus(slot.status),
+      productionStatus: productionStatusFromLocation(
+        slot.module_id ? blockByModuleId.get(slot.module_id) : null,
+        slot.status,
+      ),
+      moduleId: slot.module_id,
+      moduleNumber: slot.module_id ? (moduleNumberById.get(slot.module_id) ?? null) : null,
+      placedAt: slot.placed_at,
+      shippedAt: slot.shipped_at,
+      returnedAt: slot.returned_at,
+      returnBlockCode: returnLoc?.blockCode ?? null,
+      returnRowCode: returnLoc?.rowCode ?? null,
+      returnPositionCode: returnLoc?.positionCode ?? null,
+      returnLevel: returnLoc?.level ?? null,
+      positionId: reservedRow?.position_id ?? "",
+      positionOrder: reservedRow?.position_order ?? 0,
+      ...loc,
+    };
+  });
+
+  return {
+    ...toSummary(
+      dossier,
+      counts.assigned.get(id) ?? 0,
+      counts.placed.get(id) ?? 0,
+      counts.inProduction.get(id) ?? 0,
+      counts.shipped.get(id) ?? 0,
+      counts.returned.get(id) ?? 0,
+    ),
+    positions,
+    slots: slotViews,
+  };
+}
+
+async function assignmentFromSlot(input: {
+  moduleId: string;
+  slot: {
+    dossier_id: string;
+    reserved_position_id: string | null;
+    sequence_number: number;
+    level: string;
+    status: string;
+    production_status: string | null;
+    placed_at: string | null;
+    shipped_at: string | null;
+    returned_at: string | null;
+  };
+}): Promise<DispatchAssignment | null> {
+  const supabase = await createClient();
+  const {data: dossier} = await supabase
+    .from("dispatch_dossiers")
+    .select("id, dossier_number, customer_name, site_location, total_modules, status")
+    .eq("id", input.slot.dossier_id)
+    .maybeSingle();
+  const {data: moduleRow} = await supabase
+    .from("modules")
+    .select("module_number")
+    .eq("id", input.moduleId)
+    .maybeSingle();
+  if (!dossier || !moduleRow) {
+    return null;
+  }
+  if (dossier.status === "DRAFT" || dossier.status === "CANCELLED") {
+    return null;
+  }
+
+  let positionId = "";
+  let blockCode = "A";
+  let rowCode = "";
+  let positionCode = "";
+  if (input.slot.reserved_position_id) {
+    const {data: reserved} = await supabase
+      .from("dispatch_reserved_positions")
+      .select("position_id")
+      .eq("id", input.slot.reserved_position_id)
+      .maybeSingle();
+    if (reserved) {
+      positionId = reserved.position_id;
+      const {data: position} = await supabase
+        .from("yard_positions")
+        .select("id, code, row_id")
+        .eq("id", reserved.position_id)
+        .maybeSingle();
+      const {data: row} = position
+        ? await supabase.from("yard_rows").select("code, block_id").eq("id", position.row_id).maybeSingle()
+        : {data: null};
+      const {data: block} = row
+        ? await supabase.from("yard_blocks").select("code").eq("id", row.block_id).maybeSingle()
+        : {data: null};
+      blockCode = block?.code ?? "A";
+      rowCode = row?.code ?? "";
+      positionCode = position?.code ?? "";
+    }
+  }
+
+  return {
+    dossierId: dossier.id,
+    dossierNumber: dossier.dossier_number,
+    customerName: dossier.customer_name,
+    siteLocation: dossier.site_location,
+    totalModules: dossier.total_modules,
+    sequenceNumber: input.slot.sequence_number,
+    level: asLevel(input.slot.level),
+    status: asSlotStatus(input.slot.status),
+    productionStatus: asProductionStatus(input.slot.production_status),
+    placedAt: input.slot.placed_at,
+    shippedAt: input.slot.shipped_at,
+    returnedAt: input.slot.returned_at,
+    positionId,
+    blockCode,
+    rowCode,
+    positionCode,
+    moduleId: input.moduleId,
+    moduleNumber: moduleRow.module_number,
+  };
+}
+
+export async function getDispatchModuleFlow(moduleId: string): Promise<DispatchModuleFlow> {
+  const supabase = await createClient();
+  const slotSelect =
+    "id, dossier_id, reserved_position_id, sequence_number, level, status, placed_at, shipped_at, returned_at, module_id, production_status";
+
+  const {data: activeSlot, error: activeError} = await supabase
+    .from("dispatch_slots")
+    .select(slotSelect)
+    .eq("module_id", moduleId)
+    .in("status", [...ACTIVE_SLOT_STATUSES])
+    .order("status", {ascending: true})
+    .limit(1)
+    .maybeSingle();
+
+  if (activeError) {
+    return {kind: "none"};
+  }
+
+  const slot =
+    activeSlot ??
+    (
+      await supabase
+        .from("dispatch_slots")
+        .select(slotSelect)
+        .eq("module_id", moduleId)
+        .eq("status", "RETURNED")
+        .order("returned_at", {ascending: false})
+        .limit(1)
+        .maybeSingle()
+    ).data;
+
+  if (!slot) {
+    return {kind: "none"};
+  }
+
+  const assignment = await assignmentFromSlot({moduleId, slot});
+  if (!assignment) {
+    return {kind: "none"};
+  }
+
+  const {data: location} = await supabase
+    .from("module_location_view")
+    .select("block_code")
+    .eq("module_id", moduleId)
+    .maybeSingle();
+  const kind = dispatchFlowKindFromLocation(location?.block_code, slot.status);
+  if (kind === "none") {
+    return {kind: "none"};
+  }
+  return {kind, assignment};
+}

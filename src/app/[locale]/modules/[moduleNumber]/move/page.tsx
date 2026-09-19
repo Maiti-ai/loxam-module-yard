@@ -1,7 +1,12 @@
 import {getTranslations} from "next-intl/server";
 import {MoveWizard} from "@/components/move/move-wizard";
+import {PlacementInstruction} from "@/components/dispatch/placement-instruction";
+import {ReturnInstruction} from "@/components/dispatch/return-instruction";
+import {ShipInstruction} from "@/components/dispatch/ship-instruction";
+import {ToProductionMove} from "@/components/dispatch/to-production-move";
 import {ErrorState} from "@/components/ui/page-state";
 import {requireUser} from "@/features/auth/guard";
+import {getDispatchModuleFlow} from "@/features/dispatch/queries";
 import {getModuleByNumber} from "@/features/modules/queries";
 import {roleCan} from "@/features/roles";
 import {getYardSnapshot} from "@/features/yard-locations/queries";
@@ -28,11 +33,15 @@ export default async function MoveModulePage({
   }
 
   const loaded = await tryLoad(async () => {
-    const [yardModule, snapshot] = await Promise.all([
-      getModuleByNumber(decodeURIComponent(moduleNumber)),
+    const yardModule = await getModuleByNumber(decodeURIComponent(moduleNumber));
+    if (!yardModule) {
+      return null;
+    }
+    const [snapshot, flow] = await Promise.all([
       getYardSnapshot(),
+      getDispatchModuleFlow(yardModule.id),
     ]);
-    return {yardModule, snapshot};
+    return {yardModule, snapshot, flow};
   });
 
   if (!loaded.ok) {
@@ -46,7 +55,7 @@ export default async function MoveModulePage({
     );
   }
 
-  if (!loaded.data.yardModule) {
+  if (!loaded.data) {
     return (
       <ErrorState
         title={t("errors.NOT_FOUND")}
@@ -57,9 +66,21 @@ export default async function MoveModulePage({
     );
   }
 
+  const {yardModule, snapshot, flow} = loaded.data;
+
   return (
     <section className="mx-auto w-full max-w-[2400px] px-3 py-6 sm:px-4">
-      <MoveWizard module={loaded.data.yardModule} snapshot={loaded.data.snapshot} />
+      {flow.kind === "to_production" ? (
+        <ToProductionMove module={yardModule} snapshot={snapshot} assignment={flow.assignment} />
+      ) : flow.kind === "ready_for_dispatch" ? (
+        <PlacementInstruction module={yardModule} assignment={flow.assignment} snapshot={snapshot} />
+      ) : flow.kind === "ready_to_ship" ? (
+        <ShipInstruction module={yardModule} assignment={flow.assignment} />
+      ) : flow.kind === "on_rent" ? (
+        <ReturnInstruction module={yardModule} assignment={flow.assignment} snapshot={snapshot} />
+      ) : (
+        <MoveWizard module={yardModule} snapshot={snapshot} />
+      )}
     </section>
   );
 }

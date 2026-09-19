@@ -61,6 +61,12 @@ export default async function HomePage() {
           >
             {t("dashboard.search")}
           </Link>
+          <Link
+            href="/dossiers"
+            className="flex min-h-24 items-center justify-center border-4 border-loxam-black bg-white text-2xl font-black uppercase sm:col-span-2"
+          >
+            {t("dashboard.dossiers")}
+          </Link>
         </div>
       </div>
     );
@@ -94,6 +100,9 @@ export default async function HomePage() {
         </Link>
         <Link href="/airco" className="flex min-h-20 items-center border-2 border-loxam-black bg-white px-4 text-lg font-black uppercase">
           {t("nav.airco")}
+        </Link>
+        <Link href="/dossiers" className="flex min-h-20 items-center border-2 border-loxam-black bg-white px-4 text-lg font-black uppercase">
+          {t("dashboard.dossiers")}
         </Link>
       </div>
 

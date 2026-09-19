@@ -7,6 +7,7 @@ import {
   isStackFull,
   MAX_STACK_HEIGHT,
   STACK_LEVELS_BOTTOM_UP,
+  levelDestinationChoice,
   stackOccupancy,
 } from "./stacking";
 import {formatLevelCode, formatLevelLabel, formatCompactLocation} from "../../lib/format";
@@ -96,6 +97,34 @@ describe("first-free-level bottom-up assignment", () => {
     assert.deepEqual(stackOccupancy(stack("a", null, null)), {occupied: 1, total: 3});
     assert.deepEqual(stackOccupancy(stack("a", "b", null)), {occupied: 2, total: 3});
     assert.deepEqual(stackOccupancy(stack("a", "b", "c")), {occupied: 3, total: 3});
+  });
+});
+
+describe("level-specific destination choice", () => {
+  it("accepts level 0 on empty stack and rejects floating level 1", () => {
+    assert.deepEqual(levelDestinationChoice(stack(null, null, null), "GROUND"), {
+      ok: true,
+      level: "GROUND",
+    });
+    assert.deepEqual(levelDestinationChoice(stack(null, null, null), "LEVEL_1"), {
+      ok: false,
+      reason: "floating",
+    });
+    assert.deepEqual(levelDestinationChoice(stack(null, null, null), "LEVEL_2"), {
+      ok: false,
+      reason: "floating",
+    });
+  });
+
+  it("accepts level 1 only when ground is occupied", () => {
+    assert.deepEqual(levelDestinationChoice(stack("a", null, null), "LEVEL_1"), {
+      ok: true,
+      level: "LEVEL_1",
+    });
+    assert.deepEqual(levelDestinationChoice(stack("a", null, null), "LEVEL_2"), {
+      ok: false,
+      reason: "floating",
+    });
   });
 });
 

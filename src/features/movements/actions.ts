@@ -3,8 +3,15 @@
 import {revalidatePath} from "next/cache";
 import {getCurrentProfile} from "@/features/auth";
 import {roleCan} from "@/features/roles";
+import {isProductionBlock} from "@/config/yard";
+import {getDispatchModuleFlow} from "@/features/dispatch/queries";
 import {firstFreeLevel} from "@/features/yard-locations/stacking";
-import {findBlockCodeForPosition, findLocationBySlot, getYardSnapshot} from "@/features/yard-locations/queries";
+import {
+  findBlockCodeForPosition,
+  findLocationBySlot,
+  findPositionInSnapshot,
+  getYardSnapshot,
+} from "@/features/yard-locations/queries";
 import {
   findLivePosition,
   isSpecPhysicalCell,
@@ -46,11 +53,36 @@ function asErrorCode(value: string | undefined): AppErrorCode {
     value === "SLOT_OCCUPIED" ||
     value === "SLOT_MISSING" ||
     value === "POSITION_FULL" ||
-    value === "MOVE_FAILED"
+    value === "MOVE_FAILED" ||
+    value === "DISPATCH_REQUIRED" ||
+    value === "POSITION_RESERVED" ||
+    value === "DISPATCH_DESTINATION_MUST_BE_F" ||
+    value === "PRODUCTION_NOT_READY" ||
+    value === "DISPATCH_NOT_IN_F"
   ) {
     return value;
   }
   return "MOVE_FAILED";
+}
+
+function guardCodeFromError(error: {code?: string; message?: string} | null): AppErrorCode | null {
+  const message = error?.message ?? "";
+  if (/DISPATCH_DESTINATION_MUST_BE_F/.test(message)) {
+    return "DISPATCH_DESTINATION_MUST_BE_F";
+  }
+  if (/PRODUCTION_NOT_READY/.test(message)) {
+    return "PRODUCTION_NOT_READY";
+  }
+  if (/DISPATCH_NOT_IN_F/.test(message)) {
+    return "DISPATCH_NOT_IN_F";
+  }
+  if (/DISPATCH_REQUIRED/.test(message)) {
+    return "DISPATCH_REQUIRED";
+  }
+  if (/POSITION_RESERVED/.test(message)) {
+    return "POSITION_RESERVED";
+  }
+  return null;
 }
 
 function isMissingRpc(error: {code?: string; message?: string} | null) {
@@ -146,6 +178,10 @@ async function assignInApp(
         });
 
     if (write.error) {
+      const guarded = guardCodeFromError(write.error);
+      if (guarded) {
+        return {ok: false, code: guarded};
+      }
       if (isUniqueViolation(write.error) && attempt === 0) {
         continue;
       }
@@ -211,11 +247,28 @@ export async function moveModuleAction(
     return {ok: false, code: "FORBIDDEN"};
   }
 
+  const snapshot = await getYardSnapshot();
+  const flow = await getDispatchModuleFlow(moduleId);
   const resolved = await resolveLivePositionId(positionId);
   if (!resolved.ok) {
     return resolved;
   }
   const livePositionId = resolved.positionId;
+  const target = findPositionInSnapshot(snapshot, livePositionId);
+  const targetBlock = findBlockCodeForPosition(snapshot, livePositionId);
+
+  if (flow.kind === "to_production") {
+    if (!targetBlock || !isProductionBlock(targetBlock)) {
+      return {ok: false, code: "DISPATCH_DESTINATION_MUST_BE_F"};
+    }
+  } else if (flow.kind === "ready_for_dispatch") {
+    // Dossier F → A uses confirm_dispatch_placement only. Never auto-stack.
+    return {ok: false, code: "DISPATCH_REQUIRED"};
+  } else if (flow.kind === "ready_to_ship" || flow.kind === "on_rent") {
+    return {ok: false, code: "DISPATCH_REQUIRED"};
+  } else if (target?.reservation) {
+    return {ok: false, code: "POSITION_RESERVED"};
+  }
 
   const supabase = await createClient();
   const rpc = await supabase.rpc("assign_first_free_stack_slot", {
@@ -229,6 +282,10 @@ export async function moveModuleAction(
   }
 
   if (rpc.error) {
+    const guarded = guardCodeFromError(rpc.error);
+    if (guarded) {
+      return {ok: false, code: guarded};
+    }
     if (isUniqueViolation(rpc.error)) {
       return {ok: false, code: "SLOT_OCCUPIED"};
     }
@@ -243,8 +300,8 @@ export async function moveModuleAction(
     return {ok: false, code: "MOVE_FAILED"};
   }
 
-  const snapshot = await getYardSnapshot();
-  const location = findLocationBySlot(snapshot, payload.slot_id);
+  const nextSnapshot = await getYardSnapshot();
+  const location = findLocationBySlot(nextSnapshot, payload.slot_id);
   if (!location) {
     return {ok: false, code: "MOVE_FAILED"};
   }

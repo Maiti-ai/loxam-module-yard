@@ -1,21 +1,35 @@
 "use client";
 
+import {createContext, useContext, type ComponentProps} from "react";
 import {useTranslations} from "next-intl";
 import {SCHELLE_YARD, YARD_MAP_FR, geometryForBlock, polygonPoints} from "@/config/yard-geometry";
 import type {BlockGeometry, VisualBand} from "@/config/yard-geometry";
 import {blockCapacity, formatOccupiedTotal} from "@/features/yard-locations/capacity";
 import {displayBlocks} from "@/features/yard-locations/display-blocks";
-import {primaryOccupant} from "@/features/yard-locations/queries-client";
+import {resolveMaxStackLevels} from "@/features/yard-locations/stacking";
 import {formatRowCode} from "@/lib/format";
+import type {DispatchReservationSummary} from "@/features/dispatch/types";
+import {StackLevelSegments} from "@/components/yard/stack-level-segments";
 import type {
-  Occupant,
   YardBlockNode,
+  YardLevelCell,
   YardPositionNode,
   YardRowNode,
   YardSnapshot,
 } from "@/features/yard-locations/types";
+import type {StackLevel} from "@/types/database";
 
 export {displayBlocks};
+
+const YardMapUi = createContext<{
+  highlightedIds: Set<string>;
+  allowedBlockCodes: Set<string> | null;
+  allowedRowCodes: Set<string> | null;
+}>({
+  highlightedIds: new Set(),
+  allowedBlockCodes: null,
+  allowedRowCodes: null,
+});
 
 function rowKey(code: string) {
   return formatRowCode(code).toUpperCase();
@@ -24,16 +38,6 @@ function rowKey(code: string) {
 function positionKey(code: string) {
   const numeric = Number(code);
   return Number.isFinite(numeric) ? String(numeric) : code.trim();
-}
-
-function slotFill(occupant: Occupant | null) {
-  if (!occupant) {
-    return "#1f8a4c";
-  }
-  if (occupant.status === "RENTED") {
-    return "#0b5cab";
-  }
-  return "#c41e3a";
 }
 
 function cellSlot(
@@ -63,10 +67,17 @@ function YardPositionCell({
   cellY,
   cellW,
   cellH,
-  occupant,
+  levels,
+  maxStackLevels,
   selected,
+  selectedLevel,
+  highlightLevel,
+  levelSelectable = true,
+  positionId,
+  reservation,
   label,
   onClick,
+  onSelectLevel,
 }: {
   x: number;
   y: number;
@@ -76,11 +87,24 @@ function YardPositionCell({
   cellY: number;
   cellW: number;
   cellH: number;
-  occupant: Occupant | null;
+  levels: YardLevelCell[];
+  maxStackLevels: number;
   selected: boolean;
+  selectedLevel?: StackLevel | null;
+  highlightLevel?: StackLevel | null;
+  levelSelectable?: boolean;
+  positionId: string;
+  reservation?: DispatchReservationSummary;
   label: string;
   onClick: () => void;
+  onSelectLevel?: (level: StackLevel) => void;
 }) {
+  const ui = useContext(YardMapUi);
+  const highlighted = ui.highlightedIds.has(positionId);
+  const ring = selected ? "#c41e3a" : highlighted ? "#d97706" : "transparent";
+  const ringWidth = selected || highlighted ? 3.4 : 0;
+  const stacked = maxStackLevels > 1;
+
   return (
     <g>
       <rect
@@ -89,49 +113,48 @@ function YardPositionCell({
         width={cellW}
         height={cellH}
         rx={2}
-        stroke={selected ? "#c41e3a" : "transparent"}
-        strokeWidth={selected ? 3.4 : 0}
-        className={`yard-pos-hit${selected ? " is-selected" : ""}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onClick();
-        }}
+        stroke={stacked ? "transparent" : ring}
+        strokeWidth={stacked ? 0 : ringWidth}
+        className={`yard-pos-hit${selected || highlighted ? " is-selected" : ""}`}
+        onClick={
+          stacked
+            ? undefined
+            : (event) => {
+                event.stopPropagation();
+                onClick();
+              }
+        }
       >
-        <title>{label}</title>
+        {!stacked ? <title>{label}</title> : null}
       </rect>
-      <rect
+      <StackLevelSegments
         x={x}
         y={y}
         width={width}
         height={height}
-        fill={slotFill(occupant)}
-        stroke="#161616"
-        strokeWidth={2}
-        strokeOpacity={0.22}
-        rx={1.4}
-        pointerEvents="none"
+        levels={levels}
+        maxStackLevels={maxStackLevels}
+        baseLabel={label}
+        positionReservation={reservation}
+        selectedLevel={selected ? (selectedLevel ?? null) : null}
+        highlightLevel={highlightLevel}
+        levelSelectable={stacked && levelSelectable}
+        onSelectLevel={
+          stacked
+            ? (level) => {
+                onSelectLevel?.(level);
+              }
+            : undefined
+        }
       />
-      {selected ? (
+      {selected || highlighted ? (
         <rect
           x={cellX}
           y={cellY}
           width={cellW}
           height={cellH}
           fill="none"
-          stroke="#c41e3a"
-          strokeWidth={3.4}
-          rx={2}
-          pointerEvents="none"
-        />
-      ) : null}
-      {selected ? (
-        <rect
-          x={cellX}
-          y={cellY}
-          width={cellW}
-          height={cellH}
-          fill="none"
-          stroke="#c41e3a"
+          stroke={ring}
           strokeWidth={3.4}
           rx={2}
           pointerEvents="none"
@@ -234,6 +257,13 @@ export function SchelleYardMap({
   selectedBlockId,
   selectedRowId,
   selectedPositionId,
+  selectedLevel,
+  highlightedPositionIds,
+  highlightLevel,
+  levelSelectable = true,
+  allowedBlockCodes,
+  allowedRowCodes,
+  lockBlockId,
   onSelectBlock,
   onSelectRow,
   onSelectPosition,
@@ -242,15 +272,39 @@ export function SchelleYardMap({
   selectedBlockId?: string | null;
   selectedRowId?: string | null;
   selectedPositionId?: string | null;
+  selectedLevel?: StackLevel | null;
+  highlightedPositionIds?: string[] | null;
+  highlightLevel?: StackLevel | null;
+  levelSelectable?: boolean;
+  allowedBlockCodes?: string[] | null;
+  allowedRowCodes?: string[] | null;
+  lockBlockId?: string | null;
   onSelectBlock: (blockId: string) => void;
   onSelectRow?: (blockId: string, rowId: string) => void;
-  onSelectPosition?: (blockId: string, position: YardPositionNode) => void;
+  onSelectPosition?: (blockId: string, position: YardPositionNode, level?: StackLevel) => void;
 }) {
   const t = useTranslations();
   const {width, height} = SCHELLE_YARD.viewBox;
   const blocks = displayBlocks(snapshot);
+  const ui = {
+    highlightedIds: new Set(highlightedPositionIds ?? []),
+    allowedBlockCodes: allowedBlockCodes
+      ? new Set(allowedBlockCodes.map((code) => code.trim().toUpperCase()))
+      : null,
+    allowedRowCodes: allowedRowCodes
+      ? new Set(allowedRowCodes.map((code) => code.trim().toUpperCase()))
+      : null,
+  };
+
+  function selectBlock(id: string) {
+    if (lockBlockId && id !== lockBlockId) {
+      return;
+    }
+    onSelectBlock(id);
+  }
 
   return (
+    <YardMapUi.Provider value={ui}>
     <div className="overflow-auto border-4 border-loxam-black bg-[#d4cfc6]">
       <svg
         viewBox={`0 0 ${width} ${height}`}
@@ -305,7 +359,10 @@ export function SchelleYardMap({
               selected={block.id === selectedBlockId}
               selectedRowId={selectedRowId}
               selectedPositionId={selectedPositionId}
-              onSelectBlock={onSelectBlock}
+              selectedLevel={selectedLevel}
+              highlightLevel={highlightLevel}
+              levelSelectable={levelSelectable}
+              onSelectBlock={selectBlock}
               onSelectRow={onSelectRow}
               onSelectPosition={onSelectPosition}
             />
@@ -315,6 +372,7 @@ export function SchelleYardMap({
         <LandmarkLayer />
       </svg>
     </div>
+    </YardMapUi.Provider>
   );
 }
 
@@ -324,6 +382,9 @@ function BlockPad({
   selected,
   selectedRowId,
   selectedPositionId,
+  selectedLevel,
+  highlightLevel,
+  levelSelectable,
   onSelectBlock,
   onSelectRow,
   onSelectPosition,
@@ -333,9 +394,12 @@ function BlockPad({
   selected: boolean;
   selectedRowId?: string | null;
   selectedPositionId?: string | null;
+  selectedLevel?: StackLevel | null;
+  highlightLevel?: StackLevel | null;
+  levelSelectable?: boolean;
   onSelectBlock: (blockId: string) => void;
   onSelectRow?: (blockId: string, rowId: string) => void;
-  onSelectPosition?: (blockId: string, position: YardPositionNode) => void;
+  onSelectPosition?: (blockId: string, position: YardPositionNode, level?: StackLevel) => void;
 }) {
   const capacity = blockCapacity(block);
   const production = block.productionZone;
@@ -360,6 +424,9 @@ function BlockPad({
         geom={geom}
         selectedRowId={selectedRowId}
         selectedPositionId={selectedPositionId}
+        selectedLevel={selectedLevel}
+        highlightLevel={highlightLevel}
+        levelSelectable={levelSelectable}
         onSelectBlock={onSelectBlock}
         onSelectRow={onSelectRow}
         onSelectPosition={onSelectPosition}
@@ -394,6 +461,9 @@ function BlockSlotGrid({
   geom,
   selectedRowId,
   selectedPositionId,
+  selectedLevel,
+  highlightLevel,
+  levelSelectable = true,
   onSelectBlock,
   onSelectRow,
   onSelectPosition,
@@ -402,19 +472,53 @@ function BlockSlotGrid({
   geom: BlockGeometry;
   selectedRowId?: string | null;
   selectedPositionId?: string | null;
+  selectedLevel?: StackLevel | null;
+  highlightLevel?: StackLevel | null;
+  levelSelectable?: boolean;
   onSelectBlock: (blockId: string) => void;
   onSelectRow?: (blockId: string, rowId: string) => void;
-  onSelectPosition?: (blockId: string, position: YardPositionNode) => void;
+  onSelectPosition?: (blockId: string, position: YardPositionNode, level?: StackLevel) => void;
 }) {
+  const mapUi = useContext(YardMapUi);
   const rows = block.rows;
+  const maxStackLevels = resolveMaxStackLevels({blockCode: block.code});
   if (rows.length === 0) {
     return null;
   }
 
-  function selectSlot(row: YardRowNode, position: YardPositionNode) {
+  function selectSlot(row: YardRowNode, position: YardPositionNode, level?: StackLevel) {
+    if (mapUi.allowedBlockCodes && !mapUi.allowedBlockCodes.has(block.code.trim().toUpperCase())) {
+      return;
+    }
+    if (mapUi.allowedRowCodes && !mapUi.allowedRowCodes.has(row.code.trim().toUpperCase())) {
+      return;
+    }
     onSelectBlock(block.id);
     onSelectRow?.(block.id, row.id);
-    onSelectPosition?.(block.id, position);
+    onSelectPosition?.(block.id, position, level);
+  }
+
+  function positionCellProps(
+    row: YardRowNode,
+    position: YardPositionNode,
+    slot: {x: number; y: number; width: number; height: number; cellX: number; cellY: number; cellW: number; cellH: number},
+  ) {
+    const selected = position.id === selectedPositionId;
+    const label = `${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`;
+    return {
+      ...slot,
+      levels: position.levels,
+      maxStackLevels,
+      selected,
+      selectedLevel: selected ? selectedLevel : null,
+      highlightLevel,
+      levelSelectable,
+      positionId: position.id,
+      reservation: position.reservation,
+      label,
+      onClick: () => selectSlot(row, position),
+      onSelectLevel: (level: StackLevel) => selectSlot(row, position, level),
+    };
   }
 
   if (geom.visualBands && geom.visualBands.length > 0) {
@@ -424,10 +528,9 @@ function BlockSlotGrid({
         geom={geom}
         bands={geom.visualBands}
         selectedRowId={selectedRowId}
-        selectedPositionId={selectedPositionId}
         onSelectBlock={onSelectBlock}
         onSelectRow={onSelectRow}
-        selectSlot={selectSlot}
+        positionCellProps={positionCellProps}
       />
     );
   }
@@ -438,10 +541,9 @@ function BlockSlotGrid({
         block={block}
         geom={geom}
         selectedRowId={selectedRowId}
-        selectedPositionId={selectedPositionId}
         onSelectBlock={onSelectBlock}
         onSelectRow={onSelectRow}
-        selectSlot={selectSlot}
+        positionCellProps={positionCellProps}
       />
     );
   }
@@ -482,23 +584,19 @@ function BlockSlotGrid({
                 }}
               />
               {row.positions.map((position, posIndex) => {
-                const occupant = primaryOccupant(position);
                 const drawPos = geom.positionsFromBottom ? maxPositions - 1 - posIndex : posIndex;
                 const cellY = innerY + drawPos * cellH;
                 const slot = cellSlot(colX, cellY, colW, cellH, ratioW, ratioH);
-                const selected = position.id === selectedPositionId;
                 return (
                   <YardPositionCell
                     key={position.id}
-                    {...slot}
-                    cellX={colX}
-                    cellY={cellY}
-                    cellW={colW}
-                    cellH={cellH}
-                    occupant={occupant}
-                    selected={selected}
-                    label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
-                    onClick={() => selectSlot(row, position)}
+                    {...positionCellProps(row, position, {
+                      ...slot,
+                      cellX: colX,
+                      cellY,
+                      cellW: colW,
+                      cellH,
+                    })}
                   />
                 );
               })}
@@ -555,23 +653,19 @@ function BlockSlotGrid({
               {formatRowCode(row.code)}
             </text>
             {row.positions.map((position, posIndex) => {
-              const occupant = primaryOccupant(position);
               const drawIndex = geom.positionsLeftToRight ? posIndex : maxPositions - 1 - posIndex;
               const cellX = innerX + drawIndex * cellW;
               const slot = cellSlot(cellX, rowY, cellW, rowH, ratioW, ratioH);
-              const selected = position.id === selectedPositionId;
               return (
                 <YardPositionCell
                   key={position.id}
-                  {...slot}
-                  cellX={cellX}
-                  cellY={rowY}
-                  cellW={cellW}
-                  cellH={rowH}
-                  occupant={occupant}
-                  selected={selected}
-                  label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
-                  onClick={() => selectSlot(row, position)}
+                  {...positionCellProps(row, position, {
+                    ...slot,
+                    cellX,
+                    cellY: rowY,
+                    cellW,
+                    cellH: rowH,
+                  })}
                 />
               );
             })}
@@ -624,18 +718,29 @@ function HorizontalRowSlotGrid({
   block,
   geom,
   selectedRowId,
-  selectedPositionId,
   onSelectBlock,
   onSelectRow,
-  selectSlot,
+  positionCellProps,
 }: {
   block: YardBlockNode;
   geom: BlockGeometry;
   selectedRowId?: string | null;
-  selectedPositionId?: string | null;
   onSelectBlock: (blockId: string) => void;
   onSelectRow?: (blockId: string, rowId: string) => void;
-  selectSlot: (row: YardRowNode, position: YardPositionNode) => void;
+  positionCellProps: (
+    row: YardRowNode,
+    position: YardPositionNode,
+    slot: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      cellX: number;
+      cellY: number;
+      cellW: number;
+      cellH: number;
+    },
+  ) => ComponentProps<typeof YardPositionCell>;
 }) {
   const columns = geom.positionsLeftToRight ? [...block.rows] : [...block.rows].reverse();
   const visualRows = Math.max(...block.rows.map((row) => row.positions.length), 1);
@@ -672,7 +777,6 @@ function HorizontalRowSlotGrid({
               }}
             />
             {row.positions.map((position, posIndex) => {
-              const occupant = primaryOccupant(position);
               const drawRow = geom.positionsFromBottom ? visualRows - 1 - posIndex : posIndex;
               const cellY = innerY + drawRow * rowH;
               const slotH = rowH * ratioH;
@@ -683,19 +787,16 @@ function HorizontalRowSlotGrid({
                 width: slotW,
                 height: slotH,
               };
-              const selected = position.id === selectedPositionId;
               return (
                 <YardPositionCell
                   key={position.id}
-                  {...slot}
-                  cellX={colX}
-                  cellY={cellY}
-                  cellW={colW}
-                  cellH={rowH}
-                  occupant={occupant}
-                  selected={selected}
-                  label={`${block.code} ${formatRowCode(row.code)} ${positionKey(position.code)}`}
-                  onClick={() => selectSlot(row, position)}
+                  {...positionCellProps(row, position, {
+                    ...slot,
+                    cellX: colX,
+                    cellY,
+                    cellW: colW,
+                    cellH: rowH,
+                  })}
                 />
               );
             })}
@@ -740,19 +841,30 @@ function BandedSlotGrid({
   geom,
   bands,
   selectedRowId,
-  selectedPositionId,
   onSelectBlock,
   onSelectRow,
-  selectSlot,
+  positionCellProps,
 }: {
   block: YardBlockNode;
   geom: BlockGeometry;
   bands: readonly VisualBand[];
   selectedRowId?: string | null;
-  selectedPositionId?: string | null;
   onSelectBlock: (blockId: string) => void;
   onSelectRow?: (blockId: string, rowId: string) => void;
-  selectSlot: (row: YardRowNode, position: YardPositionNode) => void;
+  positionCellProps: (
+    row: YardRowNode,
+    position: YardPositionNode,
+    slot: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      cellX: number;
+      cellY: number;
+      cellW: number;
+      cellH: number;
+    },
+  ) => ComponentProps<typeof YardPositionCell>;
 }) {
   const rowsByCode = new Map(block.rows.map((row) => [rowKey(row.code), row]));
   const padLeft = 22;
@@ -822,7 +934,6 @@ function BandedSlotGrid({
               {bandIndex + 1}
             </text>
             {slots.map(({row: slotRow, position}, slotIndex) => {
-              const occupant = primaryOccupant(position);
               const cellX = innerX + slotIndex * cellW;
               const slotH = slotsH * ratioH;
               const slotW = Math.min(cellW * ratioW, slotH * 0.55);
@@ -832,19 +943,16 @@ function BandedSlotGrid({
                 width: slotW,
                 height: slotH,
               };
-              const selected = position.id === selectedPositionId;
               return (
                 <YardPositionCell
                   key={position.id}
-                  {...slot}
-                  cellX={cellX}
-                  cellY={slotsY}
-                  cellW={cellW}
-                  cellH={slotsH}
-                  occupant={occupant}
-                  selected={selected}
-                  label={`${block.code} ${formatRowCode(slotRow.code)} ${positionKey(position.code)}`}
-                  onClick={() => selectSlot(slotRow, position)}
+                  {...positionCellProps(slotRow, position, {
+                    ...slot,
+                    cellX,
+                    cellY: slotsY,
+                    cellW,
+                    cellH: slotsH,
+                  })}
                 />
               );
             })}

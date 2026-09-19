@@ -2,18 +2,29 @@
 
 import {useLocale, useTranslations} from "next-intl";
 import {ModuleStatusBadge} from "@/components/module/module-status";
-import {formatPositionCode, formatRowCode, formatDimensions, formatLevelLabel, formatTypeLabel} from "@/lib/format";
+import type {DispatchAssignment} from "@/features/dispatch/types";
+import {formatPositionCode, formatRowCode, formatDimensions, formatLevelLabel, formatTypeLabel, formatDateTime} from "@/lib/format";
 import type {ModuleSummary} from "@/features/yard-locations/types";
 
 export function ModulePassport({
   module,
+  assignment = null,
   emphasize = false,
 }: {
   module: ModuleSummary;
+  assignment?: DispatchAssignment | null;
   emphasize?: boolean;
 }) {
   const t = useTranslations();
   const locale = useLocale();
+  const lifecycle =
+    assignment?.status === "SHIPPED"
+      ? t("dispatch.lifecycle.shipped")
+      : assignment?.status === "RETURNED"
+        ? t("dispatch.lifecycle.returned")
+        : assignment?.status === "PLACED"
+          ? t("dispatch.lifecycle.readyToShip")
+          : null;
 
   return (
     <article
@@ -51,7 +62,13 @@ export function ModulePassport({
         <div>
           <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.status")}</dt>
           <dd className="mt-2">
-            <ModuleStatusBadge status={module.status} />
+            {lifecycle ? (
+              <span className="inline-flex border-2 border-loxam-black bg-loxam-paper px-3 py-1 text-sm font-black uppercase">
+                {lifecycle}
+              </span>
+            ) : (
+              <ModuleStatusBadge status={module.status} />
+            )}
           </dd>
         </div>
         {module.rentedToProject ? (
@@ -61,6 +78,28 @@ export function ModulePassport({
           </div>
         ) : null}
       </dl>
+      {assignment ? (
+        <div className="mt-5 border-t-4 border-loxam-black pt-5">
+          <p className="text-xs font-bold uppercase text-loxam-muted">{t("dispatch.dossier")}</p>
+          <p className="mt-1 text-2xl font-black">{assignment.dossierNumber}</p>
+          <p className="mt-3 text-xs font-bold uppercase text-loxam-muted">{t("dispatch.customer")}</p>
+          <p className="mt-1 text-lg font-black">{assignment.customerName}</p>
+          <p className="mt-3 text-xs font-bold uppercase text-loxam-muted">{t("dispatch.site")}</p>
+          <p className="mt-1 text-lg font-black">{assignment.siteLocation}</p>
+          {assignment.shippedAt ? (
+            <>
+              <p className="mt-3 text-xs font-bold uppercase text-loxam-muted">{t("dispatch.shippedAt")}</p>
+              <p className="mt-1 text-lg font-black">{formatDateTime(assignment.shippedAt, locale)}</p>
+            </>
+          ) : null}
+          {assignment.returnedAt ? (
+            <>
+              <p className="mt-3 text-xs font-bold uppercase text-loxam-muted">{t("dispatch.returnedAt")}</p>
+              <p className="mt-1 text-lg font-black">{formatDateTime(assignment.returnedAt, locale)}</p>
+            </>
+          ) : null}
+        </div>
+      ) : null}
       <div className="mt-6 border-t-4 border-loxam-black pt-5">
         {module.location ? (
           <div className="grid grid-cols-2 gap-3">
@@ -76,7 +115,9 @@ export function ModulePassport({
             />
           </div>
         ) : (
-          <p className="text-lg font-black text-loxam-muted">{t("module.noLocation")}</p>
+          <p className="text-lg font-black text-loxam-muted">
+            {assignment?.status === "SHIPPED" ? t("dispatch.onSiteNoYard") : t("module.noLocation")}
+          </p>
         )}
       </div>
     </article>
