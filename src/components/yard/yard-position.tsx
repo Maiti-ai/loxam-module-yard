@@ -2,6 +2,7 @@
 
 import {useTranslations} from "next-intl";
 import {MiniLevelStack} from "@/components/yard/level-stack";
+import {isCompactModuleType} from "@/features/module-types/codes";
 import {primaryOccupant} from "@/features/yard-locations/queries-client";
 import {isStackFull, resolveMaxStackLevels, stackOccupancy} from "@/features/yard-locations/stacking";
 import {formatCodeNumber} from "@/lib/format";
@@ -24,7 +25,7 @@ export function YardPosition({
   const occupant = primaryOccupant(position);
   const reserved = Boolean(position.reservation);
   const emptyReserved = reserved && !occupant;
-  const is3x3 = occupant?.moduleTypeCode === "3x3";
+  const compact = occupant ? isCompactModuleType(occupant.moduleTypeCode) : false;
   const stackOptions = {blockCode};
   const occupancy = stackOccupancy(position.levels, stackOptions);
   const stackFull = full || isStackFull(position.levels, stackOptions);
@@ -35,7 +36,7 @@ export function YardPosition({
       type="button"
       onClick={onSelect}
       className={`flex min-h-28 flex-col items-center justify-center gap-2 border-4 px-3 py-3 ${
-        is3x3 ? "min-w-20" : "min-w-32"
+        compact ? "min-w-20" : "min-w-32"
       } ${
         selected
           ? "border-loxam-red bg-white"
@@ -47,9 +48,9 @@ export function YardPosition({
       }`}
     >
       <span className="text-2xl font-black">{formatCodeNumber(position.code)}</span>
-      <div className={`flex items-end justify-center ${is3x3 ? "w-10" : "w-16"}`}>
+      <div className={`flex items-end justify-center ${compact ? "w-10" : "w-16"}`}>
         <span
-          className={`block ${is3x3 ? "h-8 w-8" : "h-8 w-16"} ${
+          className={`block ${compact ? "h-8 w-8" : "h-8 w-16"} ${
             occupant
               ? occupant.status === "RENTED"
                 ? "bg-loxam-rented"

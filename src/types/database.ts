@@ -12,7 +12,7 @@ export type StackLevel = "GROUND" | "LEVEL_1" | "LEVEL_2";
 
 export type ModuleStatus = "AVAILABLE" | "RENTED";
 
-export type ModuleTypeCode = "6x3" | "3x3";
+export type ModuleTypeCode = "6x3" | "3x3" | "2.5x3" | "2.5x6";
 
 export type PhotoCategory =
   | "GENERAL"

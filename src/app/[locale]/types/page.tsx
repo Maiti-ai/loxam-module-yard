@@ -30,6 +30,7 @@ export default async function ModuleTypesPage() {
       {loaded.data.map((type) => (
         <article key={type.id} className="space-y-4 border-4 border-loxam-black bg-white p-5">
           <h2 className="text-3xl font-black">{formatTypeLabel(type.typeNumber, type.code)}</h2>
+          <p className="text-lg font-bold">{type.name}</p>
           <p className="text-lg font-bold">{formatDimensions(type.lengthM, type.widthM)}</p>
           <TechnicalDrawing
             typeCode={type.code}

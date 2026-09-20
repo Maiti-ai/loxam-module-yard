@@ -1,5 +1,6 @@
 import {createClient} from "@/lib/supabase/server";
 import type {EquipmentPlaceholderKey} from "@/config/equipment";
+import {asTypeCode, staticTypeDrawingUrl} from "@/features/module-types/codes";
 import type {ModuleTypeCode} from "@/types/database";
 
 export type ModuleTypeRecord = {
@@ -17,7 +18,7 @@ export type ModuleTypeRecord = {
 
 export async function getModuleType(code: string): Promise<ModuleTypeRecord | null> {
   const supabase = await createClient();
-  const typedCode: ModuleTypeCode = code === "3x3" ? "3x3" : "6x3";
+  const typedCode = asTypeCode(code);
   const {data, error} = await supabase
     .from("module_types")
     .select(
@@ -35,16 +36,18 @@ export async function getModuleType(code: string): Promise<ModuleTypeRecord | nu
     if (fallback.error || !fallback.data) {
       return null;
     }
+    const fallbackCode = asTypeCode(fallback.data.code);
+    const fallbackDrawing = staticTypeDrawingUrl(fallbackCode);
     return {
       id: fallback.data.id,
-      code: fallback.data.code === "3x3" ? "3x3" : "6x3",
+      code: fallbackCode,
       typeNumber: null,
       lengthM: Number(fallback.data.length_m),
       widthM: Number(fallback.data.width_m),
       name: fallback.data.name,
       notes: null,
-      drawingUrl: null,
-      drawingMimeType: null,
+      drawingUrl: fallbackDrawing,
+      drawingMimeType: fallbackDrawing ? "image/png" : null,
       equipment: [],
     };
   }
@@ -56,6 +59,8 @@ export async function getModuleType(code: string): Promise<ModuleTypeRecord | nu
       .createSignedUrl(data.drawing_storage_path, 60 * 60);
     drawingUrl = signed.data?.signedUrl ?? null;
   }
+  const typeCode = asTypeCode(data.code);
+  drawingUrl = drawingUrl ?? staticTypeDrawingUrl(typeCode);
 
   const links = await supabase
     .from("module_type_equipment")
@@ -73,14 +78,14 @@ export async function getModuleType(code: string): Promise<ModuleTypeRecord | nu
 
   return {
     id: data.id,
-    code: data.code === "3x3" ? "3x3" : "6x3",
+    code: typeCode,
     typeNumber: data.type_number,
     lengthM: Number(data.length_m),
     widthM: Number(data.width_m),
     name: data.name,
     notes: data.notes,
     drawingUrl,
-    drawingMimeType: data.drawing_mime_type,
+    drawingMimeType: data.drawing_mime_type ?? (drawingUrl ? "image/png" : null),
     equipment,
   };
 }

@@ -3,7 +3,8 @@ import {listActiveReservations, listDispatchLevelReservations} from "@/features/
 import {createClient} from "@/lib/supabase/server";
 import {yardCapacity} from "./capacity";
 import {displayBlocks} from "./display-blocks";
-import type {ModuleStatus, ModuleTypeCode, StackLevel} from "@/types/database";
+import {asTypeCode} from "@/features/module-types/codes";
+import type {ModuleStatus, StackLevel} from "@/types/database";
 import type {
   Occupant,
   YardBlockNode,
@@ -20,10 +21,6 @@ function asLevel(value: string): StackLevel {
     return value;
   }
   return "GROUND";
-}
-
-function asTypeCode(value: string | null | undefined): ModuleTypeCode {
-  return value === "3x3" ? "3x3" : "6x3";
 }
 
 export async function getYardSnapshot(): Promise<YardSnapshot> {
