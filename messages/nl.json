@@ -112,6 +112,7 @@
     "serialNumber": "Serienummer",
     "type": "CAT.CLASS",
     "catClass": "CAT.CLASS",
+    "typeCode": "Typecode",
     "dimensions": "Afmetingen",
     "location": "Locatie",
     "noLocation": "Nog geen yardlocatie",

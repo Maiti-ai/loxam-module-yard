@@ -56,6 +56,10 @@ export function ModulePassport({
           </dd>
         </div>
         <div>
+          <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.typeCode")}</dt>
+          <dd className="mt-1 break-all text-xl font-black">{module.typeCode?.trim() || "—"}</dd>
+        </div>
+        <div>
           <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.dimensions")}</dt>
           <dd className="mt-1 text-xl font-black">{formatDimensions(module.lengthM, module.widthM)}</dd>
         </div>
