@@ -1,5 +1,6 @@
 "use client";
 
+import {useEffect, useState} from "react";
 import {useTranslations} from "next-intl";
 import {formatTypeLabel} from "@/lib/format";
 
@@ -16,26 +17,37 @@ export function TechnicalDrawing({
 }) {
   const t = useTranslations("module");
   const label = formatTypeLabel(typeNumber, typeCode);
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [drawingUrl]);
+
+  const showImage = Boolean(drawingUrl) && drawingMimeType !== "application/pdf" && !imageFailed;
 
   return (
     <details className="border border-loxam-line bg-white p-4">
       <summary className="cursor-pointer text-lg font-black">
-        {t("drawing")} · {label}
+        {t("drawing")}
+        {label ? ` · ${label}` : ""}
       </summary>
-      {drawingUrl ? (
-        drawingMimeType === "application/pdf" ? (
-          <a
-            href={drawingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 flex min-h-16 items-center justify-center border-2 border-loxam-black text-sm font-black uppercase"
-          >
-            {t("drawingOpen")}
-          </a>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={drawingUrl} alt={label} className="mt-4 w-full border border-loxam-line" />
-        )
+      {drawingUrl && drawingMimeType === "application/pdf" ? (
+        <a
+          href={drawingUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 flex min-h-16 items-center justify-center border-2 border-loxam-black text-sm font-black uppercase"
+        >
+          {t("drawingOpen")}
+        </a>
+      ) : showImage ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={drawingUrl ?? ""}
+          alt={label || t("drawing")}
+          className="mt-4 h-auto w-full max-w-full border border-loxam-line object-contain"
+          onError={() => setImageFailed(true)}
+        />
       ) : (
         <>
           <p className="mt-3 text-sm text-loxam-muted">{t("drawingNote")}</p>

@@ -112,6 +112,7 @@
     "serialNumber": "Numéro de série",
     "type": "CAT.CLASS",
     "catClass": "CAT.CLASS",
+    "typeCode": "Code type",
     "dimensions": "Dimensions",
     "location": "Emplacement",
     "noLocation": "Pas encore d’emplacement",
