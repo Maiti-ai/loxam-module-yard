@@ -225,16 +225,16 @@ npx supabase gen types typescript --linked > src/types/database.ts
 
 ## Seed data
 
-The seed is fictitious development data:
+`20260813140200_seed_fictitious_dev_data.sql` historically inserted fictitious development modules `2000`–`2009` plus matching airco and movement rows. That file is kept intact for remote migration history.
+
+`20260919235648_cleanup_fictitious_dev_modules.sql` removes those fixture modules (and only records that fingerprint to that seed) so they do not remain in production or after a fresh migrate/reset.
+
+Kept from that historical seed:
 
 - Module types `6x3` and `3x3`
-- Blocks A and B, with rows, positions, and three levels each
-- Modules `2000`–`2009`
-- Mix of ground / level 1 / level 2, both blocks, `AVAILABLE` and `RENTED` to fake projects (`Project Atlas`, `Project Beacon`, `Project Harbor`)
-- Airco brand, serial number, internal number, and maintenance date for each module
-- Extra movement-history rows plus automatic history from current locations
+- Yard blocks/rows/positions later synced to the Schelle layout
 
-No real customer data is included.
+No fictitious modules should be present after the cleanup migration.
 
 ## Photo storage
 
@@ -257,9 +257,9 @@ Confirm email is enabled on this project (`mailer_autoconfirm` is false). For th
 
 ## Recommended next step
 
-The three hosted migrations have already been applied. Do not rerun them.
+Hosted migrations are already applied. Do not rerun historical files.
 
 1. Sign in as the ADMIN user.
-2. Demo module `2000` via Scan → enter `2000` (desktop NFC fallback).
+2. Import real modules before using scan / yard / dispatch flows.
 3. Move a module with the visual yard flow.
 4. Export live inventory from `/inventory`.
