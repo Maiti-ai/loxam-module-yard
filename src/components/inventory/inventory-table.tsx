@@ -4,6 +4,7 @@ import {useMemo, useState} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {Link} from "@/i18n/navigation";
 import {ModuleStatusBadge} from "@/components/module/module-status";
+import {MODULE_TYPE_CODES} from "@/features/module-types/codes";
 import {formatDateTime, formatDimensions, formatLevelLabel} from "@/lib/format";
 import type {ModuleSummary} from "@/features/yard-locations/types";
 
@@ -52,8 +53,7 @@ export function InventoryTable({modules}: {modules: ModuleSummary[]}) {
           onChange={setType}
           options={[
             {value: "all", label: t("inventory.all")},
-            {value: "6x3", label: "6x3"},
-            {value: "3x3", label: "3x3"},
+            ...MODULE_TYPE_CODES.map((code) => ({value: code, label: code})),
           ]}
         />
         <Filter

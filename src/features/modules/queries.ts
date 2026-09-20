@@ -3,11 +3,8 @@ import {yardCapacity} from "@/features/yard-locations/capacity";
 import {displayBlocks} from "@/features/yard-locations/display-blocks";
 import {getYardSnapshot, locationFromView} from "@/features/yard-locations/queries";
 import type {AircoSummary, ModuleSummary} from "@/features/yard-locations/types";
-import type {ModuleStatus, ModuleTypeCode} from "@/types/database";
-
-function asTypeCode(value: string | null): ModuleTypeCode {
-  return value === "3x3" ? "3x3" : "6x3";
-}
+import {asTypeCode} from "@/features/module-types/codes";
+import type {ModuleStatus} from "@/types/database";
 
 export async function listModuleSummaries(): Promise<ModuleSummary[]> {
   const supabase = await createClient();
