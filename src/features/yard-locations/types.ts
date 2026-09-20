@@ -32,6 +32,7 @@ export type ModuleSummary = {
   moduleTypeId: string;
   moduleTypeCode: ModuleTypeCode;
   moduleTypeNumber: string | null;
+  typeCode: string | null;
   lengthM: number;
   widthM: number;
   status: ModuleStatus;

@@ -11,6 +11,7 @@ import {requireUser} from "@/features/auth/guard";
 import {getDispatchModuleFlow} from "@/features/dispatch/queries";
 import {getModuleByNumber} from "@/features/modules/queries";
 import {listModulePhotos} from "@/features/module-photos/queries";
+import {moduleTypeDrawingUrl} from "@/features/module-types/drawing";
 import {getModuleType} from "@/features/module-types/queries";
 import {roleCan} from "@/features/roles";
 import {tryLoad} from "@/lib/try-load";
@@ -118,10 +119,10 @@ export default async function ModuleDetailPage({
       </section>
       <EquipmentIcons equipment={typeRecord?.equipment ?? []} />
       <TechnicalDrawing
-        typeCode={yardModule.moduleTypeCode}
-        typeNumber={yardModule.moduleTypeNumber}
-        drawingUrl={typeRecord?.drawingUrl ?? null}
-        drawingMimeType={typeRecord?.drawingMimeType ?? null}
+        typeCode={yardModule.typeCode?.trim() || ""}
+        typeNumber={yardModule.typeCode}
+        drawingUrl={moduleTypeDrawingUrl(yardModule.typeCode)}
+        drawingMimeType={moduleTypeDrawingUrl(yardModule.typeCode) ? "image/png" : null}
       />
       <Link
         href={`/modules/${yardModule.moduleNumber}/history`}

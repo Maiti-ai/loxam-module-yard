@@ -233,6 +233,7 @@ export type Database = {
           id: string;
           module_number: string;
           module_type_id: string;
+          type_code: string | null;
           status: ModuleStatus;
           rented_to_project: string | null;
           notes: string | null;
@@ -243,6 +244,7 @@ export type Database = {
           id?: string;
           module_number: string;
           module_type_id: string;
+          type_code?: string | null;
           status?: ModuleStatus;
           rented_to_project?: string | null;
           notes?: string | null;
@@ -253,6 +255,7 @@ export type Database = {
           id?: string;
           module_number?: string;
           module_type_id?: string;
+          type_code?: string | null;
           status?: ModuleStatus;
           rented_to_project?: string | null;
           notes?: string | null;

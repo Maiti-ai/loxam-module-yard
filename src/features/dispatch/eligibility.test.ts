@@ -8,6 +8,7 @@ function module(overrides: Partial<ModuleSummary> & Pick<ModuleSummary, "id" | "
     moduleTypeId: "t",
     moduleTypeCode: "6x3",
     moduleTypeNumber: "2031",
+    typeCode: null,
     lengthM: 6,
     widthM: 3,
     status: "AVAILABLE",
