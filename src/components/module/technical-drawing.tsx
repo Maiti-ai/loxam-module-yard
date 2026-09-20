@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useState} from "react";
 import {useTranslations} from "next-intl";
 import {formatTypeLabel} from "@/lib/format";
 
@@ -17,13 +17,9 @@ export function TechnicalDrawing({
 }) {
   const t = useTranslations("module");
   const label = formatTypeLabel(typeNumber, typeCode);
-  const [imageFailed, setImageFailed] = useState(false);
-
-  useEffect(() => {
-    setImageFailed(false);
-  }, [drawingUrl]);
-
-  const showImage = Boolean(drawingUrl) && drawingMimeType !== "application/pdf" && !imageFailed;
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const showImage =
+    Boolean(drawingUrl) && drawingMimeType !== "application/pdf" && failedUrl !== drawingUrl;
 
   return (
     <details className="border border-loxam-line bg-white p-4">
@@ -46,7 +42,7 @@ export function TechnicalDrawing({
           src={drawingUrl ?? ""}
           alt={label || t("drawing")}
           className="mt-4 h-auto w-full max-w-full border border-loxam-line object-contain"
-          onError={() => setImageFailed(true)}
+          onError={() => setFailedUrl(drawingUrl ?? null)}
         />
       ) : (
         <>
