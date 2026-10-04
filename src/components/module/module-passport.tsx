@@ -1,5 +1,6 @@
 "use client";
 
+import type {ReactNode} from "react";
 import {useLocale, useTranslations} from "next-intl";
 import {ModuleStatusBadge} from "@/components/module/module-status";
 import type {DispatchAssignment} from "@/features/dispatch/types";
@@ -10,10 +11,12 @@ export function ModulePassport({
   module,
   assignment = null,
   emphasize = false,
+  drawing = null,
 }: {
   module: ModuleSummary;
   assignment?: DispatchAssignment | null;
   emphasize?: boolean;
+  drawing?: ReactNode;
 }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -48,16 +51,17 @@ export function ModulePassport({
           </p>
         </div>
       </header>
+      {drawing ? <div className="mt-5">{drawing}</div> : null}
       <dl className="mt-5 grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.typeCode")}</dt>
+          <dd className="mt-1 break-all text-xl font-black">{module.typeCode?.trim() || "—"}</dd>
+        </div>
         <div>
           <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.catClass")}</dt>
           <dd className="mt-1 text-xl font-black">
             {formatTypeLabel(module.moduleTypeNumber, module.moduleTypeCode)}
           </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.typeCode")}</dt>
-          <dd className="mt-1 break-all text-xl font-black">{module.typeCode?.trim() || "—"}</dd>
         </div>
         <div>
           <dt className="text-xs font-bold uppercase text-loxam-muted">{t("module.dimensions")}</dt>

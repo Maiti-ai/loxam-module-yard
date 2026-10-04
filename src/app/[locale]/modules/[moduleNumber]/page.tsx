@@ -81,6 +81,14 @@ export default async function ModuleDetailPage({
         module={yardModule}
         assignment={assignment}
         emphasize={yardModule.moduleNumber === "2000" || scanned === "1"}
+        drawing={
+          <TechnicalDrawing
+            typeCode={yardModule.typeCode?.trim() || ""}
+            typeNumber={yardModule.typeCode}
+            drawingUrl={moduleTypeDrawingUrl(yardModule.typeCode)}
+            drawingMimeType={moduleTypeDrawingUrl(yardModule.typeCode) ? "image/png" : null}
+          />
+        }
       />
       <AircoCard
         moduleId={yardModule.id}
@@ -118,12 +126,6 @@ export default async function ModuleDetailPage({
         ) : null}
       </section>
       <EquipmentIcons equipment={typeRecord?.equipment ?? []} />
-      <TechnicalDrawing
-        typeCode={yardModule.typeCode?.trim() || ""}
-        typeNumber={yardModule.typeCode}
-        drawingUrl={moduleTypeDrawingUrl(yardModule.typeCode)}
-        drawingMimeType={moduleTypeDrawingUrl(yardModule.typeCode) ? "image/png" : null}
-      />
       <Link
         href={`/modules/${yardModule.moduleNumber}/history`}
         className="flex min-h-14 items-center justify-center border-2 border-loxam-black bg-white text-sm font-black uppercase"
