@@ -70,7 +70,7 @@ export function PlacementInstruction({
         <TouchButton onClick={() => router.push(`/modules/${module.moduleNumber}`)}>
           {t("common.open")}
         </TouchButton>
-        <Link href="/dossiers" className="block text-center text-sm font-black uppercase">
+        <Link href="/zaken" className="block text-center text-sm font-black uppercase">
           {t("nav.dossiers")}
         </Link>
       </div>

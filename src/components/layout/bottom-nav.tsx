@@ -9,7 +9,7 @@ const driverItems = [
   {href: "/scan", key: "scan"},
   {href: "/yard", key: "yard"},
   {href: "/modules", key: "modules"},
-  {href: "/dossiers", key: "dossiers"},
+  {href: "/zaken", key: "dossiers"},
 ] as const;
 
 const officeItems = [
