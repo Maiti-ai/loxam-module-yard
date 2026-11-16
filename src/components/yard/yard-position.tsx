@@ -22,7 +22,8 @@ export function YardPosition({
 }) {
   const t = useTranslations();
   const occupant = primaryOccupant(position);
-  const reserved = Boolean(position.reservation) && !occupant;
+  const reserved = Boolean(position.reservation);
+  const emptyReserved = reserved && !occupant;
   const is3x3 = occupant?.moduleTypeCode === "3x3";
   const stackOptions = {blockCode};
   const occupancy = stackOccupancy(position.levels, stackOptions);
@@ -38,10 +39,10 @@ export function YardPosition({
       } ${
         selected
           ? "border-loxam-red bg-white"
-          : stackFull
-            ? "border-loxam-occupied bg-loxam-occupied-soft"
-            : reserved
-              ? "border-loxam-reserved bg-loxam-reserved-soft"
+          : reserved
+            ? "border-loxam-reserved bg-loxam-reserved-soft"
+            : stackFull
+              ? "border-loxam-occupied bg-loxam-occupied-soft"
               : "border-loxam-black bg-white"
       }`}
     >
@@ -53,7 +54,7 @@ export function YardPosition({
               ? occupant.status === "RENTED"
                 ? "bg-loxam-rented"
                 : "bg-loxam-occupied"
-              : reserved
+              : emptyReserved
                 ? "bg-loxam-reserved"
                 : "bg-loxam-free/40"
           }`}
@@ -62,7 +63,9 @@ export function YardPosition({
       <MiniLevelStack levels={position.levels} maxStackLevels={maxStackLevels} />
       {reserved ? (
         <span className="text-xs font-black uppercase text-loxam-reserved">
-          {t("dispatch.reserved")}
+          {position.reservation
+            ? `${t("dispatch.reserved")} ${position.reservation.dossierNumber}`
+            : t("dispatch.reserved")}
         </span>
       ) : position.levels.length > 0 ? (
         <span

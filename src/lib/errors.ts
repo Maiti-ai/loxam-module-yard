@@ -12,8 +12,23 @@ export const APP_ERROR_CODES = [
   "INSUFFICIENT_SPACE",
   "POSITION_RESERVED",
   "MODULE_IN_DOSSIER",
+  "MODULE_UNAVAILABLE",
   "DISPATCH_FAILED",
+  "DISPATCH_INCOMPLETE",
+  "DISPATCH_WRONG_COUNT",
+  "DISPATCH_ALREADY_ACTIVE",
+  "DISPATCH_DESTINATION_MUST_BE_F",
+  "DISPATCH_NOT_IN_F",
+  "DISPATCH_TARGET_OCCUPIED",
+  "DISPATCH_NOT_IN_A",
+  "DISPATCH_WRONG_SLOT",
+  "DISPATCH_NOT_READY_TO_SHIP",
+  "DISPATCH_NOT_ON_RENT",
+  "DISPATCH_ALREADY_ON_YARD",
+  "DISPATCH_RETURN_ZONE_REQUIRED",
+  "PRODUCTION_NOT_READY",
   "UPLOAD_FAILED",
+  "DELETE_FAILED",
   "SAVE_FAILED",
   "LOAD_FAILED",
 ] as const;
@@ -25,6 +40,7 @@ export type ActionErr = {
   ok: false;
   code: AppErrorCode;
   occupantNumber?: string | null;
+  targetLabel?: string | null;
   stage?: string | null;
   serverStage?: string | null;
   thrownName?: string | null;

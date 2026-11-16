@@ -17,7 +17,7 @@ export async function listModuleSummaries(): Promise<ModuleSummary[]> {
     supabase
       .from("air_conditioning_units")
       .select("id, module_id, brand, serial_number, internal_number, last_maintenance_at, notes"),
-    supabase.from("modules").select("id, notes, module_type_id"),
+    supabase.from("modules").select("id, notes, module_type_id, type_code"),
     supabase.from("module_last_movement_view").select("module_id, moved_at"),
   ]);
 
@@ -52,6 +52,7 @@ export async function listModuleSummaries(): Promise<ModuleSummary[]> {
         moduleTypeId: extra?.module_type_id ?? "",
         moduleTypeCode: asTypeCode(row.module_type_code),
         moduleTypeNumber: (row.module_type_number as string | null | undefined) ?? null,
+        typeCode: extra?.type_code ?? null,
         lengthM: Number(row.length_m ?? 0),
         widthM: Number(row.width_m ?? 0),
         status: (row.status === "RENTED" ? "RENTED" : "AVAILABLE") as ModuleStatus,

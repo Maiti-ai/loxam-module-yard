@@ -23,9 +23,23 @@ export type PhotoCategory =
 
 export type DamageReportStatus = "DRAFT" | "SUBMITTED";
 
-export type DispatchDossierStatus = "ACTIVE" | "READY_FOR_SHIPPING" | "SHIPPED" | "CANCELLED";
+export type DispatchDossierStatus =
+  | "DRAFT"
+  | "ACTIVE"
+  | "READY_FOR_SHIPPING"
+  | "PARTIALLY_SHIPPED"
+  | "SHIPPED"
+  | "PARTIALLY_RETURNED"
+  | "RETURNED"
+  | "CANCELLED";
 
-export type DispatchSlotStatus = "EMPTY" | "ASSIGNED" | "PLACED";
+export type DispatchSlotStatus = "EMPTY" | "ASSIGNED" | "PLACED" | "SHIPPED" | "RETURNED";
+
+export type DispatchProductionStatus =
+  | "TO_PRODUCTION"
+  | "IN_PRODUCTION"
+  | "READY_FOR_DISPATCH"
+  | "IN_DISPATCH_ZONE";
 
 export type Database = {
   public: {
@@ -219,6 +233,7 @@ export type Database = {
           id: string;
           module_number: string;
           module_type_id: string;
+          type_code: string | null;
           status: ModuleStatus;
           rented_to_project: string | null;
           notes: string | null;
@@ -229,6 +244,7 @@ export type Database = {
           id?: string;
           module_number: string;
           module_type_id: string;
+          type_code?: string | null;
           status?: ModuleStatus;
           rented_to_project?: string | null;
           notes?: string | null;
@@ -239,6 +255,7 @@ export type Database = {
           id?: string;
           module_number?: string;
           module_type_id?: string;
+          type_code?: string | null;
           status?: ModuleStatus;
           rented_to_project?: string | null;
           notes?: string | null;
@@ -574,7 +591,7 @@ export type Database = {
         Row: {
           id: string;
           dossier_id: string;
-          reserved_position_id: string;
+          reserved_position_id: string | null;
           sequence_number: number;
           level: StackLevel;
           module_id: string | null;
@@ -583,11 +600,19 @@ export type Database = {
           placed_at: string | null;
           assigned_by: string | null;
           created_at: string;
+          production_status: DispatchProductionStatus | null;
+          placed_in_production_at: string | null;
+          production_ready_at: string | null;
+          shipped_at: string | null;
+          shipped_by: string | null;
+          returned_at: string | null;
+          returned_by: string | null;
+          return_slot_id: string | null;
         };
         Insert: {
           id?: string;
           dossier_id: string;
-          reserved_position_id: string;
+          reserved_position_id?: string | null;
           sequence_number: number;
           level: StackLevel;
           module_id?: string | null;
@@ -596,11 +621,19 @@ export type Database = {
           placed_at?: string | null;
           assigned_by?: string | null;
           created_at?: string;
+          production_status?: DispatchProductionStatus | null;
+          placed_in_production_at?: string | null;
+          production_ready_at?: string | null;
+          shipped_at?: string | null;
+          shipped_by?: string | null;
+          returned_at?: string | null;
+          returned_by?: string | null;
+          return_slot_id?: string | null;
         };
         Update: {
           id?: string;
           dossier_id?: string;
-          reserved_position_id?: string;
+          reserved_position_id?: string | null;
           sequence_number?: number;
           level?: StackLevel;
           module_id?: string | null;
@@ -609,6 +642,14 @@ export type Database = {
           placed_at?: string | null;
           assigned_by?: string | null;
           created_at?: string;
+          production_status?: DispatchProductionStatus | null;
+          placed_in_production_at?: string | null;
+          production_ready_at?: string | null;
+          shipped_at?: string | null;
+          shipped_by?: string | null;
+          returned_at?: string | null;
+          returned_by?: string | null;
+          return_slot_id?: string | null;
         };
         Relationships: [];
       };
@@ -682,17 +723,39 @@ export type Database = {
           p_site_location: string;
           p_total_modules: number;
           p_position_ids: string[];
-          p_first_module_id: string;
+          p_module_ids: string[];
+          p_dossier_id?: string | null;
+          p_activate?: boolean;
         };
         Returns: Json;
       };
-      assign_module_to_dispatch_dossier: {
-        Args: {p_dossier_id: string; p_module_id: string};
+      cancel_dispatch_dossier: {
+        Args: {p_dossier_id: string};
+        Returns: Json;
+      };
+      mark_dispatch_production_ready: {
+        Args: {p_module_id: string};
         Returns: Json;
       };
       confirm_dispatch_placement: {
         Args: {p_module_id: string};
         Returns: Json;
+      };
+      ship_dispatch_module: {
+        Args: {p_module_id: string};
+        Returns: Json;
+      };
+      return_dispatch_module: {
+        Args: {
+          p_module_id: string;
+          p_position_id: string;
+          p_preferred_level?: StackLevel | null;
+        };
+        Returns: Json;
+      };
+      dispatch_module_block_code: {
+        Args: {p_module_id: string};
+        Returns: string;
       };
     };
     Enums: {
@@ -701,6 +764,7 @@ export type Database = {
       module_status: ModuleStatus;
       dispatch_dossier_status: DispatchDossierStatus;
       dispatch_slot_status: DispatchSlotStatus;
+      dispatch_production_status: DispatchProductionStatus;
     };
     CompositeTypes: {
       [_ in never]: never;

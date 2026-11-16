@@ -13,6 +13,7 @@ export const ROLE_PERMISSIONS = {
   manageSettings: ["ADMIN"],
   manageModules: ["ADMIN"],
   manageRentals: ["ADMIN", "OFFICE"],
+  planDispatch: ["ADMIN", "OFFICE"],
   moveModules: ["ADMIN", "FORKLIFT_DRIVER", "OFFICE", "PRODUCTION"],
   managePhotos: ["ADMIN", "OFFICE", "FORKLIFT_DRIVER", "PRODUCTION"],
   manageAirco: ["ADMIN", "OFFICE", "FORKLIFT_DRIVER"],
@@ -32,6 +33,12 @@ export function roleCan(
   }
 
   return (ROLE_PERMISSIONS[permission] as readonly AppRole[]).includes(role);
+}
+
+export function canDeleteModulePhotos(role: AppRole | null | undefined) {
+  // Temporary: same access as managing photos. Replace this helper with a
+  // dedicated role matrix later without changing the delete action flow.
+  return roleCan(role, "managePhotos");
 }
 
 export function isDriverRole(role: AppRole | null | undefined) {

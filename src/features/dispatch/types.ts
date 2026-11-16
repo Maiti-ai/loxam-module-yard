@@ -1,4 +1,9 @@
-import type {DispatchDossierStatus, DispatchSlotStatus, StackLevel} from "@/types/database";
+import type {
+  DispatchDossierStatus,
+  DispatchProductionStatus,
+  DispatchSlotStatus,
+  StackLevel,
+} from "@/types/database";
 
 export type DispatchReservationSummary = {
   dossierId: string;
@@ -10,14 +15,25 @@ export type DispatchReservationSummary = {
   status: DispatchDossierStatus;
 };
 
+export type DispatchLevelReservationSummary = DispatchReservationSummary & {
+  moduleNumber: string | null;
+};
+
 export type DispatchSlotView = {
   id: string;
   sequenceNumber: number;
   level: StackLevel;
   status: DispatchSlotStatus;
+  productionStatus: DispatchProductionStatus | null;
   moduleId: string | null;
   moduleNumber: string | null;
   placedAt: string | null;
+  shippedAt: string | null;
+  returnedAt: string | null;
+  returnBlockCode: string | null;
+  returnRowCode: string | null;
+  returnPositionCode: string | null;
+  returnLevel: StackLevel | null;
   positionId: string;
   positionOrder: number;
   blockCode: string;
@@ -34,6 +50,9 @@ export type DispatchDossierSummary = {
   status: DispatchDossierStatus;
   assignedCount: number;
   placedCount: number;
+  inProductionCount: number;
+  shippedCount: number;
+  returnedCount: number;
   createdAt: string;
 };
 
@@ -58,7 +77,10 @@ export type DispatchAssignment = {
   sequenceNumber: number;
   level: StackLevel;
   status: DispatchSlotStatus;
+  productionStatus: DispatchProductionStatus | null;
   placedAt: string | null;
+  shippedAt: string | null;
+  returnedAt: string | null;
   positionId: string;
   blockCode: string;
   rowCode: string;
@@ -66,3 +88,11 @@ export type DispatchAssignment = {
   moduleId: string;
   moduleNumber: string;
 };
+
+export type DispatchModuleFlow =
+  | {kind: "none"}
+  | {kind: "to_production"; assignment: DispatchAssignment}
+  | {kind: "ready_for_dispatch"; assignment: DispatchAssignment}
+  | {kind: "ready_to_ship"; assignment: DispatchAssignment}
+  | {kind: "on_rent"; assignment: DispatchAssignment}
+  | {kind: "returned"; assignment: DispatchAssignment};

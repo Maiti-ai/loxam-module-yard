@@ -143,6 +143,49 @@ export function isStackFull(
   return levels.length > 0 && firstFreeLevel(levels, options) === null;
 }
 
+export type LevelDestinationChoice =
+  | {ok: true; level: StackLevel}
+  | {ok: false; reason: "full" | "unconfigured" | "occupied" | "floating"};
+
+/** Validates a specific tapped stack level (no auto first-free). */
+export function levelDestinationChoice(
+  levels: StackOccupancyCell[],
+  preferredLevel: StackLevel,
+  options?: StackRuleOptions,
+): LevelDestinationChoice {
+  if (levels.length === 0) {
+    return {ok: false, reason: "unconfigured"};
+  }
+
+  const maxStackLevels = resolveMaxStackLevels(options);
+  const allowed = stackLevelsForHeight(maxStackLevels);
+  if (!allowed.includes(preferredLevel)) {
+    return {ok: false, reason: "unconfigured"};
+  }
+  if (hasOccupantAboveAllowed(levels, maxStackLevels, options?.ignoreModuleId)) {
+    return {ok: false, reason: "full"};
+  }
+
+  const target = cellFor(levels, preferredLevel);
+  if (!target) {
+    return {ok: false, reason: "unconfigured"};
+  }
+  if (occupantId(target, options?.ignoreModuleId)) {
+    return {ok: false, reason: "occupied"};
+  }
+
+  for (const level of allowed) {
+    if (level === preferredLevel) {
+      break;
+    }
+    if (!occupantId(cellFor(levels, level), options?.ignoreModuleId)) {
+      return {ok: false, reason: "floating"};
+    }
+  }
+
+  return {ok: true, level: preferredLevel};
+}
+
 export type DestinationChoice =
   | {ok: true; level: StackLevel}
   | {ok: false; reason: "full" | "unconfigured"};

@@ -1,4 +1,4 @@
-import type {DispatchReservationSummary} from "@/features/dispatch/types";
+import type {DispatchLevelReservationSummary, DispatchReservationSummary} from "@/features/dispatch/types";
 import type {
   ModuleStatus,
   ModuleTypeCode,
@@ -32,6 +32,7 @@ export type ModuleSummary = {
   moduleTypeId: string;
   moduleTypeCode: ModuleTypeCode;
   moduleTypeNumber: string | null;
+  typeCode: string | null;
   lengthM: number;
   widthM: number;
   status: ModuleStatus;
@@ -55,6 +56,7 @@ export type YardLevelCell = {
   slotId: string;
   level: StackLevel;
   occupant: Occupant | null;
+  reservation?: DispatchLevelReservationSummary;
 };
 
 export type YardPositionNode = {

@@ -1,4 +1,6 @@
--- Local `supabase db reset` uses the same fictitious fixtures as the hosted
--- development seed migration. Do not add real customer data here.
-
--- See supabase/migrations/20260813140200_seed_fictitious_dev_data.sql
+-- Local `supabase db reset` still runs historical migrations, including
+-- 20260813140200_seed_fictitious_dev_data.sql. That fixture is then removed
+-- by 20260919235648_cleanup_fictitious_dev_modules.sql so production-like
+-- resets do not keep fictitious modules.
+--
+-- Do not add real customer data or new fictitious modules here.

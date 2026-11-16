@@ -4,17 +4,25 @@ import {useState} from "react";
 import {useTranslations} from "next-intl";
 import {Link, useRouter} from "@/i18n/navigation";
 import {TouchButton} from "@/components/ui/touch-button";
+import {SchelleYardMap} from "@/components/yard/schelle-yard-map";
+import {LevelStack} from "@/components/yard/level-stack";
 import {confirmDispatchPlacementAction} from "@/features/dispatch/actions";
+import {findBlockByCode} from "@/features/dispatch/availability";
+import {dispatchTargetLabel} from "@/features/dispatch/location-status";
+import {DISPATCH_BLOCK_CODE} from "@/features/dispatch/plan";
 import type {DispatchAssignment} from "@/features/dispatch/types";
+import {resolveMaxStackLevels} from "@/features/yard-locations/stacking";
 import {formatGroundPositionLabel, formatLevelLabel} from "@/lib/format";
-import type {ModuleSummary} from "@/features/yard-locations/types";
+import type {ModuleSummary, YardSnapshot} from "@/features/yard-locations/types";
 
 export function PlacementInstruction({
   module,
   assignment,
+  snapshot,
 }: {
   module: ModuleSummary;
   assignment: DispatchAssignment;
+  snapshot: YardSnapshot;
 }) {
   const t = useTranslations();
   const router = useRouter();
@@ -29,6 +37,10 @@ export function PlacementInstruction({
     rowCode: assignment.rowCode,
     positionCode: assignment.positionCode,
   });
+  const blockA = findBlockByCode(snapshot, DISPATCH_BLOCK_CODE);
+  const targetPosition = blockA?.rows
+    .flatMap((row) => row.positions)
+    .find((position) => position.id === assignment.positionId);
 
   async function confirm() {
     if (pending) {
@@ -39,7 +51,18 @@ export function PlacementInstruction({
     const result = await confirmDispatchPlacementAction(module.id);
     setPending(false);
     if (!result.ok) {
-      setError(t(`errors.${result.code}`));
+      setError(
+        result.code === "DISPATCH_TARGET_OCCUPIED"
+          ? t("errors.DISPATCH_TARGET_OCCUPIED", {
+              target: result.targetLabel ?? dispatchTargetLabel({
+                blockCode: assignment.blockCode,
+                rowCode: assignment.rowCode,
+                positionCode: assignment.positionCode,
+                level: assignment.level,
+              }),
+            })
+          : t(`errors.${result.code}`),
+      );
       return;
     }
     setDone({
@@ -83,10 +106,7 @@ export function PlacementInstruction({
         {t("dispatch.dossier")} {assignment.dossierNumber}
       </p>
       <h1 className="text-4xl font-black">
-        {t("dispatch.moduleOf", {
-          sequence: assignment.sequenceNumber,
-          total: assignment.totalModules,
-        })}
+        {t("module.label")} {module.moduleNumber}
       </h1>
       <div className="border-4 border-loxam-black bg-white p-5">
         <p className="text-sm font-bold uppercase text-loxam-muted">{t("dispatch.customer")}</p>
@@ -102,6 +122,37 @@ export function PlacementInstruction({
         <p className="mt-2 text-5xl font-black">{target}</p>
         <p className="mt-4 text-4xl font-black uppercase">{formatLevelLabel(assignment.level)}</p>
       </div>
+      {blockA ? (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <SchelleYardMap
+            snapshot={snapshot}
+            selectedBlockId={blockA.id}
+            selectedPositionId={assignment.positionId}
+            selectedLevel={assignment.level}
+            highlightLevel={assignment.level}
+            levelSelectable={false}
+            highlightedPositionIds={[assignment.positionId]}
+            allowedBlockCodes={[DISPATCH_BLOCK_CODE]}
+            lockBlockId={blockA.id}
+            onSelectBlock={() => undefined}
+          />
+          {targetPosition ? (
+            <div className="border-4 border-loxam-black bg-white p-4">
+              <p className="text-sm font-black uppercase text-loxam-muted">{t("dispatch.targetSlot")}</p>
+              <p className="mt-2 text-3xl font-black">{target}</p>
+              <p className="mt-1 text-2xl font-black">{formatLevelLabel(assignment.level)}</p>
+              <div className="mt-4">
+                <LevelStack
+                  levels={targetPosition.levels}
+                  selectable={false}
+                  highlightLevel={assignment.level}
+                  maxStackLevels={resolveMaxStackLevels({blockCode: DISPATCH_BLOCK_CODE})}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {error ? (
         <p className="border-4 border-loxam-occupied bg-loxam-occupied-soft p-4 font-bold">{error}</p>
       ) : null}
